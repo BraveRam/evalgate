@@ -1,6 +1,6 @@
-# ⚡ PromptForge & EvalKit
+# 🛡️ EvalGate
 
-> Fast, local-first prompt engineering, regression testing, and evaluation toolkit built natively on **Bun** with **Vercel AI Gateway**, **MCP Server**, and **Interactive Web Studio**.
+> Fast, local-first prompt engineering, regression testing, and quality evaluation toolkit built natively on **Bun** with **Vercel AI Gateway**, **MCP Server**, and **Interactive Web Studio**.
 
 [![Bun](https://img.shields.io/badge/Bun-1.3+-black?logo=bun)](https://bun.sh)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-purple)](https://modelcontextprotocol.io)

@@ -1,6 +1,6 @@
-# PromptForge & EvalKit — Project Architecture & Execution Plan
+# EvalGate — Project Architecture & Execution Plan
 
-PromptForge is a fast, local-first prompt engineering, regression testing, and evaluation toolkit built natively on **Bun**. It equips applied AI engineers to iterate rapidly on prompts, run deterministic and LLM-as-a-judge evaluations, benchmark models side-by-side, analyze token/cost regressions, and expose evaluation tools directly to AI agents via **Model Context Protocol (MCP)**.
+EvalGate is a fast, local-first prompt engineering, regression testing, and quality evaluation toolkit built natively on **Bun**. It equips applied AI engineers to iterate rapidly on prompts, run deterministic and LLM-as-a-judge evaluations, benchmark models side-by-side, analyze token/cost regressions, and expose evaluation tools directly to AI agents via **Model Context Protocol (MCP)**.
 
 ---
 
