@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.bun/
+
+# Build artifacts
+dist/
+dist-web/
+
+# Local databases & run caches
+.promptforge/
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
