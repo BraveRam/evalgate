@@ -1,15 +1,51 @@
 # 🛡️ EvalGate — Monorepo Architecture & Execution Plan
 
-EvalGate is a fast, local-first prompt engineering, regression testing, and quality evaluation toolkit. Built as a **pnpm monorepo**, it equips applied AI engineers to iterate rapidly on prompts, run deterministic and LLM-as-a-judge evaluations, benchmark models side-by-side, analyze token/cost regressions, and expose evaluation tools directly to AI agents via **Model Context Protocol (MCP)**.
+EvalGate is a fast, local-first prompt engineering, regression testing, and quality evaluation toolkit. Built as a **pnpm monorepo**, it equips applied AI engineers to iterate rapidly on prompts, run deterministic and semantic LLM-as-a-judge evaluations, benchmark models side-by-side, analyze token/cost regressions, and expose evaluation tools directly to AI agents via **Model Context Protocol (MCP)**.
 
 ---
 
-## 1. Monorepo Architecture & Package Layout
+## 1. Core Evaluation Engine & Metrics Suite
 
-We use **pnpm workspaces** (`pnpm-workspace.yaml`) to cleanly separate concerns into modular, reusable packages:
+EvalGate combines deterministic rule-based assertions with the comprehensive metric architecture inspired by **EvalKit** (`evalkit/evalkit`), enhanced for multi-provider pipelines and MCP:
+
+### **A. Semantic & LLM-as-a-Judge Metrics (EvalKit-Inspired)**
+Each metric returns a normalized score (`0.0 - 1.0` or `1 - 5`), a configurable threshold (`passThreshold`), pass/fail boolean, and structured reasoning.
+
+1. **Faithfulness / Groundedness**: Evaluates whether the generated response is strictly grounded in the provided context/reference documents (critical for RAG).
+2. **Hallucination Detection**: Detects fabricated claims, false assertions, or unsubstantiated extrapolations.
+3. **Answer Relevancy**: Measures how directly and concisely the response answers the input prompt without irrelevant deviations.
+4. **Coherence & Structure**: Assesses logical flow, grammatical correctness, and readability.
+5. **Bias & Toxicity Detection**: Flags harmful bias, discriminatory language, or unsafe outputs.
+6. **Intent Adherence**: Verifies whether the model accurately identified and fulfilled the user's intent or expected action.
+7. **Semantic Similarity**: Calculates semantic distance to ground-truth reference outputs.
+8. **Dynamic Custom Metric**: Create arbitrary domain-specific evaluation rubrics on the fly with custom grading criteria.
+
+### **B. Deterministic & Hard Gate Assertions**
+1. **JSON Schema / Structured Output**: Validates output against strict JSON schemas (Zod / Pydantic).
+2. **Syntax Validation**: Checks if code output is valid Python syntax (`python_ast`) or valid SQL syntax (`sql_syntax`).
+3. **String / Pattern Matchers**: `exact_match`, `contains`, `not_contains`, `regex`, `starts_with`, `ends_with`, `levenshtein`.
+4. **Performance & SLO Budgets**: `max_latency_ms`, `max_tokens`, `cost_budget_usd`.
+
+---
+
+## 2. Evaluation Targets (Beyond Prompts)
+
+EvalGate evaluates 5 distinct AI engineering target types:
+
+| Target Type | Description & What is Tested |
+| :--- | :--- |
+| **Prompt Template** | `{{variable}}` interpolation, phrasing variants, few-shot permutations |
+| **Tool / Function Calling** | Tool selection accuracy, JSON arguments schema validation |
+| **RAG Pipeline** | Context relevance, answer faithfulness, groundedness |
+| **Structured Output** | JSON Schema / Zod validation, entity extraction accuracy |
+| **Live API / Webhook** | End-to-end latency, status codes, payload assertions on live backend services |
+
+---
+
+## 3. Monorepo Architecture & Package Layout
 
 ```
-evalgate/ (monorepo root)
+evalgate/ (pnpm monorepo)
 ├── pnpm-workspace.yaml
 ├── package.json
 ├── tsconfig.base.json
@@ -23,15 +59,16 @@ evalgate/ (monorepo root)
 ├── examples/                       # Starter YAML/JSON eval suites
 │   ├── rag_qa.yaml
 │   ├── sql_generator.yaml
-│   └── classifier.yaml
+│   ├── classifier.yaml
+│   └── tool_calling.yaml
 └── packages/
     ├── shared/                     # @evalgate/shared
     │   ├── package.json
     │   ├── tsconfig.json
     │   └── src/
-    │       ├── types.ts            # Core data contracts (TestCase, Assertion, Judge, RunResult)
-    │       ├── schemas.ts          # Zod validation schemas
-    │       └── constants.ts        # Model pricing tables & default configs
+    │       ├── types/              # Target, TestCase, Assertion, Metric, RunResult types
+    │       ├── schemas/            # Zod validation schemas
+    │       └── constants/          # Pricing matrix & default metrics config
     │
     ├── core/                       # @evalgate/core (Engine & Evaluator SDK)
     │   ├── package.json
@@ -39,7 +76,9 @@ evalgate/ (monorepo root)
     │   └── src/
     │       ├── providers/          # Vercel AI Gateway, OpenAI, Ollama, Mock Simulator
     │       ├── template/           # {{variable}} interpolation engine
-    │       ├── evaluators/         # Deterministic assertions & LLM-as-a-judge
+    │       ├── metrics/            # Faithfulness, Hallucination, Relevancy, Coherence, Bias, Dynamic
+    │       ├── evaluators/         # Deterministic assertions (JSON schema, syntax, regex)
+    │       ├── targets/            # Target handlers (Prompt, ToolCall, RAG, Webhook API)
     │       ├── storage/            # SQLite run storage & historical metrics
     │       ├── runner/             # Parallel test execution & statistics aggregator
     │       └── index.ts
@@ -48,7 +87,7 @@ evalgate/ (monorepo root)
     │   ├── package.json
     │   ├── tsconfig.json
     │   └── src/
-    │       ├── tools.ts            # MCP Tool definitions (run_suite, evaluate, compare)
+    │       ├── tools.ts            # MCP Tool definitions (run_suite, evaluate, compare, estimate_cost)
     │       └── index.ts            # stdio JSON-RPC MCP server
     │
     ├── cli/                        # @evalgate/cli (Terminal Interface)
@@ -71,64 +110,47 @@ evalgate/ (monorepo root)
 
 ---
 
-## 2. Package Responsibilities
-
-| Package | Name | Purpose |
-| :--- | :--- | :--- |
-| `packages/shared` | `@evalgate/shared` | Shared TypeScript types, Zod schemas, assertion definitions, and model pricing tables. |
-| `packages/core` | `@evalgate/core` | Headless execution engine: Vercel AI Gateway client, Mock simulator, assertions, LLM judges, SQLite storage, and test runner. |
-| `packages/mcp` | `@evalgate/mcp` | Standard MCP server exposing eval & judge tools to AI agents (Antigravity, Cursor, Claude Desktop). |
-| `packages/cli` | `@evalgate/cli` | Developer CLI binary (`evalgate run`, `evalgate init`, `evalgate compare`, `evalgate studio`). |
-| `packages/web` | `@evalgate/web` | Interactive Web Studio (Prompt sandbox, Side-by-Side Arena, Judge rubric editor, regression graphs). |
-
----
-
-## 3. Phased Implementation Roadmap (Step-by-Step)
+## 4. Phased Implementation Roadmap
 
 We will proceed strictly **phase by phase**, pausing for alignment and approval before each phase begins:
 
 ### **Phase 1: Monorepo Foundation & Shared Data Contracts**
-- Configure `pnpm-workspace.yaml`, root `package.json`, and shared `tsconfig.base.json`.
-- Set up `packages/shared` with:
-  - TypeScript types (`PromptTemplate`, `TestCase`, `Assertion`, `JudgeConfig`, `SuiteRunResult`, `MetricSummary`).
-  - Zod validation schemas for test suites and assertions.
+- Setup `pnpm-workspace.yaml`, root `package.json`, and shared `tsconfig.base.json`.
+- In `packages/shared`:
+  - Data contracts: `EvalTarget`, `TestCase`, `Assertion`, `SemanticMetricConfig` (Faithfulness, Relevancy, Hallucination, Coherence, Bias, Dynamic), `SuiteRunResult`.
+  - Zod validation schemas for test suites, metrics, and assertion rules.
   - Model pricing matrix (GPT-4o, Claude 3.5 Sonnet, Gemini Flash/Pro, DeepSeek V3/R1, Llama 3.3).
 
-### **Phase 2: Core Engine & Providers**
+### **Phase 2: Core Engine, Providers & Metric Suite**
 - In `packages/core`:
-  - Variable interpolation templating engine (`{{variable}}` with fallback defaults).
+  - Variable templating engine (`{{variable}}` with default fallbacks).
   - Provider adapters: **Vercel AI Gateway** (`VERCEL_AI_GATEWAY_KEY`), direct OpenAI/Groq/Ollama, and offline Mock Simulator.
-  - Deterministic assertions: `contains`, `regex`, `json_schema`, `python_ast`, `sql_syntax`, `levenshtein`, `token_budget`, `latency_budget`.
-  - LLM-as-a-judge rubric evaluator with reasoning breakdown.
-  - SQLite database persistence for test suites, cases, and historical runs.
-  - Concurrent test suite runner with statistical aggregation (P50/P95 latency, pass rate, cost).
+  - Deterministic assertions (`json_schema`, `python_ast`, `sql_syntax`, `contains`, `regex`, `levenshtein`, `token_budget`, `latency_budget`).
+  - Semantic Metric Suite: Faithfulness, Hallucination, Answer Relevancy, Coherence, Bias, Intent, Semantic Similarity, Dynamic Rubrics.
+  - Target runners (Prompt, Tool Call, RAG context, Custom Webhook API).
+  - SQLite run storage (`.evalgate/runs.db`) and concurrent test runner.
 
 ### **Phase 3: Model Context Protocol (MCP) Server**
 - In `packages/mcp`:
   - Implement JSON-RPC 2.0 stdio MCP server using `@modelcontextprotocol/sdk`.
   - Expose tools: `evalgate_run_suite`, `evalgate_evaluate`, `evalgate_compare`, `evalgate_estimate_cost`.
-  - Create `.agents/skills/evalgate/SKILL.md` and `mcp_config.json` for seamless agent integration.
+  - Create `.agents/skills/evalgate/SKILL.md` and `mcp_config.json`.
 
 ### **Phase 4: Terminal CLI**
 - In `packages/cli`:
-  - Build `evalgate` CLI binary with commands:
-    - `evalgate init` (scaffold starter YAML eval suites)
-    - `evalgate run <suite.yaml>` (pretty terminal output with colored matrices)
-    - `evalgate compare` (side-by-side prompt/model CLI benchmark)
-    - `evalgate studio` (launch Web Studio)
-    - `evalgate mcp` (launch MCP server)
+  - Build `evalgate` CLI with `init`, `run <suite.yaml>`, `compare`, `studio`, `mcp`.
 
 ### **Phase 5: Interactive Web Studio**
 - In `packages/web`:
   - Build React + Vite + Tailwind UI:
     - **Playground & Matrix Runner**: Live editing, variable binding, real-time runs.
     - **Side-by-Side Arena**: Diff completions, compare token counts, latency, and assertions.
-    - **Judge Rubric Builder**: Visual judge editor with prebuilt templates (Faithfulness, Coherence, Safety).
+    - **Metrics & Judge Builder**: Visual editor for EvalKit-style metrics & custom rubrics.
     - **Regression & History Dashboard**: Historical runs timeline with trend charts.
     - **1-Click Exporter**: Export suites to Python (`pytest`), YAML, and GitHub Actions CI.
   - Embedded local HTTP server to connect Web Studio with `@evalgate/core`.
 
 ### **Phase 6: Example Benchmark Suites & End-to-End Verification**
-- Create ready-to-run benchmark suites (`rag_qa.yaml`, `sql_generator.yaml`, `classifier.yaml`).
+- Create ready-to-run benchmark suites (`rag_qa.yaml`, `sql_generator.yaml`, `classifier.yaml`, `tool_calling.yaml`).
 - Verify CLI, MCP server, and Web Studio end-to-end.
 - Push clean state to GitHub.
