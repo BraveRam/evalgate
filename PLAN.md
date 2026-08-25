@@ -1,175 +1,134 @@
-# EvalGate — Project Architecture & Execution Plan
+# 🛡️ EvalGate — Monorepo Architecture & Execution Plan
 
-EvalGate is a fast, local-first prompt engineering, regression testing, and quality evaluation toolkit built natively on **Bun**. It equips applied AI engineers to iterate rapidly on prompts, run deterministic and LLM-as-a-judge evaluations, benchmark models side-by-side, analyze token/cost regressions, and expose evaluation tools directly to AI agents via **Model Context Protocol (MCP)**.
-
----
-
-## 1. Core Value Proposition for Applied AI Engineers
-
-1. **Deterministic + Semantic Evals**: Validate outputs with schema assertions (`json_schema`, `python_ast`, `sql_syntax`, `contains`, `regex`, `levenshtein`) and LLM judges (`faithfulness`, `conciseness`, `hallucination_check`, `instruction_following`).
-2. **Unified Model Gateway Support**: First-class support for **Vercel AI Gateway** (`VERCEL_AI_GATEWAY_KEY`), direct providers (OpenAI, Anthropic, Gemini, Groq, DeepSeek), local models (**Ollama**, **LM Studio**), and a zero-key **Mock Simulator** for offline development.
-3. **Side-by-Side Arena**: Direct comparison of Prompt A vs Prompt B (or Model A vs Model B) with visual completion diffs, latency percentiles (P50/P95), and token cost comparisons.
-4. **Agent-Native MCP Integration**: Exposes MCP tools so agents (Antigravity, Cursor, Claude) can evaluate and benchmark prompts programmatically.
-5. **Local Bun Performance**: Powered by Bun's native TypeScript runtime, `bun:sqlite` database for fast historical run tracking, and native HTTP server for the Web Studio.
+EvalGate is a fast, local-first prompt engineering, regression testing, and quality evaluation toolkit. Built as a **pnpm monorepo**, it equips applied AI engineers to iterate rapidly on prompts, run deterministic and LLM-as-a-judge evaluations, benchmark models side-by-side, analyze token/cost regressions, and expose evaluation tools directly to AI agents via **Model Context Protocol (MCP)**.
 
 ---
 
-## 2. High-Level Architecture
+## 1. Monorepo Architecture & Package Layout
+
+We use **pnpm workspaces** (`pnpm-workspace.yaml`) to cleanly separate concerns into modular, reusable packages:
 
 ```
- ┌──────────────────────────────────────────────────────────────┐
- │                      PromptForge Studio                      │
- │    (React + Tailwind Web UI: Arena, Matrix, History, Judges) │
- └──────────────────────────────┬───────────────────────────────┘
-                                │ HTTP / WebSocket
- ┌──────────────────────────────┴───────────────────────────────┐
- │                   PromptForge Bun Runtime                    │
- │                                                              │
- │  ┌─────────────────┐   ┌────────────────┐   ┌─────────────┐  │
- │  │   CLI Runner    │   │   MCP Server   │   │ API / Studio│  │
- │  │ (Terminal TUI)  │   │  (stdio/JSON)  │   │   Server    │  │
- │  └────────┬────────┘   └───────┬────────┘   └──────┬──────┘  │
- │           └────────────────────┼───────────────────┘         │
- │                                ▼                             │
- │                    ┌──────────────────────┐                  │
- │                    │   Evaluation Core    │                  │
- │                    │  - Template Engine   │                  │
- │                    │  - Assertion Library │                  │
- │                    │  - LLM-as-a-Judge    │                  │
- │                    │  - Cost & Token Calc │                  │
- │                    └──────────┬───────────┘                  │
- │                               ▼                              │
- │         ┌──────────────────────────────────────────┐         │
- │         │          bun:sqlite Runs DB              │         │
- │         │  (Suites, Cases, Histories, Benchmarks)  │         │
- │         └──────────────────────────────────────────┘         │
- └──────────────────────────────┬───────────────────────────────┘
-                                ▼
-  ┌────────────────────────────────────────────────────────────┐
-  │                     Model Providers                        │
-  │   Vercel AI Gateway / OpenAI / Anthropic / Gemini / Ollama │
-  └────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 3. Directory Structure
-
-```
-night-cookin/
+evalgate/ (monorepo root)
+├── pnpm-workspace.yaml
+├── package.json
+├── tsconfig.base.json
+├── PLAN.md
+├── README.md
 ├── .agents/
 │   └── skills/
-│       └── promptforge/
-│           └── SKILL.md            # Antigravity agent skill definition
-├── examples/
-│   ├── rag_qa.yaml                 # RAG Q&A benchmark suite
-│   ├── sql_generator.yaml          # Text-to-SQL evaluation suite
-│   └── classifier.yaml             # Intent classification suite
-├── src/
-│   ├── core/                       # Core engine
-│   │   ├── types.ts                # TypeScript interfaces (Suite, TestCase, Assertion, Judge, RunResult)
-│   │   ├── template.ts             # Template parser & variable injector ({{var}})
-│   │   ├── pricing.ts              # Pricing & token calculation matrix (15+ models)
-│   │   ├── storage.ts              # bun:sqlite persistence for suites, cases, and run history
-│   │   ├── providers/              # LLM provider clients
-│   │   │   ├── types.ts
-│   │   │   ├── vercel-gateway.ts   # Vercel AI Gateway client
-│   │   │   ├── openai.ts           # OpenAI & compatible endpoints (Ollama, LM Studio, Groq, DeepSeek)
-│   │   │   ├── anthropic.ts        # Anthropic Claude client
-│   │   │   ├── gemini.ts           # Google Gemini client
-│   │   │   ├── mock.ts             # Offline mock simulator
-│   │   │   └── index.ts            # Provider factory & dispatcher
-│   │   ├── evaluators/             # Assertion and judging logic
-│   │   │   ├── deterministic.ts    # contains, regex, json_schema, python_syntax, sql_syntax, levenshtein
-│   │   │   ├── judge.ts            # LLM-as-a-judge execution & rubric scoring
-│   │   │   └── index.ts
-│   │   └── runner.ts               # Concurrent test suite execution & stats collector
-│   ├── mcp/
-│   │   ├── tools.ts                # MCP tool definitions
-│   │   └── server.ts               # MCP stdio JSON-RPC server
-│   ├── cli/
-│   │   ├── commands/
-│   │   │   ├── init.ts             # Scaffold starter suites
-│   │   │   ├── run.ts              # Run suite with pretty terminal output
-│   │   │   ├── compare.ts          # Side-by-side prompt/model CLI benchmark
-│   │   │   ├── studio.ts           # Launch local Web Studio
-│   │   │   └── mcp.ts              # Launch MCP server
-│   │   └── index.ts                # Main CLI entry point
-│   ├── server/
-│   │   ├── api.ts                  # Bun HTTP REST routes for Studio
-│   │   └── index.ts                # Studio server entrypoint (serves API + static Web UI)
-│   └── web/                        # React + Tailwind SPA
-│       ├── src/
-│       │   ├── components/
-│       │   │   ├── Header.tsx
-│       │   │   ├── Playground.tsx  # Interactive prompt editor & live test runner
-│       │   │   ├── Arena.tsx       # Prompt A vs B / Model A vs B comparison
-│       │   │   ├── SuiteEditor.tsx # Test suite & dataset manager
-│       │   │   ├── JudgeConfig.tsx # Visual LLM-as-a-Judge builder
-│       │   │   ├── RunHistory.tsx  # Historical regression & latency charts
-│       │   │   └── ExportModal.tsx # Export to Python pytest, YAML, GitHub Actions
-│       │   ├── App.tsx
-│       │   ├── main.tsx
-│       │   └── index.css
-│       ├── index.html
-│       └── vite.config.ts
-├── mcp_config.json                 # MCP registration config
-├── package.json
-├── tsconfig.json
-├── PLAN.md
-└── README.md
+│       └── evalgate/
+│           └── SKILL.md            # Antigravity / Agent Skill definition
+├── mcp_config.json                 # MCP registration config for agents
+├── examples/                       # Starter YAML/JSON eval suites
+│   ├── rag_qa.yaml
+│   ├── sql_generator.yaml
+│   └── classifier.yaml
+└── packages/
+    ├── shared/                     # @evalgate/shared
+    │   ├── package.json
+    │   ├── tsconfig.json
+    │   └── src/
+    │       ├── types.ts            # Core data contracts (TestCase, Assertion, Judge, RunResult)
+    │       ├── schemas.ts          # Zod validation schemas
+    │       └── constants.ts        # Model pricing tables & default configs
+    │
+    ├── core/                       # @evalgate/core (Engine & Evaluator SDK)
+    │   ├── package.json
+    │   ├── tsconfig.json
+    │   └── src/
+    │       ├── providers/          # Vercel AI Gateway, OpenAI, Ollama, Mock Simulator
+    │       ├── template/           # {{variable}} interpolation engine
+    │       ├── evaluators/         # Deterministic assertions & LLM-as-a-judge
+    │       ├── storage/            # SQLite run storage & historical metrics
+    │       ├── runner/             # Parallel test execution & statistics aggregator
+    │       └── index.ts
+    │
+    ├── mcp/                        # @evalgate/mcp (Model Context Protocol Server)
+    │   ├── package.json
+    │   ├── tsconfig.json
+    │   └── src/
+    │       ├── tools.ts            # MCP Tool definitions (run_suite, evaluate, compare)
+    │       └── index.ts            # stdio JSON-RPC MCP server
+    │
+    ├── cli/                        # @evalgate/cli (Terminal Interface)
+    │   ├── package.json
+    │   ├── tsconfig.json
+    │   └── src/
+    │       ├── commands/           # init, run, compare, studio, mcp
+    │       └── index.ts            # Main CLI entrypoint (evalgate binary)
+    │
+    └── web/                        # @evalgate/web (React + Tailwind Web Studio)
+        ├── package.json
+        ├── tsconfig.json
+        ├── vite.config.ts
+        ├── index.html
+        └── src/
+            ├── components/         # Playground, Arena, Matrix, Judges, History, Export
+            ├── App.tsx
+            └── main.tsx
 ```
 
 ---
 
-## 4. Phased Step-by-Step Implementation Roadmap
+## 2. Package Responsibilities
 
-### **Phase 1: Project Setup & Core Types**
-- Initialize `package.json` with Bun scripts and dependencies (`@modelcontextprotocol/sdk`, `zod`, `yaml`, `picocolors`, `cli-table3`, etc.).
-- Setup `tsconfig.json`.
-- Implement `src/core/types.ts` defining data models: `PromptTemplate`, `TestCase`, `Assertion`, `JudgeConfig`, `SuiteRunResult`, `MetricSummary`.
+| Package | Name | Purpose |
+| :--- | :--- | :--- |
+| `packages/shared` | `@evalgate/shared` | Shared TypeScript types, Zod schemas, assertion definitions, and model pricing tables. |
+| `packages/core` | `@evalgate/core` | Headless execution engine: Vercel AI Gateway client, Mock simulator, assertions, LLM judges, SQLite storage, and test runner. |
+| `packages/mcp` | `@evalgate/mcp` | Standard MCP server exposing eval & judge tools to AI agents (Antigravity, Cursor, Claude Desktop). |
+| `packages/cli` | `@evalgate/cli` | Developer CLI binary (`evalgate run`, `evalgate init`, `evalgate compare`, `evalgate studio`). |
+| `packages/web` | `@evalgate/web` | Interactive Web Studio (Prompt sandbox, Side-by-Side Arena, Judge rubric editor, regression graphs). |
 
-### **Phase 2: Providers, Templating & Pricing**
-- Implement `template.ts`: Variable interpolation `{{var}}`, default fallbacks, extracted variable names.
-- Implement `pricing.ts`: Token counter approximation and exact pricing table for GPT-4o, GPT-4o-mini, Claude 3.5 Sonnet, Gemini 1.5/2.0 Flash/Pro, DeepSeek-V3/R1, Llama 3.3.
-- Implement unified providers in `src/core/providers/`:
-  - `vercel-gateway.ts` (Vercel AI Gateway unified routing)
-  - `openai.ts` (Direct OpenAI, Groq, Ollama, LM Studio)
-  - `mock.ts` (Zero-key offline simulator for instant smoke tests)
-  - `index.ts` provider registry.
+---
 
-### **Phase 3: Assertion Library, LLM-as-a-Judge & SQLite Storage**
-- Implement deterministic assertions (`contains`, `not_contains`, `regex`, `json_schema`, `python_ast`, `sql_syntax`, `levenshtein`, `max_latency`, `max_tokens`, `max_cost`).
-- Implement LLM-as-a-judge evaluator with structured JSON grading output and rubric scoring.
-- Implement `storage.ts` using native `bun:sqlite` to store test suites, test cases, and historical run results.
-- Implement `runner.ts` for concurrent evaluation and statistical aggregation (pass rate, P50/P95 latency, total cost).
+## 3. Phased Implementation Roadmap (Step-by-Step)
 
-### **Phase 4: MCP Server & Antigravity Skill Integration**
-- Implement `src/mcp/server.ts` with tools:
-  - `promptforge_run_suite`
-  - `promptforge_evaluate`
-  - `promptforge_compare`
-  - `promptforge_estimate_cost`
-- Create `mcp_config.json` and `.agents/skills/promptforge/SKILL.md`.
+We will proceed strictly **phase by phase**, pausing for alignment and approval before each phase begins:
 
-### **Phase 5: Bun CLI Experience**
-- Implement terminal CLI with colored output, tables, and progress indicators:
-  - `bun run cli init`
-  - `bun run cli run <suite.yaml>`
-  - `bun run cli compare`
-  - `bun run cli studio`
-  - `bun run cli mcp`
+### **Phase 1: Monorepo Foundation & Shared Data Contracts**
+- Configure `pnpm-workspace.yaml`, root `package.json`, and shared `tsconfig.base.json`.
+- Set up `packages/shared` with:
+  - TypeScript types (`PromptTemplate`, `TestCase`, `Assertion`, `JudgeConfig`, `SuiteRunResult`, `MetricSummary`).
+  - Zod validation schemas for test suites and assertions.
+  - Model pricing matrix (GPT-4o, Claude 3.5 Sonnet, Gemini Flash/Pro, DeepSeek V3/R1, Llama 3.3).
 
-### **Phase 6: Interactive Web Studio**
-- Build React + Tailwind UI:
-  - **Playground & Matrix Runner**: Live editing, variable binding, real-time runs.
-  - **Side-by-Side Arena**: Diff completions, compare token counts, latency, and assertions.
-  - **Judge Builder & Inspector**: Rubric configuration and reasoning breakdown.
-  - **History Dashboard**: Regression metrics over time.
-  - **Export Center**: Export suites to Python `pytest`, TypeScript, YAML, and CI workflows.
-- Connect Studio to Bun HTTP backend.
+### **Phase 2: Core Engine & Providers**
+- In `packages/core`:
+  - Variable interpolation templating engine (`{{variable}}` with fallback defaults).
+  - Provider adapters: **Vercel AI Gateway** (`VERCEL_AI_GATEWAY_KEY`), direct OpenAI/Groq/Ollama, and offline Mock Simulator.
+  - Deterministic assertions: `contains`, `regex`, `json_schema`, `python_ast`, `sql_syntax`, `levenshtein`, `token_budget`, `latency_budget`.
+  - LLM-as-a-judge rubric evaluator with reasoning breakdown.
+  - SQLite database persistence for test suites, cases, and historical runs.
+  - Concurrent test suite runner with statistical aggregation (P50/P95 latency, pass rate, cost).
 
-### **Phase 7: Testing, Examples & Verification**
-- Create example test suites (`rag_qa.yaml`, `sql_generator.yaml`, `classifier.yaml`).
-- Verify CLI, MCP, and Web Studio end-to-end.
-- Push to GitHub and verify clean status.
+### **Phase 3: Model Context Protocol (MCP) Server**
+- In `packages/mcp`:
+  - Implement JSON-RPC 2.0 stdio MCP server using `@modelcontextprotocol/sdk`.
+  - Expose tools: `evalgate_run_suite`, `evalgate_evaluate`, `evalgate_compare`, `evalgate_estimate_cost`.
+  - Create `.agents/skills/evalgate/SKILL.md` and `mcp_config.json` for seamless agent integration.
+
+### **Phase 4: Terminal CLI**
+- In `packages/cli`:
+  - Build `evalgate` CLI binary with commands:
+    - `evalgate init` (scaffold starter YAML eval suites)
+    - `evalgate run <suite.yaml>` (pretty terminal output with colored matrices)
+    - `evalgate compare` (side-by-side prompt/model CLI benchmark)
+    - `evalgate studio` (launch Web Studio)
+    - `evalgate mcp` (launch MCP server)
+
+### **Phase 5: Interactive Web Studio**
+- In `packages/web`:
+  - Build React + Vite + Tailwind UI:
+    - **Playground & Matrix Runner**: Live editing, variable binding, real-time runs.
+    - **Side-by-Side Arena**: Diff completions, compare token counts, latency, and assertions.
+    - **Judge Rubric Builder**: Visual judge editor with prebuilt templates (Faithfulness, Coherence, Safety).
+    - **Regression & History Dashboard**: Historical runs timeline with trend charts.
+    - **1-Click Exporter**: Export suites to Python (`pytest`), YAML, and GitHub Actions CI.
+  - Embedded local HTTP server to connect Web Studio with `@evalgate/core`.
+
+### **Phase 6: Example Benchmark Suites & End-to-End Verification**
+- Create ready-to-run benchmark suites (`rag_qa.yaml`, `sql_generator.yaml`, `classifier.yaml`).
+- Verify CLI, MCP server, and Web Studio end-to-end.
+- Push clean state to GitHub.

@@ -1,10 +1,22 @@
 # 🛡️ EvalGate
 
-> Fast, local-first prompt engineering, regression testing, and quality evaluation toolkit built natively on **Bun** with **Vercel AI Gateway**, **MCP Server**, and **Interactive Web Studio**.
+> Fast, local-first prompt engineering, regression testing, and quality evaluation toolkit built as a **pnpm monorepo** with **Vercel AI Gateway**, **MCP Server**, and **Interactive Web Studio**.
 
-[![Bun](https://img.shields.io/badge/Bun-1.3+-black?logo=bun)](https://bun.sh)
+[![pnpm](https://img.shields.io/badge/pnpm-Workspaces-orange?logo=pnpm)](https://pnpm.io)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-purple)](https://modelcontextprotocol.io)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?logo=typescript)](https://www.typescriptlang.org/)
+
+---
+
+## 📦 Monorepo Packages
+
+| Package | Path | Description |
+| :--- | :--- | :--- |
+| **`@evalgate/shared`** | `packages/shared` | Core types, Zod schemas, assertion definitions & pricing matrix |
+| **`@evalgate/core`** | `packages/core` | Evaluator engine, Vercel AI Gateway client, SQLite runner & storage |
+| **`@evalgate/mcp`** | `packages/mcp` | Model Context Protocol (MCP) server for AI agents |
+| **`@evalgate/cli`** | `packages/cli` | Terminal CLI tool (`evalgate init`, `evalgate run`, `evalgate studio`) |
+| **`@evalgate/web`** | `packages/web` | React + Tailwind Web Studio (Playground, Arena, History, Judges) |
 
 ---
 
