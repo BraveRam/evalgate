@@ -243,6 +243,7 @@ class StorageEngine:
         self,
         suite_name: str | None = None,
         limit: int = 50,
+        offset: int = 0,
     ) -> list[SuiteRunResult]:
         """List historical run results, optionally filtered by suite."""
         params: tuple[Any, ...]
@@ -250,16 +251,23 @@ class StorageEngine:
             if suite_name:
                 query = (
                     "SELECT raw_json FROM runs WHERE suite_name = ? "
-                    "ORDER BY timestamp DESC LIMIT ?;"
+                    "ORDER BY timestamp DESC LIMIT ? OFFSET ?;"
                 )
-                params = (suite_name, limit)
+                params = (suite_name, limit, offset)
             else:
-                query = "SELECT raw_json FROM runs ORDER BY timestamp DESC LIMIT ?;"
-                params = (limit,)
+                query = "SELECT raw_json FROM runs ORDER BY timestamp DESC LIMIT ? OFFSET ?;"
+                params = (limit, offset)
 
             async with db.execute(query, params) as cursor:
                 rows = await cursor.fetchall()
                 return [SuiteRunResult.model_validate(json.loads(r[0])) for r in rows]
+
+    async def delete_run(self, run_id: str) -> bool:
+        """Delete an evaluation run and cascaded test results."""
+        async with self._connect() as db:
+            cursor = await db.execute("DELETE FROM runs WHERE run_id = ?;", (run_id,))
+            await db.commit()
+            return cursor.rowcount > 0
 
     async def get_historical_metrics(
         self,

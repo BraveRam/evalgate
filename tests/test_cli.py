@@ -30,6 +30,7 @@ def test_cli_mcp_and_studio_commands(monkeypatch: pytest.MonkeyPatch):
     assert "Starting EvalGate MCP Server" in mcp_res.stdout
 
     # Studio command
+    monkeypatch.setattr("uvicorn.run", lambda *args, **kwargs: None)
     studio_res = runner.invoke(app, ["studio", "--port", "3001"])
     assert studio_res.exit_code == 0
     assert "http://127.0.0.1:3001" in studio_res.stdout

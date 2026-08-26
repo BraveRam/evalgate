@@ -406,17 +406,25 @@ def mcp(
 def studio(
     port: Annotated[
         int,
-        typer.Option("--port", "-p", help="Port for the Next.js Studio and API server."),
-    ] = 3000,
+        typer.Option("--port", "-p", help="Port for the API backend server."),
+    ] = 8000,
     host: Annotated[
         str,
         typer.Option("--host", "-h", help="Host interface to bind to."),
     ] = "127.0.0.1",
+    reload: Annotated[
+        bool,
+        typer.Option("--reload", help="Enable auto-reload on code changes."),
+    ] = False,
 ) -> None:
     """
-    Launch the EvalGate Web Studio and FastAPI backend server.
+    Launch the EvalGate Studio FastAPI backend server.
     """
+    import uvicorn
+
     console.print(
-        f"[bold cyan]EvalGate Studio[/] launching at [green]http://{host}:{port}[/] "
-        "(Interactive Playground, Arena Shootout, Judges & Analytics)"
+        f"[bold cyan]EvalGate Studio API[/] launching at [green]http://{host}:{port}[/]\n"
+        f"  • Interactive Swagger Docs: [cyan]http://{host}:{port}/docs[/]\n"
+        f"  • OpenAPI Spec: [cyan]http://{host}:{port}/openapi.json[/]"
     )
+    uvicorn.run("evalgate.api.app:app", host=host, port=port, reload=reload)
