@@ -22,13 +22,33 @@ def test_cli_version():
     assert "EvalGate" in result.stdout
 
 
-def test_cli_init(tmp_path: Path):
+def test_cli_mcp_and_studio_commands():
+    # MCP command
+    mcp_res = runner.invoke(app, ["mcp"])
+    assert mcp_res.exit_code == 0
+    assert "EvalGate MCP Server" in mcp_res.stdout
+
+    # Studio command
+    studio_res = runner.invoke(app, ["studio", "--port", "3001"])
+    assert studio_res.exit_code == 0
+    assert "http://127.0.0.1:3001" in studio_res.stdout
+
+
+def test_cli_init_and_idempotency(tmp_path: Path):
     target_dir = tmp_path / "evals_test"
-    result = runner.invoke(app, ["init", "--dir", str(target_dir)])
-    assert result.exit_code == 0
+
+    # First init creates files
+    result1 = runner.invoke(app, ["init", "--dir", str(target_dir)])
+    assert result1.exit_code == 0
     assert (target_dir / "rag_qa.yaml").exists()
     assert (target_dir / "sql_generator.yaml").exists()
     assert (target_dir / "classifier.yaml").exists()
+    assert "Created template suite" in result1.stdout
+
+    # Second init skips existing files
+    result2 = runner.invoke(app, ["init", "--dir", str(target_dir)])
+    assert result2.exit_code == 0
+    assert "Skipped existing file" in result2.stdout
 
 
 def test_suite_loader(tmp_path: Path):
@@ -98,6 +118,60 @@ tests:
     assert result.exit_code == 0
     assert "PASSED QUALITY GATE" in result.stdout
     assert "passing-suite" in result.stdout
+
+
+def test_cli_run_overrides(tmp_path: Path):
+    suite_file = tmp_path / "override_suite.yaml"
+    suite_file.write_text(
+        """name: "override-suite"
+target:
+  type: "prompt"
+  model: "mock/original"
+  template: "Echo {{query}}"
+min_pass_rate: 1.0
+tests:
+  - id: "case-1"
+    vars: {query: "world"}
+    assertions:
+      - type: "max_latency_ms"
+        value: 5000.0
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            str(suite_file),
+            "--model",
+            "mock/overridden",
+            "--min-pass-rate",
+            "0.8",
+            "--verbose",
+        ],
+    )
+    assert result.exit_code == 0
+    assert "PASSED QUALITY GATE" in result.stdout
+    assert "mock/overridden" in result.stdout
+
+
+def test_cli_run_malformed_suite_exits_1(tmp_path: Path):
+    broken_file = tmp_path / "malformed.yaml"
+    broken_file.write_text("invalid: yaml: syntax: [", encoding="utf-8")
+
+    result = runner.invoke(app, ["run", str(broken_file)])
+    assert result.exit_code == 1
+    assert "Error loading suite" in result.stdout
+
+
+def test_cli_compare_malformed_suite_exits_1(tmp_path: Path):
+    broken_file = tmp_path / "malformed_compare.yaml"
+    broken_file.write_text("invalid: yaml: syntax: [", encoding="utf-8")
+
+    result = runner.invoke(app, ["compare", str(broken_file)])
+    assert result.exit_code == 1
+    assert "Error loading suite" in result.stdout
 
 
 def test_cli_run_failing_suite_closes_gate(tmp_path: Path):
@@ -206,3 +280,9 @@ tests:
     bad_view = runner.invoke(app, ["view", "nonexistent_run_id"])
     assert bad_view.exit_code == 1
     assert "Run not found" in bad_view.stdout
+
+
+def test_cli_list_empty_filter():
+    list_res = runner.invoke(app, ["list", "--suite", "non_existent_suite_name_12345"])
+    assert list_res.exit_code == 0
+    assert "No evaluation runs found" in list_res.stdout

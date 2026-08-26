@@ -9,9 +9,10 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
-from rich.console import Console
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from evalgate import __version__
+from evalgate.cli.console import console
 from evalgate.cli.formatters import (
     render_arena_summary,
     render_header_panel,
@@ -20,6 +21,7 @@ from evalgate.cli.formatters import (
 )
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
 from evalgate.core.storage import StorageEngine
+from evalgate.core.types import TestCaseResult
 from evalgate.providers.factory import get_provider
 from evalgate.runner.runner import SuiteRunner, compare_arena
 
@@ -28,7 +30,6 @@ app = typer.Typer(
     help="Fast local-first prompt engineering, regression testing, and evaluation platform.",
     add_completion=False,
 )
-console = Console()
 
 
 @app.command()
@@ -50,6 +51,9 @@ def init(
     target_dir.mkdir(parents=True, exist_ok=True)
     dot_evalgate = Path(".evalgate")
     dot_evalgate.mkdir(parents=True, exist_ok=True)
+
+    created: list[str] = []
+    skipped: list[str] = []
 
     # 1. RAG QA Suite
     rag_yaml = target_dir / "rag_qa.yaml"
@@ -89,6 +93,9 @@ tests:
 """,
             encoding="utf-8",
         )
+        created.append(rag_yaml.name)
+    else:
+        skipped.append(rag_yaml.name)
 
     # 2. SQL Generator Suite
     sql_yaml = target_dir / "sql_generator.yaml"
@@ -121,6 +128,9 @@ tests:
 """,
             encoding="utf-8",
         )
+        created.append(sql_yaml.name)
+    else:
+        skipped.append(sql_yaml.name)
 
     # 3. Classifier & Structured Output Suite
     classifier_yaml = target_dir / "classifier.yaml"
@@ -169,13 +179,17 @@ tests:
 """,
             encoding="utf-8",
         )
+        created.append(classifier_yaml.name)
+    else:
+        skipped.append(classifier_yaml.name)
 
     console.print("[bold green]Initialized EvalGate workspace![/]")
-    console.print(f"  • Created suites directory: [cyan]{target_dir}/[/]")
-    console.print(
-        f"  • Scaffolding [cyan]{rag_yaml.name}[/], "
-        f"[cyan]{sql_yaml.name}[/], [cyan]{classifier_yaml.name}[/]"
-    )
+    console.print(f"  • Workspace directory: [cyan]{target_dir}/[/]")
+    for f in created:
+        console.print(f"  • Created template suite: [green]{f}[/]")
+    for f in skipped:
+        console.print(f"  • [dim]Skipped existing file: {f}[/dim]")
+
     console.print(f"\nRun your first evaluation with: [bold yellow]evalgate run {rag_yaml}[/]")
 
 
@@ -203,7 +217,7 @@ def run(
     ] = None,
     verbose: Annotated[
         bool,
-        typer.Option("--verbose", "-v", help="Display full completion outputs and debug details."),
+        typer.Option("--verbose", "-v", help="Display full completion outputs and details."),
     ] = False,
     no_save: Annotated[
         bool,
@@ -237,8 +251,7 @@ def run(
 
     runner = SuiteRunner()
 
-    status_msg = "" if json_output else "[bold green]Executing evaluation suite...[/]"
-    with console.status(status_msg):
+    if json_output:
         run_result = asyncio.run(
             runner.run_suite(
                 suite=suite,
@@ -248,11 +261,36 @@ def run(
                 save_to_storage=not no_save,
             )
         )
-
-    if json_output:
-        # Print JSON to stdout
         console.print(run_result.model_dump_json(indent=2))
     else:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeElapsedColumn(),
+            console=console,
+        ) as progress:
+            total_tests = len(suite.tests)
+            task_id = progress.add_task(
+                f"[bold cyan]Running {total_tests} test cases...[/]",
+                total=total_tests,
+            )
+
+            def _on_test_done(tc_res: TestCaseResult) -> None:
+                progress.advance(task_id, 1)
+
+            run_result = asyncio.run(
+                runner.run_suite(
+                    suite=suite,
+                    target_override=target,
+                    judge_provider=judge_provider,
+                    concurrency=concurrency,
+                    save_to_storage=not no_save,
+                    on_test_complete=_on_test_done,
+                )
+            )
+
         render_run_summary(run_result, verbose=verbose)
 
     # Exit code: 0 if passed gate, 1 if failed
@@ -345,3 +383,44 @@ def view(
         raise typer.Exit(code=1)
 
     render_run_summary(run, verbose=verbose)
+
+
+@app.command()
+def mcp(
+    transport: Annotated[
+        str,
+        typer.Option("--transport", "-t", help="MCP transport type (stdio, sse)."),
+    ] = "stdio",
+) -> None:
+    """
+    Start the Model Context Protocol (MCP) server for Antigravity, Cursor, and Claude.
+    """
+    try:
+        from evalgate.mcp.server import run_mcp_server  # type: ignore[import-not-found]
+
+        run_mcp_server(transport=transport)
+    except (ImportError, ModuleNotFoundError):
+        console.print(
+            "[bold cyan]EvalGate MCP Server[/] (Phase 4): "
+            "Use [bold yellow]evalgate mcp[/] to connect Antigravity, Cursor, or Claude Desktop."
+        )
+
+
+@app.command()
+def studio(
+    port: Annotated[
+        int,
+        typer.Option("--port", "-p", help="Port for the Next.js Studio and API server."),
+    ] = 3000,
+    host: Annotated[
+        str,
+        typer.Option("--host", "-h", help="Host interface to bind to."),
+    ] = "127.0.0.1",
+) -> None:
+    """
+    Launch the EvalGate Web Studio and FastAPI backend server.
+    """
+    console.print(
+        f"[bold cyan]EvalGate Studio[/] launching at [green]http://{host}:{port}[/] "
+        "(Interactive Playground, Arena Shootout, Judges & Analytics)"
+    )

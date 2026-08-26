@@ -8,6 +8,7 @@ import asyncio
 import math
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from evalgate.core.graph import run_test_case
 from evalgate.core.storage import StorageEngine
@@ -60,6 +61,7 @@ class SuiteRunner:
         judge_provider: BaseProvider | None = None,
         concurrency: int = 10,
         save_to_storage: bool = True,
+        on_test_complete: Any | None = None,
     ) -> SuiteRunResult:
         """
         Execute all test cases in a SuiteConfig concurrently with bounded concurrency.
@@ -73,12 +75,15 @@ class SuiteRunner:
 
         async def _run_single(tc: TestCase) -> TestCaseResult:
             async with semaphore:
-                return await run_test_case(
+                res = await run_test_case(
                     test_case=tc,
                     target_config=target,
                     default_assertions=suite.default_assertions,
                     judge_provider=judge_provider,
                 )
+                if on_test_complete:
+                    on_test_complete(res)
+                return res
 
         # Run all test cases in parallel
         tasks = [_run_single(tc) for tc in suite.tests]

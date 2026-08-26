@@ -4,13 +4,11 @@ Rich Terminal Display Formatters for EvalGate.
 
 from __future__ import annotations
 
-from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from evalgate.cli.console import console
 from evalgate.core.types import ArenaComparisonResult, SuiteConfig, SuiteRunResult
-
-console = Console()
 
 
 def render_header_panel(suite: SuiteConfig, target_model: str, concurrency: int) -> None:
@@ -56,7 +54,10 @@ def render_run_summary(result: SuiteRunResult, verbose: bool = False) -> None:
             if tc.error:
                 failed_reasons.append(f"[red]• Error: {tc.error}[/red]")
             if failed_reasons:
-                assert_str += "\n" + "\n".join(failed_reasons[:2])
+                shown_reasons = failed_reasons[:2]
+                if len(failed_reasons) > 2:
+                    shown_reasons.append(f"[dim]• +{len(failed_reasons) - 2} more failed[/dim]")
+                assert_str += "\n" + "\n".join(shown_reasons)
 
         table.add_row(
             tc.test_id,
