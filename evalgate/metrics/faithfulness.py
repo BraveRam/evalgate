@@ -58,7 +58,8 @@ Respond ONLY with valid JSON in this schema:
 """
 
         parsed = await self._invoke_structured_judge(judge_prompt)
-        score = float(parsed.get("score", 0.0))
+        raw_score = float(parsed.get("score", 0.0))
+        score = max(0.0, min(1.0, raw_score))
         threshold = assertion.threshold if assertion.threshold is not None else 0.85
         passed = score >= threshold
 

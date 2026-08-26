@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import time
+from urllib.parse import urlparse
 
 import httpx
 
@@ -20,12 +21,24 @@ class WebhookTarget(BaseTarget):
     Posts the test case variables as JSON payload to an endpoint and captures response metrics.
     """
 
+    def _validate_url(self, url: str | None) -> str | None:
+        """Validate URL to prevent malformed or invalid webhook requests."""
+        if not url:
+            return "No webhook_url provided in TargetConfig"
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return f"Invalid webhook URL scheme: '{parsed.scheme}'. Must be http or https."
+        if not parsed.netloc:
+            return f"Invalid webhook URL: missing hostname in '{url}'"
+        return None
+
     async def execute(self, test_case: TestCase) -> TargetOutput:
         url = self.config.webhook_url
-        if not url:
+        validation_error = self._validate_url(url)
+        if validation_error or not url:
             return TargetOutput(
                 completion="",
-                error="Webhook target error: No webhook_url provided in TargetConfig",
+                error=f"Webhook target error: {validation_error}",
             )
 
         headers = {"Content-Type": "application/json"}

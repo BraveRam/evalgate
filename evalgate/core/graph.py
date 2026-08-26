@@ -56,6 +56,22 @@ async def evaluate_assertions_node(state: EvalState) -> dict[str, Any]:
     # Combine default suite assertions + specific test case assertions
     all_assertions = list(default_assertions) + list(test_case.assertions)
 
+    # If target execution crashed, fail all assertions immediately without wasting judge LLM tokens
+    if output.error is not None:
+        return {
+            "assertion_results": [
+                AssertionResult(
+                    assertion_type=a.type,
+                    passed=False,
+                    score=0.0,
+                    reason=f"Target execution failed: {output.error}",
+                    details={"target_error": output.error},
+                )
+                for a in all_assertions
+            ],
+            "passed": False,
+        }
+
     if not all_assertions:
         # If no assertions defined, pass as long as there was no execution crash
         return {

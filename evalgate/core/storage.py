@@ -240,6 +240,7 @@ class StorageEngine:
         limit: int = 50,
     ) -> list[SuiteRunResult]:
         """List historical run results, optionally filtered by suite."""
+        params: tuple[Any, ...]
         async with self._connect() as db:
             if suite_name:
                 query = (

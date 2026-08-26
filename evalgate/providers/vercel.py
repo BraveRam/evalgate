@@ -5,15 +5,19 @@ Vercel AI Gateway Provider using LangChain OpenAI-compatible client.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.runnables import Runnable
 from langchain_openai import ChatOpenAI
 
 from evalgate.core.pricing import calculate_cost, estimate_tokens
 from evalgate.providers.base import BaseProvider, ProviderCompletion
+
+logger = logging.getLogger(__name__)
 
 
 class VercelGatewayProvider(BaseProvider):
@@ -31,15 +35,26 @@ class VercelGatewayProvider(BaseProvider):
         base_url: str | None = None,
     ):
         super().__init__(model=model, temperature=temperature, top_p=top_p)
-        self.api_key = (
+        resolved_key = (
             api_key
             or os.getenv("VERCEL_AI_GATEWAY_KEY")
             or os.getenv("AI_GATEWAY_KEY")
             or os.getenv("OPENAI_API_KEY")
-            or "dummy-key"
         )
+
+        if not resolved_key:
+            logger.warning(
+                "No VERCEL_AI_GATEWAY_KEY or OPENAI_API_KEY detected in environment. "
+                "Falling back to placeholder key. Live API requests will fail with 401."
+            )
+            resolved_key = "dummy-key"
+
+        self.api_key = resolved_key
         self.base_url = (
-            base_url or os.getenv("VERCEL_AI_GATEWAY_URL") or os.getenv("AI_GATEWAY_URL") or None
+            base_url
+            or os.getenv("VERCEL_AI_GATEWAY_URL")
+            or os.getenv("AI_GATEWAY_URL")
+            or None
         )
 
         client_kwargs: dict[str, Any] = {
@@ -68,14 +83,14 @@ class VercelGatewayProvider(BaseProvider):
             messages.append(SystemMessage(content=system_prompt))
         messages.append(HumanMessage(content=prompt))
 
-        llm = self.client
+        llm: Runnable[Any, Any] = self.client
         if tools:
-            llm = llm.bind_tools(tools)
+            llm = self.client.bind_tools(tools)
         elif json_schema:
             try:
-                llm = llm.with_structured_output(json_schema)
-            except Exception:
-                pass
+                llm = self.client.with_structured_output(json_schema)
+            except Exception as exc:
+                logger.warning("Failed to bind structured output schema: %s", exc)
 
         response = await llm.ainvoke(messages)
         latency_ms = (time.perf_counter() - start_time) * 1000.0
@@ -90,12 +105,10 @@ class VercelGatewayProvider(BaseProvider):
             )
             if hasattr(response, "tool_calls") and response.tool_calls:
                 for tc in response.tool_calls:
-                    tool_calls.append(
-                        {
-                            "name": tc.get("name"),
-                            "arguments": tc.get("args", {}),
-                        }
-                    )
+                    tool_calls.append({
+                        "name": tc.get("name"),
+                        "arguments": tc.get("args", {}),
+                    })
         elif isinstance(response, (dict, list)):
             text = json.dumps(response, indent=2)
         else:

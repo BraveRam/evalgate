@@ -76,4 +76,5 @@ async def evaluate_assertion(
             passed=False,
             score=0.0,
             reason=f"Semantic judge evaluation failed: {exc}",
+            details={"infra_error": True, "error": str(exc)},
         )
