@@ -51,10 +51,7 @@ class VercelGatewayProvider(BaseProvider):
 
         self.api_key = resolved_key
         self.base_url = (
-            base_url
-            or os.getenv("VERCEL_AI_GATEWAY_URL")
-            or os.getenv("AI_GATEWAY_URL")
-            or None
+            base_url or os.getenv("VERCEL_AI_GATEWAY_URL") or os.getenv("AI_GATEWAY_URL") or None
         )
 
         client_kwargs: dict[str, Any] = {
@@ -105,10 +102,12 @@ class VercelGatewayProvider(BaseProvider):
             )
             if hasattr(response, "tool_calls") and response.tool_calls:
                 for tc in response.tool_calls:
-                    tool_calls.append({
-                        "name": tc.get("name"),
-                        "arguments": tc.get("args", {}),
-                    })
+                    tool_calls.append(
+                        {
+                            "name": tc.get("name"),
+                            "arguments": tc.get("args", {}),
+                        }
+                    )
         elif isinstance(response, (dict, list)):
             text = json.dumps(response, indent=2)
         else:

@@ -4,6 +4,7 @@ Async SQLite Storage Engine for EvalGate Suites and Historical Run Records.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -23,6 +24,7 @@ class StorageEngine:
     def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or DEFAULT_DB_PATH
         self._initialized = False
+        self._lock = asyncio.Lock()
 
     @asynccontextmanager
     async def _connect(self) -> AsyncGenerator[aiosqlite.Connection, None]:
@@ -32,7 +34,9 @@ class StorageEngine:
         on every single connection.
         """
         if not self._initialized:
-            await self._run_init_ddl()
+            async with self._lock:
+                if not self._initialized:
+                    await self._run_init_ddl()
 
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(self.db_path) as db:
@@ -45,9 +49,9 @@ class StorageEngine:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA busy_timeout = 5000;")
             await db.execute("PRAGMA journal_mode = WAL;")
             await db.execute("PRAGMA foreign_keys = ON;")
-            await db.execute("PRAGMA busy_timeout = 5000;")
 
             # Table for Suites
             await db.execute("""
@@ -66,10 +70,10 @@ class StorageEngine:
                 CREATE TABLE IF NOT EXISTS runs (
                     run_id TEXT PRIMARY KEY,
                     suite_name TEXT NOT NULL,
-                    timestamp TEXT NOT NULL,
+                    timestamp TIMESTAMP NOT NULL,
                     target_model TEXT NOT NULL,
                     target_provider TEXT NOT NULL,
-                    passed INTEGER NOT NULL,
+                    passed BOOLEAN NOT NULL,
                     pass_rate REAL NOT NULL,
                     total_tests INTEGER NOT NULL,
                     passed_tests INTEGER NOT NULL,
@@ -79,36 +83,37 @@ class StorageEngine:
                     p95_latency_ms REAL NOT NULL,
                     total_tokens INTEGER NOT NULL,
                     total_cost_usd REAL NOT NULL,
-                    raw_json TEXT NOT NULL
+                    raw_json TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
 
-            # Table for Individual Test Results
+            # Table for individual test results
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS test_results (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     run_id TEXT NOT NULL,
                     test_id TEXT NOT NULL,
-                    passed INTEGER NOT NULL,
+                    passed BOOLEAN NOT NULL,
                     latency_ms REAL NOT NULL,
                     total_tokens INTEGER NOT NULL,
                     cost_usd REAL NOT NULL,
                     completion TEXT,
                     error TEXT,
                     raw_json TEXT NOT NULL,
-                    FOREIGN KEY (run_id) REFERENCES runs (run_id) ON DELETE CASCADE
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id) ON DELETE CASCADE
                 );
             """)
 
-            # Indexes for fast historical lookups
+            # Covering indexes
             await db.execute(
-                "CREATE INDEX IF NOT EXISTS idx_runs_suite ON runs (suite_name, timestamp DESC);"
+                "CREATE INDEX IF NOT EXISTS idx_runs_suite ON runs(suite_name, timestamp DESC);"
             )
             await db.execute(
-                "CREATE INDEX IF NOT EXISTS idx_test_results_run ON test_results (run_id);"
+                "CREATE INDEX IF NOT EXISTS idx_test_results_run ON test_results(run_id);"
             )
             await db.execute(
-                "CREATE INDEX IF NOT EXISTS idx_test_results_test ON test_results (test_id);"
+                "CREATE INDEX IF NOT EXISTS idx_test_results_test ON test_results(test_id);"
             )
 
             await db.commit()

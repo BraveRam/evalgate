@@ -41,9 +41,7 @@ async def test_langgraph_pipeline_execution():
     test_case = TestCase(
         id="case-1",
         vars={"text": "Hello"},
-        assertions=[
-            AssertionConfig(type=AssertionType.MAX_LATENCY_MS, value=1000.0)
-        ],
+        assertions=[AssertionConfig(type=AssertionType.MAX_LATENCY_MS, value=1000.0)],
     )
 
     result = await run_test_case(
@@ -97,9 +95,7 @@ async def test_langgraph_short_circuit_on_target_error():
     )
     test_case = TestCase(
         id="case-webhook-err",
-        assertions=[
-            AssertionConfig(type=AssertionType.CONTAINS, value="anything", strict=True)
-        ],
+        assertions=[AssertionConfig(type=AssertionType.CONTAINS, value="anything", strict=True)],
     )
 
     result = await run_test_case(
