@@ -50,8 +50,20 @@ class VercelGatewayProvider(BaseProvider):
             resolved_key = "dummy-key"
 
         self.api_key = resolved_key
+
+        # If using Vercel AI Gateway key (or vck_ prefix), route to Vercel Gateway endpoint
+        is_vercel_gateway = bool(
+            os.getenv("VERCEL_AI_GATEWAY_KEY")
+            or os.getenv("AI_GATEWAY_KEY")
+            or (resolved_key and resolved_key.startswith("vck_"))
+        )
+        default_base_url = "https://ai-gateway.vercel.sh/v1" if is_vercel_gateway else None
+
         self.base_url = (
-            base_url or os.getenv("VERCEL_AI_GATEWAY_URL") or os.getenv("AI_GATEWAY_URL") or None
+            base_url
+            or os.getenv("VERCEL_AI_GATEWAY_URL")
+            or os.getenv("AI_GATEWAY_URL")
+            or default_base_url
         )
 
         client_kwargs: dict[str, Any] = {
