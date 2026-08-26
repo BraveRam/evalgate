@@ -395,15 +395,11 @@ def mcp(
     """
     Start the Model Context Protocol (MCP) server for Antigravity, Cursor, and Claude.
     """
-    try:
-        from evalgate.mcp.server import run_mcp_server  # type: ignore[import-not-found]
+    from evalgate.mcp.server import run_mcp_server
 
-        run_mcp_server(transport=transport)
-    except (ImportError, ModuleNotFoundError):
-        console.print(
-            "[bold cyan]EvalGate MCP Server[/] (Phase 4): "
-            "Use [bold yellow]evalgate mcp[/] to connect Antigravity, Cursor, or Claude Desktop."
-        )
+    if transport != "stdio":
+        console.print(f"[bold cyan]Starting EvalGate FastMCP Server ({transport})...[/]")
+    run_mcp_server(transport=transport)
 
 
 @app.command()

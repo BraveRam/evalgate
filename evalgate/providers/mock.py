@@ -65,6 +65,20 @@ class MockProvider(BaseProvider):
                 else:
                     mock_obj[prop] = {}
             text = json.dumps(mock_obj)
+        elif (
+            "score" in prompt.lower()
+            or "json" in prompt.lower()
+            or (system_prompt and "json" in system_prompt.lower())
+        ):
+            # Return valid judge JSON evaluation structure
+            text = json.dumps(
+                {
+                    "score": 0.95,
+                    "reasoning": "Mock judge evaluation passed successfully",
+                    "claims": [{"claim": "mock claim", "supported": True}],
+                    "hallucinations": [],
+                }
+            )
         else:
             text = f"Mock completion for: {prompt[:60]}"
 

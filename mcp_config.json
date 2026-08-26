@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "evalgate": {
+      "command": "uv",
+      "args": ["run", "evalgate", "mcp"],
+      "env": {
+        "VERCEL_AI_GATEWAY_KEY": "${VERCEL_AI_GATEWAY_KEY}"
+      }
+    }
+  }
+}

@@ -1,0 +1,79 @@
+name: "hard-reasoning-challenge"
+description: "Stress-tests LLMs on multi-step financial math, tricky constraint reasoning, and complex logic"
+min_pass_rate: 1.0
+
+target:
+  type: "prompt"
+  model: "openai/gpt-4o-mini"
+  temperature: 0.0
+  system_prompt: |
+    You are an expert quantitative analyst and senior software engineer.
+    Solve the user's problem with rigorous precision. Show brief step-by-step reasoning, then state the final answer clearly.
+  template: "{{prompt}}"
+
+tests:
+  - id: "math-puzzle-workforce-rebalancing"
+    vars:
+      prompt: |
+        A company has 3 departments (A, B, C):
+        1. Department A has 3 times as many employees as Department B.
+        2. Department C has 20 fewer employees than Department A.
+        3. If 10 employees transfer from Department A to Department C, then Department C will have twice as many employees as Department B.
+
+        How many total employees work across all three departments combined?
+        State the exact total at the end in the format: "Total Employees: [number]".
+    assertions:
+      - type: "contains"
+        value: "Total Employees: 50"
+        strict: true
+      - type: "coherence"
+        threshold: 0.90
+        strict: false
+
+  - id: "financial-ebitda-reconciliation"
+    vars:
+      prompt: |
+        Given the following corporate financial data:
+        - Reported GAAP Net Income: $12,400,000
+        - Interest Expense: $1,200,000
+        - Tax Provision: $2,800,000
+        - Depreciation & Amortization: $3,500,000
+        - Stock-based Compensation Expense: $1,600,000
+        - One-time restructuring severance cost: $900,000
+        - Gain on sale of real estate asset: $1,500,000
+
+        Calculate Adjusted EBITDA according to standard institutional finance practices (starting from Net Income, adding back Interest, Taxes, D&A, SBC, restructuring, and subtracting non-operating asset gains).
+        State the final figure explicitly in the format: "Adjusted EBITDA: $[amount]".
+    assertions:
+      - type: "contains"
+        value: "Adjusted EBITDA: $20,900,000"
+        strict: true
+      - type: "hallucination"
+        threshold: 0.90
+        strict: true
+
+  - id: "complex-python-idempotent-processor"
+    vars:
+      prompt: |
+        Write a Python function `process_transactions(records: list[dict], initial_balance: float) -> dict` that:
+        1. Deduplicates records based on `idempotency_key`.
+        2. Applies transactions in chronological order by `timestamp`.
+        3. If a debit causes the balance to drop below 0.0, reject that transaction and record its id in `rejected_ids`.
+        4. Returns a dictionary: `{"final_balance": float, "processed_count": int, "rejected_ids": list[str]}`.
+
+        Output ONLY valid Python code enclosed in a ```python ... ``` block.
+    assertions:
+      - type: "python_ast"
+        strict: true
+      - type: "contains"
+        value: "def process_transactions"
+        strict: true
+      - type: "contains"
+        value: "idempotency_key"
+        strict: true
+      - type: "contains"
+        value: "final_balance"
+        strict: true
+      - type: "contains"
+        value: "rejected_ids"
+        strict: true
