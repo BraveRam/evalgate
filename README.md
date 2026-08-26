@@ -1,33 +1,25 @@
 # 🛡️ EvalGate
 
-> Fast, local-first prompt engineering, regression testing, and quality evaluation toolkit built as a **pnpm monorepo** with **Vercel AI Gateway**, **MCP Server**, and **Interactive Web Studio**.
+> Fast, local-first prompt engineering, regression testing, and quality evaluation platform for applied AI engineers. Built with **Python (`uv`)**, **FastAPI**, **LangChain/LangGraph**, **Next.js**, and **Model Context Protocol (MCP)**.
 
-[![pnpm](https://img.shields.io/badge/pnpm-Workspaces-orange?logo=pnpm)](https://pnpm.io)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://python.org)
+[![uv](https://img.shields.io/badge/uv-Astral-purple)](https://astral.sh/uv)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi)](https://fastapi.tiangolo.com)
+[![LangChain](https://img.shields.io/badge/LangChain-LangGraph-darkgreen)](https://langchain.com)
+[![Next.js](https://img.shields.io/badge/Next.js-15+-black?logo=next.js)](https://nextjs.org)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-purple)](https://modelcontextprotocol.io)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?logo=typescript)](https://www.typescriptlang.org/)
-
----
-
-## 📦 Monorepo Packages
-
-| Package | Path | Description |
-| :--- | :--- | :--- |
-| **`@evalgate/shared`** | `packages/shared` | Core types, Zod schemas, assertion definitions & pricing matrix |
-| **`@evalgate/core`** | `packages/core` | Evaluator engine, Vercel AI Gateway client, SQLite runner & storage |
-| **`@evalgate/mcp`** | `packages/mcp` | Model Context Protocol (MCP) server for AI agents |
-| **`@evalgate/cli`** | `packages/cli` | Terminal CLI tool (`evalgate init`, `evalgate run`, `evalgate studio`) |
-| **`@evalgate/web`** | `packages/web` | React + Tailwind Web Studio (Playground, Arena, History, Judges) |
 
 ---
 
 ## 🎯 Key Features
 
-- 🧪 **Deterministic & Semantic Evals**: Test JSON schemas, Python/SQL syntax, regex, Levenshtein distance, token budgets, and latency limits.
-- ⚖️ **LLM-as-a-Judge**: Custom grading rubrics (Faithfulness, Coherence, Conciseness, Hallucination, Safety) with reasoning inspection.
+- 🧪 **Deterministic & Semantic Evals**: Test JSON schemas, Python/SQL AST, regex, Levenshtein distance, token budgets, and latency limits.
+- ⚖️ **Comprehensive Semantic Metrics**: Faithfulness / Groundedness, Hallucination Detection, Answer Relevancy, Coherence, Bias/Toxicity, Intent Adherence, and Dynamic Rubrics.
 - 🌐 **Vercel AI Gateway & Multi-Provider**: 1 key for OpenAI, Anthropic, Gemini, Groq, Mistral, plus local Ollama and offline mock simulator.
 - ⚔️ **Side-by-Side Arena**: Compare Prompt A vs Prompt B or Model A vs Model B with visual completion diffs, latency percentiles (P50/P95), and token costs.
-- 🤖 **Model Context Protocol (MCP)**: Native stdio MCP server for Antigravity, Cursor, Claude to run evaluations programmatically.
-- 📊 **Local Web Studio**: Real-time playground, live test matrix runner, regression history charts, and 1-click export to Python (`pytest`), YAML, and CI.
+- 🤖 **Model Context Protocol (MCP)**: Official Python FastMCP server for Antigravity, Cursor, Claude to run evaluations programmatically.
+- 💻 **Rich Terminal CLI**: Beautiful colored tables, progress bars, and CI exit codes powered by Typer & Rich.
+- 📊 **Next.js Web Studio**: Real-time playground, live test matrix runner, regression history charts, and 1-click export to Python (`pytest`), YAML, and CI.
 
 ---
 

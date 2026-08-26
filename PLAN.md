@@ -1,56 +1,19 @@
-# 🛡️ EvalGate — Monorepo Architecture & Execution Plan
+# 🛡️ EvalGate — Architecture & Execution Plan
 
-EvalGate is a fast, local-first prompt engineering, regression testing, and quality evaluation toolkit. Built as a **pnpm monorepo**, it equips applied AI engineers to iterate rapidly on prompts, run deterministic and semantic LLM-as-a-judge evaluations, benchmark models side-by-side, analyze token/cost regressions, and expose evaluation tools directly to AI agents via **Model Context Protocol (MCP)**.
-
----
-
-## 1. Core Evaluation Engine & Metrics Suite
-
-EvalGate combines deterministic rule-based assertions with the comprehensive metric architecture inspired by **EvalKit** (`evalkit/evalkit`), enhanced for multi-provider pipelines and MCP:
-
-### **A. Semantic & LLM-as-a-Judge Metrics (EvalKit-Inspired)**
-Each metric returns a normalized score (`0.0 - 1.0` or `1 - 5`), a configurable threshold (`passThreshold`), pass/fail boolean, and structured reasoning.
-
-1. **Faithfulness / Groundedness**: Evaluates whether the generated response is strictly grounded in the provided context/reference documents (critical for RAG).
-2. **Hallucination Detection**: Detects fabricated claims, false assertions, or unsubstantiated extrapolations.
-3. **Answer Relevancy**: Measures how directly and concisely the response answers the input prompt without irrelevant deviations.
-4. **Coherence & Structure**: Assesses logical flow, grammatical correctness, and readability.
-5. **Bias & Toxicity Detection**: Flags harmful bias, discriminatory language, or unsafe outputs.
-6. **Intent Adherence**: Verifies whether the model accurately identified and fulfilled the user's intent or expected action.
-7. **Semantic Similarity**: Calculates semantic distance to ground-truth reference outputs.
-8. **Dynamic Custom Metric**: Create arbitrary domain-specific evaluation rubrics on the fly with custom grading criteria.
-
-### **B. Deterministic & Hard Gate Assertions**
-1. **JSON Schema / Structured Output**: Validates output against strict JSON schemas (Zod / Pydantic).
-2. **Syntax Validation**: Checks if code output is valid Python syntax (`python_ast`) or valid SQL syntax (`sql_syntax`).
-3. **String / Pattern Matchers**: `exact_match`, `contains`, `not_contains`, `regex`, `starts_with`, `ends_with`, `levenshtein`.
-4. **Performance & SLO Budgets**: `max_latency_ms`, `max_tokens`, `cost_budget_usd`.
+EvalGate is a fast, local-first prompt engineering, regression testing, and quality evaluation platform for applied AI engineers. It combines a **Python + FastAPI + LangChain/LangGraph** backend with a **Next.js** Web Studio, rich terminal CLI, and **Model Context Protocol (MCP)** server.
 
 ---
 
-## 2. Evaluation Targets (Beyond Prompts)
-
-EvalGate evaluates 5 distinct AI engineering target types:
-
-| Target Type | Description & What is Tested |
-| :--- | :--- |
-| **Prompt Template** | `{{variable}}` interpolation, phrasing variants, few-shot permutations |
-| **Tool / Function Calling** | Tool selection accuracy, JSON arguments schema validation |
-| **RAG Pipeline** | Context relevance, answer faithfulness, groundedness |
-| **Structured Output** | JSON Schema / Zod validation, entity extraction accuracy |
-| **Live API / Webhook** | End-to-end latency, status codes, payload assertions on live backend services |
-
----
-
-## 3. Monorepo Architecture & Package Layout
+## 1. Monorepo Architecture
 
 ```
-evalgate/ (pnpm monorepo)
-├── pnpm-workspace.yaml
-├── package.json
-├── tsconfig.base.json
+evalgate/ (repo root)
+├── pyproject.toml                  # Python project & dependencies managed with `uv`
+├── uv.lock                         # Locked Python dependencies
+├── .python-version                 # Python 3.11+
 ├── PLAN.md
 ├── README.md
+├── .gitignore
 ├── .agents/
 │   └── skills/
 │       └── evalgate/
@@ -61,96 +24,133 @@ evalgate/ (pnpm monorepo)
 │   ├── sql_generator.yaml
 │   ├── classifier.yaml
 │   └── tool_calling.yaml
-└── packages/
-    ├── shared/                     # @evalgate/shared
-    │   ├── package.json
-    │   ├── tsconfig.json
-    │   └── src/
-    │       ├── types/              # Target, TestCase, Assertion, Metric, RunResult types
-    │       ├── schemas/            # Zod validation schemas
-    │       └── constants/          # Pricing matrix & default metrics config
-    │
-    ├── core/                       # @evalgate/core (Engine & Evaluator SDK)
-    │   ├── package.json
-    │   ├── tsconfig.json
-    │   └── src/
-    │       ├── providers/          # Vercel AI Gateway, OpenAI, Ollama, Mock Simulator
-    │       ├── template/           # {{variable}} interpolation engine
-    │       ├── metrics/            # Faithfulness, Hallucination, Relevancy, Coherence, Bias, Dynamic
-    │       ├── evaluators/         # Deterministic assertions (JSON schema, syntax, regex)
-    │       ├── targets/            # Target handlers (Prompt, ToolCall, RAG, Webhook API)
-    │       ├── storage/            # SQLite run storage & historical metrics
-    │       ├── runner/             # Parallel test execution & statistics aggregator
-    │       └── index.ts
-    │
-    ├── mcp/                        # @evalgate/mcp (Model Context Protocol Server)
-    │   ├── package.json
-    │   ├── tsconfig.json
-    │   └── src/
-    │       ├── tools.ts            # MCP Tool definitions (run_suite, evaluate, compare, estimate_cost)
-    │       └── index.ts            # stdio JSON-RPC MCP server
-    │
-    ├── cli/                        # @evalgate/cli (Terminal Interface)
-    │   ├── package.json
-    │   ├── tsconfig.json
-    │   └── src/
-    │       ├── commands/           # init, run, compare, studio, mcp
-    │       └── index.ts            # Main CLI entrypoint (evalgate binary)
-    │
-    └── web/                        # @evalgate/web (React + Tailwind Web Studio)
-        ├── package.json
-        ├── tsconfig.json
-        ├── vite.config.ts
-        ├── index.html
-        └── src/
-            ├── components/         # Playground, Arena, Matrix, Judges, History, Export
-            ├── App.tsx
-            └── main.tsx
+├── evalgate/                       # Python Backend & Engine Package
+│   ├── __init__.py
+│   ├── core/                       # Core engine abstractions
+│   │   ├── types.py                # Pydantic v2 schemas (TestCase, Assertion, RunResult, Target)
+│   │   ├── template.py             # {{variable}} interpolation & parsing
+│   │   ├── pricing.py              # Cost & token calculation matrix (15+ models)
+│   │   ├── storage.py              # aiosqlite run persistence & historical analytics
+│   │   └── graph.py                # LangGraph evaluation pipeline state machine
+│   ├── providers/                  # LangChain multi-provider adapters
+│   │   ├── factory.py              # Provider dispatcher & Vercel AI Gateway configuration
+│   │   ├── vercel.py               # Vercel AI Gateway (OpenAI-compatible) adapter
+│   │   ├── ollama.py               # Local Ollama adapter
+│   │   └── mock.py                 # Offline mock simulator
+│   ├── metrics/                    # Semantic & Deterministic Metrics Suite
+│   │   ├── base.py                 # BaseMetric abstract class
+│   │   ├── faithfulness.py         # RAG claim extraction & context verification
+│   │   ├── hallucination.py        # Hallucination & contradiction detection
+│   │   ├── relevancy.py            # Answer relevancy & embedding similarity
+│   │   ├── coherence.py            # Logical flow, grammar & structure
+│   │   ├── bias.py                 # Toxicity & bias detection
+│   │   ├── intent.py               # Intent classification & action fulfillment
+│   │   ├── dynamic.py              # Custom user-defined grading rubrics
+│   │   └── deterministic.py        # JSON Schema, Python AST, SQL syntax, Regex, Levenshtein
+│   ├── targets/                    # Evaluation Targets
+│   │   ├── prompt.py               # Prompt templates & LLM completions
+│   │   ├── tool_call.py            # Function/tool calling validation
+│   │   ├── rag.py                  # End-to-end RAG pipeline
+│   │   └── webhook.py              # Live HTTP API / webhook endpoint target
+│   ├── runner/                     # Test suite execution engine
+│   │   └── runner.py               # Concurrent async runner & statistics aggregator
+│   ├── mcp/                        # Model Context Protocol (MCP) Server
+│   │   └── server.py               # Official Python FastMCP / stdio server
+│   ├── cli/                        # Terminal CLI (Typer + Rich)
+│   │   ├── main.py                 # evalgate CLI entry point
+│   │   └── commands/               # init, run, compare, studio, mcp
+│   └── api/                        # FastAPI Web Studio Backend
+│       ├── main.py                 # FastAPI application
+│       └── routes/                 # REST & WebSocket endpoints (suites, runs, arena, metrics)
+│
+└── frontend/                       # Next.js Web Studio (App Router)
+    ├── package.json
+    ├── tsconfig.json
+    ├── next.config.ts
+    ├── tailwind.config.ts
+    └── src/
+        ├── app/                    # Next.js App Router pages
+        │   ├── page.tsx            # Dashboard & overview
+        │   ├── playground/         # Prompt sandbox & live matrix runner
+        │   ├── arena/              # Side-by-Side Prompt & Model Shootout
+        │   ├── suites/             # Test suite manager & dataset editor
+        │   ├── judges/             # Metric & LLM judge rubric builder
+        │   ├── history/            # Regression charts & historical run inspector
+        │   └── layout.tsx
+        ├── components/             # UI components, tables, charts, diff viewers
+        └── lib/                    # API client & types
 ```
 
 ---
 
-## 4. Phased Implementation Roadmap
+## 2. Tech Stack
 
-We will proceed strictly **phase by phase**, pausing for alignment and approval before each phase begins:
+| Component | Technology | Rationale |
+| :--- | :--- | :--- |
+| **Python Tooling** | `uv` (Rust) | Ultra-fast package management, instant venv creation, fast builds |
+| **Backend Framework** | `FastAPI` + `Uvicorn` | Async REST APIs & WebSockets for live eval progress streaming |
+| **LLM & Agent Framework** | `LangChain` + `LangGraph` | Industry-standard model abstractions & graph-based state pipeline |
+| **Data Contracts** | `Pydantic v2` | High-performance schema validation & JSON serialization |
+| **MCP Protocol** | Anthropic Python `mcp` SDK | Native stdio JSON-RPC server for Antigravity, Cursor, Claude |
+| **Terminal CLI** | `Typer` + `Rich` | Beautiful colored tables, spinners, live matrices, syntax highlighting |
+| **Database** | `aiosqlite` / SQLite | Zero-config, single-file local persistence for runs and metrics |
+| **Frontend Framework** | `Next.js` (App Router) + React | Modern, reactive dashboard with server & client components |
+| **Styling & UI** | `Tailwind CSS` + `Lucide Icons` | Modern dark-mode developer aesthetic |
 
-### **Phase 1: Monorepo Foundation & Shared Data Contracts**
-- Setup `pnpm-workspace.yaml`, root `package.json`, and shared `tsconfig.base.json`.
-- In `packages/shared`:
-  - Data contracts: `EvalTarget`, `TestCase`, `Assertion`, `SemanticMetricConfig` (Faithfulness, Relevancy, Hallucination, Coherence, Bias, Dynamic), `SuiteRunResult`.
-  - Zod validation schemas for test suites, metrics, and assertion rules.
-  - Model pricing matrix (GPT-4o, Claude 3.5 Sonnet, Gemini Flash/Pro, DeepSeek V3/R1, Llama 3.3).
+---
 
-### **Phase 2: Core Engine, Providers & Metric Suite**
-- In `packages/core`:
-  - Variable templating engine (`{{variable}}` with default fallbacks).
-  - Provider adapters: **Vercel AI Gateway** (`VERCEL_AI_GATEWAY_KEY`), direct OpenAI/Groq/Ollama, and offline Mock Simulator.
-  - Deterministic assertions (`json_schema`, `python_ast`, `sql_syntax`, `contains`, `regex`, `levenshtein`, `token_budget`, `latency_budget`).
-  - Semantic Metric Suite: Faithfulness, Hallucination, Answer Relevancy, Coherence, Bias, Intent, Semantic Similarity, Dynamic Rubrics.
-  - Target runners (Prompt, Tool Call, RAG context, Custom Webhook API).
-  - SQLite run storage (`.evalgate/runs.db`) and concurrent test runner.
+## 3. Phased Step-by-Step Implementation Roadmap
 
-### **Phase 3: Model Context Protocol (MCP) Server**
-- In `packages/mcp`:
-  - Implement JSON-RPC 2.0 stdio MCP server using `@modelcontextprotocol/sdk`.
-  - Expose tools: `evalgate_run_suite`, `evalgate_evaluate`, `evalgate_compare`, `evalgate_estimate_cost`.
-  - Create `.agents/skills/evalgate/SKILL.md` and `mcp_config.json`.
+### **Phase 1: Python Project Foundation & Core Data Contracts (`uv`)**
+- Initialize `pyproject.toml` with `uv` containing dependencies:
+  - `fastapi`, `uvicorn`, `langchain`, `langgraph`, `langchain-openai`, `langchain-anthropic`, `langchain-google-genai`, `langchain-community`, `pydantic>=2.0`, `typer`, `rich`, `mcp`, `aiosqlite`, `pyyaml`, `httpx`, `pytest`, `pytest-asyncio`.
+- Implement `evalgate/core/types.py` defining Pydantic v2 schemas:
+  - `EvalTarget`, `TestCase`, `Assertion`, `SemanticMetricConfig`, `SuiteConfig`, `TestCaseResult`, `SuiteRunResult`, `MetricSummary`.
+- Implement `evalgate/core/pricing.py` (cost & token calculation database for 15+ models).
+- Set up SQLite schema in `evalgate/core/storage.py`.
 
-### **Phase 4: Terminal CLI**
-- In `packages/cli`:
-  - Build `evalgate` CLI with `init`, `run <suite.yaml>`, `compare`, `studio`, `mcp`.
+### **Phase 2: LangChain Providers, Evaluator Metrics & LangGraph Engine**
+- Implement `evalgate/providers/`:
+  - `vercel.py` (Vercel AI Gateway OpenAI-compatible adapter with `VERCEL_AI_GATEWAY_KEY`).
+  - `ollama.py` (Local models).
+  - `mock.py` (Zero-cost offline simulator).
+- Implement `evalgate/metrics/`:
+  - Deterministic assertions: JSON schema, Python AST, SQL syntax, Regex, Levenshtein, Latency SLO, Token budget.
+  - Semantic Metrics: Faithfulness, Hallucination, Answer Relevancy, Coherence, Bias, Intent, Dynamic Rubrics.
+- Implement `evalgate/core/graph.py`: LangGraph state graph orchestrating test case execution.
+- Implement `evalgate/runner/runner.py`: Concurrent async test runner.
 
-### **Phase 5: Interactive Web Studio**
-- In `packages/web`:
-  - Build React + Vite + Tailwind UI:
-    - **Playground & Matrix Runner**: Live editing, variable binding, real-time runs.
-    - **Side-by-Side Arena**: Diff completions, compare token counts, latency, and assertions.
-    - **Metrics & Judge Builder**: Visual editor for EvalKit-style metrics & custom rubrics.
-    - **Regression & History Dashboard**: Historical runs timeline with trend charts.
-    - **1-Click Exporter**: Export suites to Python (`pytest`), YAML, and GitHub Actions CI.
-  - Embedded local HTTP server to connect Web Studio with `@evalgate/core`.
+### **Phase 3: Typer + Rich Terminal CLI**
+- Implement `evalgate/cli/main.py`:
+  - `evalgate init`: Scaffolds example test suites.
+  - `evalgate run <suite.yaml>`: Runs test suite with live Rich progress table, colored pass/fail pills, latency, and cost summaries.
+  - `evalgate compare`: Side-by-side prompt/model shootout in the terminal.
+  - `evalgate studio`: Launches the FastAPI server & Next.js Web Studio.
+  - `evalgate mcp`: Runs the MCP server.
 
-### **Phase 6: Example Benchmark Suites & End-to-End Verification**
-- Create ready-to-run benchmark suites (`rag_qa.yaml`, `sql_generator.yaml`, `classifier.yaml`, `tool_calling.yaml`).
-- Verify CLI, MCP server, and Web Studio end-to-end.
+### **Phase 4: Model Context Protocol (MCP) Server**
+- Implement `evalgate/mcp/server.py` using official `mcp` Python SDK:
+  - Tool `evalgate_run_suite`
+  - Tool `evalgate_evaluate`
+  - Tool `evalgate_compare`
+  - Tool `evalgate_estimate_cost`
+- Create `.agents/skills/evalgate/SKILL.md` and `mcp_config.json`.
+
+### **Phase 5: FastAPI Studio Backend**
+- Implement `evalgate/api/`:
+  - REST endpoints for managing test suites, test cases, running tests, and fetching historical analytics.
+  - WebSocket endpoint for streaming real-time test execution progress to the frontend.
+
+### **Phase 6: Next.js Web Studio**
+- Initialize Next.js app in `frontend/` (Tailwind, Lucide).
+- Build screens:
+  - **Playground & Matrix Runner**: Live editing with variable binding and animated status badges.
+  - **Side-by-Side Arena**: Visual diffs between Prompt A vs B and Model A vs B, latency charts, cost graphs.
+  - **Judges & Metrics Configurator**: Visual builder for Faithfulness, Hallucination, and custom rubrics.
+  - **Run History & Regression Analytics**: SQLite-backed pass rate and latency trend graphs over time.
+  - **1-Click Export**: Export suites to Python `pytest`, YAML, and GitHub Actions CI.
+
+### **Phase 7: Example Suites & End-to-End Verification**
+- Create example test suites (`rag_qa.yaml`, `sql_generator.yaml`, `classifier.yaml`, `tool_calling.yaml`).
+- Test CLI, FastAPI, MCP, and Next.js end-to-end.
 - Push clean state to GitHub.

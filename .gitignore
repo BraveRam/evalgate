@@ -1,23 +1,56 @@
-# Dependencies
-node_modules/
-.bun/
-
-# Build artifacts
+# Python & Virtual Environments
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
 dist/
-dist-web/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-# Local databases & run caches
-.promptforge/
+# Node & Next.js
+node_modules/
+.next/
+out/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# Local Databases & Run Data
+.evalgate/
 *.db
 *.sqlite
 *.sqlite3
 
-# Environment variables
+# Environment Variables
 .env
 .env.local
-.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# OS / Editor
+# OS & Editor
 .DS_Store
 Thumbs.db
 .vscode/
