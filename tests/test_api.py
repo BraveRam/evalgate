@@ -218,3 +218,55 @@ def test_websocket_run_streaming(sample_suite: Path):
                 break
 
         assert "run_finished" in received_types
+
+
+def test_cors_security():
+    # 1. Valid origin allowed
+    res_valid = client.get("/health", headers={"Origin": "http://localhost:3000"})
+    assert res_valid.headers.get("access-control-allow-origin") == "http://localhost:3000"
+
+    # 2. Malicious / unlisted origin rejected (no allow-origin header reflected)
+    res_evil = client.get("/health", headers={"Origin": "https://evil.example.com"})
+    assert res_evil.headers.get("access-control-allow-origin") is None
+
+
+def test_path_traversal_protections():
+    # 1. Attempt path traversal in create_suite
+    res_create_traversal = client.post(
+        "/api/v1/suites?filename=../evil_suite.yaml",
+        json={"name": "evil", "target": {"type": "prompt"}, "tests": []},
+    )
+    assert res_create_traversal.status_code == 400
+    assert "traversal" in res_create_traversal.text.lower()
+
+    # 2. Attempt path traversal in get_suite
+    res_get_traversal = client.get("/api/v1/suites/..evil")
+    assert res_get_traversal.status_code == 400
+    assert "traversal" in res_get_traversal.text.lower()
+
+    # 3. Attempt path traversal in delete_suite
+    res_del_traversal = client.delete("/api/v1/suites/..evil")
+    assert res_del_traversal.status_code == 400
+    assert "traversal" in res_del_traversal.text.lower()
+
+    # 4. Attempt filesystem enumeration in list_suites
+    res_list_traversal = client.get("/api/v1/suites?dir_path=/etc")
+    assert res_list_traversal.status_code == 400
+
+    res_list_relative_traversal = client.get("/api/v1/suites?dir_path=../")
+    assert res_list_relative_traversal.status_code == 400
+
+
+def test_websocket_error_handling():
+    # Missing suite_name
+    with client.websocket_connect("/api/v1/ws/run") as ws:
+        ws.send_json({})
+        msg = ws.receive_json()
+        assert msg["type"] == "error"
+        assert "Missing" in msg["message"]
+
+    # Nonexistent suite
+    with client.websocket_connect("/api/v1/ws/run") as ws:
+        ws.send_json({"suite_name": "nonexistent_suite_xyz"})
+        msg = ws.receive_json()
+        assert msg["type"] == "error"

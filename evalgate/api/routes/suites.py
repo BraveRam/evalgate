@@ -1,10 +1,11 @@
 """
-Evaluation Suites API Endpoints.
+Evaluation Suites API Endpoints with Strict Path Confinement.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -24,8 +25,33 @@ router = APIRouter(prefix="/suites", tags=["Suites"])
 DEFAULT_EVALS_DIR = Path("evals")
 
 
+def _sanitize_name_or_filename(name: str) -> str:
+    """Validate that a filename or suite name contains no path traversal sequences."""
+    if not name or ".." in name or "/" in name or "\\" in name or "\x00" in name:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid name or path traversal attempt: '{name}'",
+        )
+    # Check for valid characters
+    if not re.match(r"^[a-zA-Z0-9_\-\.]+$", name):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Invalid characters in name: '{name}'. "
+                "Only alphanumeric, '-', '_', and '.' allowed."
+            ),
+        )
+    return name
+
+
 def _find_suite_path(suite_name: str, base_dir: Path = DEFAULT_EVALS_DIR) -> Path:
-    """Find a suite YAML file matching suite_name or filename."""
+    """
+    Find a suite YAML file matching suite_name or filename strictly within base_dir.
+    Guarantees that path traversal outside base_dir is blocked.
+    """
+    _sanitize_name_or_filename(suite_name)
+    base_dir_resolved = base_dir.resolve()
+
     # 1. Direct filename checks
     candidates = [
         base_dir / suite_name,
@@ -35,19 +61,29 @@ def _find_suite_path(suite_name: str, base_dir: Path = DEFAULT_EVALS_DIR) -> Pat
         base_dir / f"{suite_name.replace('_', '-')}.yaml",
     ]
     for c in candidates:
-        if c.exists() and c.is_file():
-            return c
+        try:
+            resolved_c = c.resolve()
+            if resolved_c.is_relative_to(base_dir_resolved) and resolved_c.is_file():
+                return resolved_c
+        except (ValueError, OSError):
+            continue
 
     # 2. Search inside all YAML files in base_dir
     if base_dir.exists():
-        for p in sorted(base_dir.rglob("*")):
-            if p.is_file() and p.suffix.lower() in (".yaml", ".yml"):
+        try:
+            for p in sorted(base_dir.rglob("*")):
                 try:
-                    suite = load_suite_from_yaml(p)
-                    if suite.name == suite_name or p.stem == suite_name:
-                        return p
-                except Exception:
+                    if p.is_file() and p.suffix.lower() in (".yaml", ".yml"):
+                        resolved_p = p.resolve()
+                        if not resolved_p.is_relative_to(base_dir_resolved):
+                            continue
+                        suite = load_suite_from_yaml(resolved_p)
+                        if suite.name == suite_name or resolved_p.stem == suite_name:
+                            return resolved_p
+                except (PermissionError, OSError, SuiteLoadError):
                     continue
+        except (PermissionError, OSError):
+            pass
 
     raise HTTPException(status_code=404, detail=f"Suite '{suite_name}' not found in {base_dir}")
 
@@ -68,38 +104,63 @@ class CostEstimateRequest(BaseModel):
 async def list_suites(dir_path: str = "evals") -> list[dict[str, Any]]:
     """
     List all evaluation suites in the workspace directory.
+    Confines search to workspace to prevent arbitrary filesystem enumeration.
     """
-    base_dir = Path(dir_path)
-    suites: list[dict[str, Any]] = []
+    # Reject path traversal in directory path
+    if ".." in dir_path or dir_path.startswith("/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Access outside workspace directory is prohibited",
+        )
 
+    base_dir = Path(dir_path)
+    try:
+        resolved_base = base_dir.resolve()
+        cwd = Path.cwd().resolve()
+        if not resolved_base.is_relative_to(cwd):
+            raise HTTPException(
+                status_code=400,
+                detail="Directory must be within the project workspace",
+            )
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid directory path")
+
+    suites: list[dict[str, Any]] = []
     if not base_dir.exists():
         return suites
 
-    for p in sorted(base_dir.rglob("*")):
-        if not (p.is_file() and p.suffix.lower() in (".yaml", ".yml")):
-            continue
-        try:
-            suite = load_suite_from_yaml(p)
-            suites.append(
-                {
-                    "path": str(p),
-                    "filename": p.name,
-                    "name": suite.name,
-                    "description": suite.description,
-                    "target_type": suite.target.type.value,
-                    "target_model": suite.target.model,
-                    "min_pass_rate": suite.min_pass_rate,
-                    "test_count": len(suite.tests),
-                }
-            )
-        except Exception as err:
-            suites.append(
-                {
-                    "path": str(p),
-                    "filename": p.name,
-                    "error": str(err),
-                }
-            )
+    try:
+        for p in sorted(base_dir.rglob("*")):
+            try:
+                if not (p.is_file() and p.suffix.lower() in (".yaml", ".yml")):
+                    continue
+                resolved_p = p.resolve()
+                if not resolved_p.is_relative_to(cwd):
+                    continue
+                suite = load_suite_from_yaml(resolved_p)
+                suites.append(
+                    {
+                        "path": str(resolved_p.relative_to(cwd)),
+                        "filename": p.name,
+                        "name": suite.name,
+                        "description": suite.description,
+                        "target_type": suite.target.type.value,
+                        "target_model": suite.target.model,
+                        "min_pass_rate": suite.min_pass_rate,
+                        "test_count": len(suite.tests),
+                    }
+                )
+            except (PermissionError, OSError, SuiteLoadError) as err:
+                suites.append(
+                    {
+                        "path": str(p),
+                        "filename": p.name,
+                        "error": str(err),
+                    }
+                )
+    except (PermissionError, OSError) as err:
+        raise HTTPException(status_code=403, detail=f"Permission denied accessing directory: {err}")
+
     return suites
 
 
@@ -124,23 +185,29 @@ async def create_suite(
     ),
 ) -> dict[str, Any]:
     """
-    Create a new evaluation suite YAML file.
+    Create a new evaluation suite YAML file strictly within the evals directory.
     """
     DEFAULT_EVALS_DIR.mkdir(parents=True, exist_ok=True)
-    target_filename = filename or f"{suite.name.replace(' ', '_').lower()}.yaml"
-    if not (target_filename.endswith(".yaml") or target_filename.endswith(".yml")):
-        target_filename += ".yaml"
+    base_dir_resolved = DEFAULT_EVALS_DIR.resolve()
 
-    target_path = DEFAULT_EVALS_DIR / target_filename
+    raw_filename = filename or f"{suite.name.replace(' ', '_').lower()}.yaml"
+    safe_filename = _sanitize_name_or_filename(raw_filename)
+    if not (safe_filename.endswith(".yaml") or safe_filename.endswith(".yml")):
+        safe_filename += ".yaml"
+
+    target_path = (DEFAULT_EVALS_DIR / safe_filename).resolve()
+    if not target_path.is_relative_to(base_dir_resolved):
+        raise HTTPException(status_code=400, detail="Path traversal attempt detected")
+
     if target_path.exists():
-        raise HTTPException(status_code=409, detail=f"File '{target_filename}' already exists")
+        raise HTTPException(status_code=409, detail=f"File '{safe_filename}' already exists")
 
     content = yaml.dump(suite.model_dump(exclude_none=True), sort_keys=False)
     target_path.write_text(content, encoding="utf-8")
 
     return {
         "message": f"Suite '{suite.name}' created successfully",
-        "path": str(target_path),
+        "path": str(target_path.relative_to(Path.cwd().resolve())),
         "suite": suite,
     }
 
@@ -156,7 +223,7 @@ async def update_suite(suite_name: str, suite: SuiteConfig) -> dict[str, Any]:
 
     return {
         "message": f"Suite '{suite.name}' updated successfully",
-        "path": str(p),
+        "path": str(p.relative_to(Path.cwd().resolve())),
         "suite": suite,
     }
 
@@ -168,7 +235,10 @@ async def delete_suite(suite_name: str) -> dict[str, str]:
     """
     p = _find_suite_path(suite_name)
     p.unlink(missing_ok=True)
-    return {"message": f"Suite '{suite_name}' deleted successfully", "path": str(p)}
+    return {
+        "message": f"Suite '{suite_name}' deleted successfully",
+        "path": str(p.relative_to(Path.cwd().resolve())),
+    }
 
 
 @router.post("/{suite_name}/run")
@@ -231,7 +301,9 @@ async def estimate_suite_cost_endpoint(
 
         context_str = ""
         if tc.context:
-            context_str = "\n".join(tc.context) if isinstance(tc.context, list) else str(tc.context)
+            context_str = (
+                "\n".join(tc.context) if isinstance(tc.context, list) else str(tc.context)
+            )
 
         full_prompt = f"{suite.target.system_prompt or ''}\n{context_str}\n{rendered}"
         total_input_tokens += estimate_tokens(full_prompt)
