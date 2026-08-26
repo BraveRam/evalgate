@@ -45,10 +45,7 @@ def test_render_template_sandbox_blocks_arbitrary_code():
 
 def test_render_template_dict_and_list():
     template = "Context: {{context}}\nUser: {{query}}"
-    rendered = render_template(
-        template,
-        {"context": ["Doc 1", "Doc 2"], "query": "What is AI?"}
-    )
+    rendered = render_template(template, {"context": ["Doc 1", "Doc 2"], "query": "What is AI?"})
     assert "Doc 1" in rendered
     assert "What is AI?" in rendered
 
@@ -56,10 +53,7 @@ def test_render_template_dict_and_list():
 def test_render_template_syntax_error_fallback():
     # Template with invalid Jinja syntax like unmatched tags falls back to regex
     bad_syntax_template = "{% if unclosed %} {{var1}} and {{data}}"
-    rendered = render_template(
-        bad_syntax_template,
-        {"var1": "Alpha", "data": {"key": "value"}}
-    )
+    rendered = render_template(bad_syntax_template, {"var1": "Alpha", "data": {"key": "value"}})
     assert "Alpha" in rendered
     assert '"key": "value"' in rendered
 
