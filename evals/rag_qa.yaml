@@ -1,0 +1,31 @@
+name: "rag-qa-suite"
+description: "Evaluates RAG faithfulness, hallucination, and answer relevancy"
+min_pass_rate: 1.0
+
+target:
+  type: "rag"
+  model: "openai/gpt-4o-mini"
+  temperature: 0.0
+
+default_assertions:
+  - type: "faithfulness"
+    threshold: 0.85
+    strict: true
+  - type: "max_latency_ms"
+    value: 3000.0
+    strict: false
+
+tests:
+  - id: "rag-case-1"
+    vars:
+      query: "What was the company revenue in Q3 2024?"
+    context:
+      - "In Q3 2024, ACME Corp recorded a total revenue of $45.2M, reflecting a 12% YoY growth."
+    ground_truth: "ACME Corp recorded $45.2M in Q3 2024."
+    assertions:
+      - type: "contains"
+        value: "45.2M"
+        strict: true
+      - type: "hallucination"
+        threshold: 0.90
+        strict: true

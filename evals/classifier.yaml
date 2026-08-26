@@ -1,0 +1,40 @@
+name: "support-ticket-classifier"
+description: "Classifies support tickets and generates structured JSON output"
+min_pass_rate: 1.0
+
+target:
+  type: "structured_output"
+  model: "openai/gpt-4o-mini"
+  temperature: 0.0
+  template: |
+    Classify this support ticket: "{{ticket}}"
+  json_schema:
+    type: "object"
+    properties:
+      category:
+        type: "string"
+        enum: ["billing", "technical", "feature_request"]
+      priority:
+        type: "string"
+        enum: ["low", "medium", "high", "urgent"]
+      sentiment:
+        type: "string"
+        enum: ["positive", "neutral", "frustrated"]
+    required: ["category", "priority", "sentiment"]
+
+tests:
+  - id: "urgent-billing-case"
+    vars:
+      ticket: "I was double charged $99 for my subscription! Please fix this immediately!"
+    assertions:
+      - type: "json_schema"
+        value:
+          type: "object"
+          properties:
+            category: {"type": "string"}
+            priority: {"type": "string"}
+          required: ["category", "priority"]
+        strict: true
+      - type: "contains"
+        value: "billing"
+        strict: true

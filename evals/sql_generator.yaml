@@ -1,0 +1,24 @@
+name: "sql-generator-suite"
+description: "Evaluates text-to-SQL generation and SQL syntax validity"
+min_pass_rate: 1.0
+
+target:
+  type: "prompt"
+  model: "openai/gpt-4o-mini"
+  temperature: 0.0
+  template: |
+    Generate a standard SQL query for SQLite given the schema:
+    Schema: users(id INTEGER PRIMARY KEY, email TEXT, active BOOLEAN, created_at TIMESTAMP)
+    User Request: {{request}}
+    Return ONLY the raw SQL query.
+
+tests:
+  - id: "active-users-query"
+    vars:
+      request: "Find all active users ordered by creation date"
+    assertions:
+      - type: "sql_syntax"
+        strict: true
+      - type: "contains"
+        value: "active = 1"
+        strict: false
