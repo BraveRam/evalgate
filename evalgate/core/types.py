@@ -96,6 +96,10 @@ class TargetConfig(BaseModel):
         default=None,
         description="HTTP headers for webhook targets",
     )
+    allow_private_endpoints: bool = Field(
+        default=False,
+        description="Allow webhook requests to loopback or private IP subnets",
+    )
 
 
 class AssertionConfig(BaseModel):

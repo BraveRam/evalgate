@@ -23,7 +23,15 @@ Executes an evaluation suite YAML file and enforces pass/fail quality gates.
   - `concurrency` (int, default 10): Parallel test count.
 - **When to use**: After editing prompt templates or system instructions, call this to verify that all test assertions pass (100% gate).
 
-### 2. `evalgate_compare_models`
+### 2. `evalgate_estimate_cost`
+Calculates pre-flight estimated token usage and inference cost for an evaluation suite without running it.
+- **Parameters**:
+  - `suite_path` (str, required): Path to YAML suite (e.g. `evals/rag_qa.yaml`).
+  - `model` (str, optional): Target model override to calculate costs against.
+  - `estimated_output_tokens_per_test` (int, default 150): Estimated completion tokens per test.
+- **When to use**: Before launching large or expensive evaluation benchmarks to project token usage and USD cost.
+
+### 3. `evalgate_compare_models`
 Runs an A/B benchmark shootout between two LLMs on the same evaluation suite.
 - **Parameters**:
   - `suite_path` (str, required): Path to YAML suite.
@@ -31,7 +39,7 @@ Runs an A/B benchmark shootout between two LLMs on the same evaluation suite.
   - `model_b` (str, required): Model B (e.g. `deepseek/deepseek-v4-pro-0813`).
 - **When to use**: To help the user choose the best model for their workload based on pass rate, latency, and cost deltas.
 
-### 3. `evalgate_evaluate_completion`
+### 4. `evalgate_evaluate_completion`
 Evaluates any raw LLM text completion on-the-fly against assertion configs without needing a saved YAML file.
 - **Parameters**:
   - `completion` (str, required): The LLM output string to evaluate.

@@ -121,3 +121,26 @@ async def test_webhook_target_http_error():
 
         assert output.error is not None
         assert "HTTP 500" in output.error
+
+
+@pytest.mark.asyncio
+async def test_webhook_target_ssrf_blocked():
+    # 1. Cloud metadata IP
+    config1 = TargetConfig(
+        type=TargetType.WEBHOOK, webhook_url="http://169.254.169.254/latest/meta-data"
+    )
+    out1 = await get_target_executor(config1).execute(TestCase(id="t1"))
+    assert out1.error is not None
+    assert "SSRF Protection" in out1.error
+
+    # 2. Localhost
+    config2 = TargetConfig(type=TargetType.WEBHOOK, webhook_url="http://127.0.0.1:8080/eval")
+    out2 = await get_target_executor(config2).execute(TestCase(id="t2"))
+    assert out2.error is not None
+    assert "SSRF Protection" in out2.error
+
+    # 3. Private subnet
+    config3 = TargetConfig(type=TargetType.WEBHOOK, webhook_url="http://192.168.1.10/agent")
+    out3 = await get_target_executor(config3).execute(TestCase(id="t3"))
+    assert out3.error is not None
+    assert "SSRF Protection" in out3.error

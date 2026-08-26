@@ -27,7 +27,7 @@ def test_cli_mcp_and_studio_commands(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("evalgate.mcp.server.run_mcp_server", lambda transport="stdio": None)
     mcp_res = runner.invoke(app, ["mcp", "--transport", "sse"])
     assert mcp_res.exit_code == 0
-    assert "Starting EvalGate FastMCP Server" in mcp_res.stdout
+    assert "Starting EvalGate MCP Server" in mcp_res.stdout
 
     # Studio command
     studio_res = runner.invoke(app, ["studio", "--port", "3001"])

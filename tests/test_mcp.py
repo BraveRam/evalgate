@@ -108,6 +108,34 @@ async def test_mcp_run_suite_invalid_path(mcp_server):
 
 
 @pytest.mark.asyncio
+async def test_mcp_estimate_cost(mcp_server, sample_suite_yaml: Path):
+    res = await call_tool(
+        mcp_server,
+        "evalgate_estimate_cost",
+        {
+            "suite_path": str(sample_suite_yaml),
+            "model": "openai/gpt-4o-mini",
+        },
+    )
+    assert res["suite_name"] == "mcp-test-suite"
+    assert res["target_model"] == "openai/gpt-4o-mini"
+    assert res["total_tests"] == 1
+    assert res["estimated_input_tokens"] > 0
+    assert res["estimated_output_tokens"] == 150
+    assert "estimated_cost_usd" in res
+
+
+@pytest.mark.asyncio
+async def test_mcp_estimate_cost_invalid_path(mcp_server):
+    res = await call_tool(
+        mcp_server,
+        "evalgate_estimate_cost",
+        {"suite_path": "nonexistent.yaml"},
+    )
+    assert "error" in res
+
+
+@pytest.mark.asyncio
 async def test_mcp_compare_models(mcp_server, sample_suite_yaml: Path):
     res = await call_tool(
         mcp_server,

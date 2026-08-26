@@ -36,13 +36,21 @@ class WebhookTarget(BaseTarget):
         if hostname in ("169.254.169.254", "metadata.google.internal", "instance-data"):
             return f"SSRF Protection: Blocked access to cloud metadata endpoint '{hostname}'"
 
-        try:
-            ip = ipaddress.ip_address(hostname)
-            if ip.is_link_local:
-                return f"SSRF Protection: Link-local IP address '{hostname}' is not permitted"
-        except ValueError:
-            # Hostname is a domain name, not a raw IP
-            pass
+        # Check for loopback and private IP egress
+        if not self.config.allow_private_endpoints:
+            if hostname in ("localhost", "127.0.0.1", "0.0.0.0", "::1"):
+                return f"SSRF Protection: Loopback host '{hostname}' is not permitted"
+            try:
+                ip = ipaddress.ip_address(hostname)
+                if ip.is_link_local:
+                    return f"SSRF Protection: Link-local IP address '{hostname}' is not permitted"
+                if ip.is_loopback:
+                    return f"SSRF Protection: Loopback IP address '{hostname}' is not permitted"
+                if ip.is_private:
+                    return f"SSRF Protection: Private subnet IP '{hostname}' is not permitted"
+            except ValueError:
+                # Hostname is a domain name, not a raw IP
+                pass
 
         return None
 

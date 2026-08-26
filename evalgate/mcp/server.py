@@ -1,12 +1,13 @@
 """
 Model Context Protocol (MCP) Server for EvalGate.
-Exposes evaluation suites, arena benchmarking, historical regression metrics,
-and on-the-fly prompt evaluation tools to AI coding assistants (Antigravity, Cursor, Claude Code).
+Exposes evaluation suites, arena benchmarking, pre-flight cost estimation,
+historical regression metrics, and prompt evaluation tools to AI coding assistants.
 """
 
 from __future__ import annotations
 
 import glob
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,9 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
+from evalgate.core.pricing import calculate_cost, estimate_tokens
 from evalgate.core.storage import StorageEngine
+from evalgate.core.template import render_template
 from evalgate.core.types import AssertionConfig, TestCase
 from evalgate.metrics.registry import evaluate_assertion
 from evalgate.providers.factory import get_provider
@@ -25,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def create_mcp_server() -> MCPServer:
     """
-    Instantiate and configure the EvalGate FastMCP Server with all tools registered.
+    Instantiate and configure the EvalGate MCPServer with all tools registered.
     """
     server = MCPServer("EvalGate")
 
@@ -93,6 +96,63 @@ def create_mcp_server() -> MCPServer:
             "total_cost_usd": res.total_cost_usd,
             "run_id": res.run_id,
             "failed_cases": failed_cases,
+        }
+
+    @server.tool()
+    async def evalgate_estimate_cost(
+        suite_path: str,
+        model: str | None = None,
+        estimated_output_tokens_per_test: int = 150,
+    ) -> dict[str, Any]:
+        """
+        Calculate pre-flight estimated token usage and inference cost for an evaluation suite.
+
+        Args:
+            suite_path: Path to the evaluation suite YAML file.
+            model: Optional model override to calculate costs against.
+            estimated_output_tokens_per_test: Estimated completion tokens per test (default: 150).
+
+        Returns:
+            Dictionary with input tokens, output tokens, total estimated USD cost, and cost/test.
+        """
+        try:
+            suite = load_suite_from_yaml(Path(suite_path))
+        except (SuiteLoadError, FileNotFoundError) as err:
+            return {"error": f"Failed to load evaluation suite: {err}"}
+
+        target_model = model or suite.target.model
+        template_str = suite.target.template or ""
+        total_input_tokens = 0
+        total_tests = len(suite.tests)
+
+        for tc in suite.tests:
+            if template_str:
+                rendered = render_template(template_str, tc.vars)
+            else:
+                rendered = json.dumps(tc.vars)
+
+            context_str = ""
+            if tc.context:
+                context_str = (
+                    "\n".join(tc.context) if isinstance(tc.context, list) else str(tc.context)
+                )
+
+            full_prompt = f"{suite.target.system_prompt or ''}\n{context_str}\n{rendered}"
+            total_input_tokens += estimate_tokens(full_prompt)
+
+        total_output_tokens = total_tests * estimated_output_tokens_per_test
+        total_cost_usd = calculate_cost(target_model, total_input_tokens, total_output_tokens)
+        cost_per_test = (total_cost_usd / total_tests) if total_tests > 0 else 0.0
+
+        return {
+            "suite_name": suite.name,
+            "target_model": target_model,
+            "total_tests": total_tests,
+            "estimated_input_tokens": total_input_tokens,
+            "estimated_output_tokens": total_output_tokens,
+            "total_estimated_tokens": total_input_tokens + total_output_tokens,
+            "estimated_cost_usd": round(total_cost_usd, 6),
+            "cost_per_test_usd": round(cost_per_test, 6),
         }
 
     @server.tool()
@@ -326,7 +386,7 @@ def create_mcp_server() -> MCPServer:
 
 def run_mcp_server(transport: str = "stdio") -> None:
     """
-    Run the FastMCP server with the specified transport.
+    Run the MCPServer with the specified transport.
     """
     server = create_mcp_server()
     if transport == "sse":

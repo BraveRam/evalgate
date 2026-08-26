@@ -398,7 +398,7 @@ def mcp(
     from evalgate.mcp.server import run_mcp_server
 
     if transport != "stdio":
-        console.print(f"[bold cyan]Starting EvalGate FastMCP Server ({transport})...[/]")
+        console.print(f"[bold cyan]Starting EvalGate MCP Server ({transport})...[/]")
     run_mcp_server(transport=transport)
 
 
