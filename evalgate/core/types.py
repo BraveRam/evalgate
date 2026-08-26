@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -51,7 +51,7 @@ class AssertionType(str, Enum):
 class TargetConfig(BaseModel):
     """Configuration for the entity being evaluated."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     type: TargetType = Field(
         default=TargetType.PROMPT,
@@ -61,15 +61,15 @@ class TargetConfig(BaseModel):
         default="openai/gpt-4o-mini",
         description="Model identifier (e.g. openai/gpt-4o, google/gemini-2.0-flash)",
     )
-    provider: Optional[str] = Field(
+    provider: str | None = Field(
         default=None,
         description="Provider override (e.g. vercel, openai, ollama, mock). Inferred if None.",
     )
-    template: Optional[str] = Field(
+    template: str | None = Field(
         default=None,
         description="Prompt template string supporting {{variables}} for prompt targets",
     )
-    system_prompt: Optional[str] = Field(
+    system_prompt: str | None = Field(
         default=None,
         description="Optional system prompt instructions",
     )
@@ -79,20 +79,20 @@ class TargetConfig(BaseModel):
         le=2.0,
         description="Sampling temperature (0.0 for deterministic evals)",
     )
-    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    tools: Optional[List[Dict[str, Any]]] = Field(
+    top_p: float | None = Field(default=None, ge=0.0, le=1.0)
+    tools: list[dict[str, Any]] | None = Field(
         default=None,
         description="Tool schemas / function definitions for tool calling targets",
     )
-    json_schema: Optional[Dict[str, Any]] = Field(
+    json_schema: dict[str, Any] | None = Field(
         default=None,
         description="JSON Schema for structured output validation",
     )
-    webhook_url: Optional[str] = Field(
+    webhook_url: str | None = Field(
         default=None,
         description="Target URL for live HTTP API / webhook evaluations",
     )
-    headers: Optional[Dict[str, str]] = Field(
+    headers: dict[str, str] | None = Field(
         default=None,
         description="HTTP headers for webhook targets",
     )
@@ -101,30 +101,31 @@ class TargetConfig(BaseModel):
 class AssertionConfig(BaseModel):
     """Definition of an individual evaluation gate / assertion."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     type: AssertionType = Field(
         ...,
         description="The metric or rule type to evaluate",
     )
-    value: Optional[Any] = Field(
+    value: Any | None = Field(
         default=None,
         description="Expected value, regex pattern, keyword, or JSON schema object",
     )
-    rubric: Optional[str] = Field(
+    rubric: str | None = Field(
         default=None,
         description="Grading instructions/rubric for dynamic semantic metrics",
     )
-    threshold: Optional[float] = Field(
+    threshold: float | None = Field(
         default=None,
         ge=0.0,
+        le=1.0,
         description="Minimum score to pass (for semantic metrics 0.0 - 1.0, default 0.85)",
     )
     strict: bool = Field(
         default=True,
         description="If True, test case fails when this assertion fails",
     )
-    judge_model: Optional[str] = Field(
+    judge_model: str | None = Field(
         default=None,
         description="Custom model to use for judging (defaults to default evaluator model)",
     )
@@ -134,37 +135,37 @@ class TestCase(BaseModel):
     """An individual test case with input variables and assertions."""
 
     __test__ = False
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     id: str = Field(
         ...,
         description="Unique identifier for the test case (e.g. test_refund_request)",
     )
-    name: Optional[str] = Field(
+    name: str | None = Field(
         default=None,
         description="Human-readable title for the test case",
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="Context or scenario description",
     )
-    vars: Dict[str, Any] = Field(
+    vars: dict[str, Any] = Field(
         default_factory=dict,
         description="Variable key-value pairs injected into templates and payloads",
     )
-    ground_truth: Optional[Union[str, Dict[str, Any], List[Any]]] = Field(
+    ground_truth: str | dict[str, Any] | list[Any] | None = Field(
         default=None,
         description="Expected gold-standard output or reference response",
     )
-    context: Optional[Union[str, List[str]]] = Field(
+    context: str | list[str] | None = Field(
         default=None,
         description="Retrieved context chunks / reference documents for RAG evaluations",
     )
-    assertions: List[AssertionConfig] = Field(
+    assertions: list[AssertionConfig] = Field(
         default_factory=list,
         description="Assertions and metrics applied specifically to this test case",
     )
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Arbitrary tags, categories, or tier annotations",
     )
@@ -173,13 +174,13 @@ class TestCase(BaseModel):
 class SuiteConfig(BaseModel):
     """Complete evaluation suite specification (e.g. loaded from YAML or created in Studio)."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     name: str = Field(
         ...,
         description="Name of the test suite (e.g. customer-support-regression)",
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="Detailed description of what this suite tests",
     )
@@ -187,11 +188,11 @@ class SuiteConfig(BaseModel):
         default_factory=TargetConfig,
         description="Default target configuration for the suite",
     )
-    default_assertions: List[AssertionConfig] = Field(
+    default_assertions: list[AssertionConfig] = Field(
         default_factory=list,
         description="Assertions applied globally to all test cases in the suite",
     )
-    tests: List[TestCase] = Field(
+    tests: list[TestCase] = Field(
         default_factory=list,
         description="List of test cases to execute",
     )
@@ -210,19 +211,19 @@ class AssertionResult(BaseModel):
 
     assertion_type: AssertionType
     passed: bool
-    score: Optional[float] = Field(
+    score: float | None = Field(
         default=None,
         description="Normalized metric score (0.0 to 1.0) when applicable",
     )
-    threshold: Optional[float] = Field(
+    threshold: float | None = Field(
         default=None,
         description="Target threshold evaluated against",
     )
-    reason: Optional[str] = Field(
+    reason: str | None = Field(
         default=None,
         description="Detailed reasoning or explanation for the pass/fail determination",
     )
-    details: Dict[str, Any] = Field(
+    details: dict[str, Any] = Field(
         default_factory=dict,
         description="Structured debug metadata (e.g. extracted claims, AST errors)",
     )
@@ -240,7 +241,7 @@ class TestCaseResult(BaseModel):
         default="",
         description="Text or stringified output produced by the target",
     )
-    raw_output: Optional[Any] = Field(
+    raw_output: Any | None = Field(
         default=None,
         description="Raw structured completion payload from model or webhook",
     )
@@ -253,8 +254,8 @@ class TestCaseResult(BaseModel):
     output_tokens: int = Field(default=0, ge=0)
     total_tokens: int = Field(default=0, ge=0)
     cost_usd: float = Field(default=0.0, ge=0.0)
-    assertion_results: List[AssertionResult] = Field(default_factory=list)
-    error: Optional[str] = Field(
+    assertion_results: list[AssertionResult] = Field(default_factory=list)
+    error: str | None = Field(
         default=None,
         description="Error message if target execution crashed or timed out",
     )
@@ -280,8 +281,8 @@ class SuiteRunResult(BaseModel):
     p95_latency_ms: float = Field(ge=0.0)
     total_tokens: int = Field(ge=0)
     total_cost_usd: float = Field(ge=0.0)
-    results: List[TestCaseResult] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    results: list[TestCaseResult] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ArenaComparisonResult(BaseModel):
@@ -297,7 +298,7 @@ class ArenaComparisonResult(BaseModel):
     pass_rate_delta: float
     latency_p50_delta_ms: float
     cost_delta_usd: float
-    mismatched_test_ids: List[str] = Field(
+    mismatched_test_ids: list[str] = Field(
         default_factory=list,
         description="Test case IDs where Model A and Model B had differing pass/fail outcomes",
     )

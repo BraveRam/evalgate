@@ -5,8 +5,9 @@ Async SQLite Storage Engine for EvalGate Suites and Historical Run Records.
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator
 
 import aiosqlite
 
@@ -19,16 +20,34 @@ DEFAULT_DB_PATH = DEFAULT_DB_DIR / "runs.db"
 class StorageEngine:
     """Manages SQLite persistence for evaluation suites and historical run records."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or DEFAULT_DB_PATH
+        self._initialized = False
 
-    async def init_db(self) -> None:
-        """Initialize database schema and performance indexes."""
+    @asynccontextmanager
+    async def _connect(self) -> AsyncGenerator[aiosqlite.Connection, None]:
+        """
+        Internal connection helper that automatically ensures the database schema
+        is initialized once, and configures PRAGMA foreign_keys=ON and busy_timeout
+        on every single connection.
+        """
+        if not self._initialized:
+            await self._run_init_ddl()
+
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA foreign_keys = ON;")
+            await db.execute("PRAGMA busy_timeout = 5000;")
+            yield db
+
+    async def _run_init_ddl(self) -> None:
+        """Run DDL schema migrations once."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("PRAGMA journal_mode=WAL;")
-            await db.execute("PRAGMA foreign_keys=ON;")
+            await db.execute("PRAGMA journal_mode = WAL;")
+            await db.execute("PRAGMA foreign_keys = ON;")
+            await db.execute("PRAGMA busy_timeout = 5000;")
 
             # Table for Suites
             await db.execute("""
@@ -93,13 +112,18 @@ class StorageEngine:
             )
 
             await db.commit()
+            self._initialized = True
+
+    async def init_db(self) -> None:
+        """Public method to explicitly initialize the database."""
+        if not self._initialized:
+            await self._run_init_ddl()
 
     async def save_suite(self, suite: SuiteConfig) -> None:
         """Upsert a suite configuration."""
-        await self.init_db()
         config_json = suite.model_dump_json()
 
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             await db.execute(
                 """
                 INSERT INTO suites (id, name, description, config_json, updated_at)
@@ -113,10 +137,9 @@ class StorageEngine:
             )
             await db.commit()
 
-    async def get_suite(self, name: str) -> Optional[SuiteConfig]:
+    async def get_suite(self, name: str) -> SuiteConfig | None:
         """Fetch a suite configuration by name."""
-        await self.init_db()
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             query = "SELECT config_json FROM suites WHERE name = ?;"
             async with db.execute(query, (name,)) as cursor:
                 row = await cursor.fetchone()
@@ -125,17 +148,18 @@ class StorageEngine:
                 data = json.loads(row[0])
                 return SuiteConfig.model_validate(data)
 
-    async def list_suites(self) -> List[SuiteConfig]:
+    async def list_suites(self) -> list[SuiteConfig]:
         """List all saved test suites."""
-        await self.init_db()
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             async with db.execute("SELECT config_json FROM suites ORDER BY name ASC;") as cursor:
                 rows = await cursor.fetchall()
                 return [SuiteConfig.model_validate(json.loads(r[0])) for r in rows]
 
     async def save_run(self, run: SuiteRunResult) -> None:
-        """Persist a complete evaluation run and its test case results."""
-        await self.init_db()
+        """
+        Persist a complete evaluation run and its test case results idempotently.
+        Deletes any previous test_results for this run_id to avoid duplicate rows on re-save.
+        """
         raw_json = run.model_dump_json()
 
         insert_run_sql = """
@@ -147,7 +171,8 @@ class StorageEngine:
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
 
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
+            # 1. Upsert run record
             await db.execute(
                 insert_run_sql,
                 (
@@ -170,6 +195,10 @@ class StorageEngine:
                 ),
             )
 
+            # 2. Delete existing test results to guarantee idempotency on re-save
+            await db.execute("DELETE FROM test_results WHERE run_id = ?;", (run.run_id,))
+
+            # 3. Insert fresh test results
             insert_test_sql = """
                 INSERT INTO test_results (
                     run_id, test_id, passed, latency_ms,
@@ -195,10 +224,9 @@ class StorageEngine:
 
             await db.commit()
 
-    async def get_run(self, run_id: str) -> Optional[SuiteRunResult]:
+    async def get_run(self, run_id: str) -> SuiteRunResult | None:
         """Fetch a run result by ID."""
-        await self.init_db()
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             query = "SELECT raw_json FROM runs WHERE run_id = ?;"
             async with db.execute(query, (run_id,)) as cursor:
                 row = await cursor.fetchone()
@@ -208,12 +236,11 @@ class StorageEngine:
 
     async def list_runs(
         self,
-        suite_name: Optional[str] = None,
+        suite_name: str | None = None,
         limit: int = 50,
-    ) -> List[SuiteRunResult]:
+    ) -> list[SuiteRunResult]:
         """List historical run results, optionally filtered by suite."""
-        await self.init_db()
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             if suite_name:
                 query = (
                     "SELECT raw_json FROM runs WHERE suite_name = ? "
@@ -232,17 +259,26 @@ class StorageEngine:
         self,
         suite_name: str,
         limit: int = 30,
-    ) -> List[Dict[str, Any]]:
-        """Fetch high-level historical metric points for trend charting."""
-        await self.init_db()
-        async with aiosqlite.connect(self.db_path) as db:
+    ) -> list[dict[str, Any]]:
+        """
+        Fetch the most recent N historical metric points, ordered chronologically (ASC)
+        so that regression trend charts always show the latest window of activity.
+        """
+        async with self._connect() as db:
             query = """
                 SELECT run_id, timestamp, target_model, passed, pass_rate,
-                       avg_latency_ms, p50_latency_ms, p95_latency_ms, total_tokens, total_cost_usd
-                FROM runs
-                WHERE suite_name = ?
-                ORDER BY timestamp ASC
-                LIMIT ?;
+                       avg_latency_ms, p50_latency_ms, p95_latency_ms,
+                       total_tokens, total_cost_usd
+                FROM (
+                    SELECT run_id, timestamp, target_model, passed, pass_rate,
+                           avg_latency_ms, p50_latency_ms, p95_latency_ms,
+                           total_tokens, total_cost_usd
+                    FROM runs
+                    WHERE suite_name = ?
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                )
+                ORDER BY timestamp ASC;
             """
             async with db.execute(query, (suite_name, limit)) as cursor:
                 rows = await cursor.fetchall()

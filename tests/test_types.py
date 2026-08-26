@@ -2,6 +2,9 @@
 Tests for Core Data Types and Pydantic v2 Models.
 """
 
+import pytest
+from pydantic import ValidationError
+
 from evalgate.core.types import (
     AssertionConfig,
     AssertionResult,
@@ -22,7 +25,12 @@ def test_target_config_defaults():
     assert target.temperature == 0.0
 
 
-def test_assertion_config_creation():
+def test_target_config_extra_forbid():
+    with pytest.raises(ValidationError):
+        TargetConfig(unknown_field="invalid")
+
+
+def test_assertion_config_creation_and_strict_validation():
     assertion = AssertionConfig(
         type=AssertionType.JSON_SCHEMA,
         value={"type": "object", "required": ["status"]},
@@ -31,6 +39,35 @@ def test_assertion_config_creation():
     assert assertion.type == AssertionType.JSON_SCHEMA
     assert assertion.strict is True
     assert assertion.value["required"] == ["status"]
+
+
+def test_assertion_config_typo_raises_validation_error():
+    # 'treshold' typo must be rejected by extra="forbid"
+    with pytest.raises(ValidationError):
+        AssertionConfig(
+            type=AssertionType.COHERENCE,
+            treshold=0.85,  # Typo
+        )
+
+
+def test_assertion_config_threshold_bounds():
+    # Threshold must be between 0.0 and 1.0
+    with pytest.raises(ValidationError):
+        AssertionConfig(
+            type=AssertionType.COHERENCE,
+            threshold=1.5,  # Out of range
+        )
+
+    with pytest.raises(ValidationError):
+        AssertionConfig(
+            type=AssertionType.COHERENCE,
+            threshold=-0.1,  # Out of range
+        )
+
+
+def test_test_case_extra_forbid():
+    with pytest.raises(ValidationError):
+        TestCase(id="test-1", invalid_extra_field="should fail")
 
 
 def test_suite_config_serialization():
