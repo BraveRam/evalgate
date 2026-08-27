@@ -24,7 +24,6 @@ import {
   BarChart3,
   CheckCircle2,
   Clock,
-  Coins,
   RefreshCw,
   Trash2,
   XCircle,

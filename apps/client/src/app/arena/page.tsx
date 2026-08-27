@@ -17,7 +17,6 @@ import {
   Cpu,
   Swords,
   Trophy,
-  XCircle,
 } from "lucide-react";
 
 const ARENA_MODELS = [
@@ -30,10 +29,10 @@ const ARENA_MODELS = [
 ];
 
 export default function ArenaPage() {
-  const [selectedSuite, setSelectedSuite] = useState<string>("");
+  const [selectedSuite, setSelectedSuite] = useState<string>("" );
   const [modelA, setModelA] = useState("openai/gpt-4o-mini");
   const [modelB, setModelB] = useState("deepseek/deepseek-v4-pro-0813");
-  const [concurrency, setConcurrency] = useState(10);
+  const [concurrency] = useState(10);
   const [result, setResult] = useState<ArenaComparisonResult | null>(null);
 
   // TanStack Query: Fetch suites

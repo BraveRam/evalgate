@@ -40,7 +40,6 @@ export default function SuitesPage() {
   // TanStack Query: Fetch all suites
   const {
     data: suites = [],
-    isLoading: isSuitesLoading,
     refetch: refetchSuites,
   } = useQuery({
     queryKey: ["suites"],
