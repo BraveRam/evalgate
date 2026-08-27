@@ -43,7 +43,6 @@ export default function AnalyticsPage() {
   // TanStack Query: Fetch runs
   const {
     data: runs = [],
-    isLoading,
     refetch: refetchRuns,
   } = useQuery({
     queryKey: ["runs", selectedSuite],
@@ -68,7 +67,7 @@ export default function AnalyticsPage() {
 
   // Prepare chronological chart data (oldest to newest)
   const chartData = [...runs].reverse().map((r, idx) => ({
-    name: `Run #${idx + 1}`,
+    name: `#${idx + 1}`,
     time: new Date(r.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     passRate: Math.round(r.pass_rate * 100),
     p50Latency: Math.round(r.p50_latency_ms),
@@ -87,19 +86,19 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 text-purple-400" />
+          <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-white" />
             Historical Regression Trends & Analytics
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-zinc-400 mt-1">
             Track pass rate regressions, P50/P95 latency degradation, and token cost curves across historical executions.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Select value={selectedSuite} onValueChange={setSelectedSuite}>
-            <SelectTrigger className="w-56 font-mono text-xs">
+            <SelectTrigger className="w-52 font-mono text-xs">
               <SelectValue placeholder="All Suites" />
             </SelectTrigger>
             <SelectContent>
@@ -113,8 +112,8 @@ export default function AnalyticsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={() => refetchRuns()} variant="outline" size="sm" className="gap-2 text-xs">
-            <RefreshCw className="h-3.5 w-3.5" />
+          <Button onClick={() => refetchRuns()} variant="outline" size="sm" className="gap-1.5 text-xs">
+            <RefreshCw className="h-3 w-3" />
             Refresh
           </Button>
         </div>
@@ -122,100 +121,101 @@ export default function AnalyticsPage() {
 
       {/* Aggregate Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-border/70">
-          <CardHeader className="p-5 pb-2">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <Card className="border-border bg-card">
+          <CardHeader className="p-4 pb-1">
+            <CardTitle className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
               Sampled Runs
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-5 pt-0">
-            <div className="text-2xl font-bold font-mono text-foreground">{totalRuns}</div>
-            <p className="text-xs text-muted-foreground mt-1">Recorded in SQLite database</p>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold font-mono text-white">{totalRuns}</div>
+            <p className="text-[11px] text-zinc-500 mt-1">Recorded in SQLite</p>
           </CardContent>
         </Card>
 
-        <Card className="border-border/70">
-          <CardHeader className="p-5 pb-2">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <Card className="border-border bg-card">
+          <CardHeader className="p-4 pb-1">
+            <CardTitle className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
               Mean Pass Rate
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-5 pt-0">
-            <div className="text-2xl font-bold font-mono text-emerald-400">
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold font-mono text-white">
               {formatPercent(avgPassRate)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{passedRuns} of {totalRuns} passed gate</p>
+            <p className="text-[11px] text-zinc-500 mt-1">{passedRuns} of {totalRuns} passed gate</p>
           </CardContent>
         </Card>
 
-        <Card className="border-border/70">
-          <CardHeader className="p-5 pb-2">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <Card className="border-border bg-card">
+          <CardHeader className="p-4 pb-1">
+            <CardTitle className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
               Mean P50 Latency
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-5 pt-0">
-            <div className="text-2xl font-bold font-mono text-purple-400">
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold font-mono text-white">
               {formatMs(avgP50)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Across executions</p>
+            <p className="text-[11px] text-zinc-500 mt-1">Across executions</p>
           </CardContent>
         </Card>
 
-        <Card className="border-border/70">
-          <CardHeader className="p-5 pb-2">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <Card className="border-border bg-card">
+          <CardHeader className="p-4 pb-1">
+            <CardTitle className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
               Total Incurred Cost
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-5 pt-0">
-            <div className="text-2xl font-bold font-mono text-amber-400">
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold font-mono text-white">
               {formatCost(totalCostUSD)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Calculated token fees</p>
+            <p className="text-[11px] text-zinc-500 mt-1">Calculated token fees</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Visual Regression Charts */}
       {chartData.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Pass Rate Trend */}
-          <Card className="border-border/80">
-            <CardHeader className="p-5 pb-2">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          <Card className="border-border bg-card">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
+                <CheckCircle2 className="h-3.5 w-3.5 text-zinc-400" />
                 Pass Rate Stability (%)
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-[11px] text-zinc-500">
                 Quality gate pass rate percentage over sequential runs.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-5 pt-2 h-72">
+            <CardContent className="p-4 pt-1 h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="passRateGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                      <stop offset="5%" stopColor="#ffffff" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#ffffff" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                  <XAxis dataKey="name" stroke="#71717a" fontSize={11} />
-                  <YAxis domain={[0, 100]} stroke="#71717a" fontSize={11} unit="%" />
+                  <XAxis dataKey="name" stroke="#52525b" fontSize={11} />
+                  <YAxis domain={[0, 100]} stroke="#52525b" fontSize={11} unit="%" />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#18181b",
+                      backgroundColor: "#09090b",
                       borderColor: "#27272a",
-                      borderRadius: "8px",
-                      fontSize: "12px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      color: "#fafafa",
                     }}
                   />
                   <Area
                     type="monotone"
                     dataKey="passRate"
-                    stroke="#10b981"
-                    strokeWidth={2}
+                    stroke="#ffffff"
+                    strokeWidth={1.5}
                     fillOpacity={1}
                     fill="url(#passRateGrad)"
                   />
@@ -225,33 +225,34 @@ export default function AnalyticsPage() {
           </Card>
 
           {/* Latency Regression Curve */}
-          <Card className="border-border/80">
-            <CardHeader className="p-5 pb-2">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Clock className="h-4 w-4 text-purple-400" />
+          <Card className="border-border bg-card">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-zinc-400" />
                 P50 & P95 Latency Regression (ms)
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-[11px] text-zinc-500">
                 Median and 95th percentile response times across runs.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-5 pt-2 h-72">
+            <CardContent className="p-4 pt-1 h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                  <XAxis dataKey="name" stroke="#71717a" fontSize={11} />
-                  <YAxis stroke="#71717a" fontSize={11} unit="ms" />
+                  <XAxis dataKey="name" stroke="#52525b" fontSize={11} />
+                  <YAxis stroke="#52525b" fontSize={11} unit="ms" />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#18181b",
+                      backgroundColor: "#09090b",
                       borderColor: "#27272a",
-                      borderRadius: "8px",
-                      fontSize: "12px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      color: "#fafafa",
                     }}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="p50Latency" name="P50 Latency" stroke="#a855f7" strokeWidth={2} dot />
-                  <Line type="monotone" dataKey="p95Latency" name="P95 Latency" stroke="#ec4899" strokeWidth={2} dot />
+                  <Line type="monotone" dataKey="p50Latency" name="P50 Latency" stroke="#ffffff" strokeWidth={1.5} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="p95Latency" name="P95 Latency" stroke="#71717a" strokeWidth={1.5} dot={{ r: 2 }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -260,73 +261,73 @@ export default function AnalyticsPage() {
       )}
 
       {/* Historical Runs Drilldown Table */}
-      <Card className="border-border/80">
-        <CardHeader className="p-6 pb-4">
-          <CardTitle className="text-base font-semibold">Evaluation Run History</CardTitle>
-          <CardDescription className="text-xs mt-1">
-            Complete execution traces with individual test case results and delete capability.
+      <Card className="border-border bg-card">
+        <CardHeader className="p-4 pb-3">
+          <CardTitle className="text-sm font-semibold text-white">Evaluation Run History</CardTitle>
+          <CardDescription className="text-xs text-zinc-400 mt-0.5">
+            Complete execution traces with individual test case results.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {runs.length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">
+            <div className="text-center py-12 text-xs text-zinc-500">
               No historical runs recorded.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-muted/40 text-muted-foreground border-y border-border/60">
+                <thead className="bg-zinc-950 text-zinc-400 border-y border-border">
                   <tr>
-                    <th className="py-3 px-6 font-medium">Status</th>
-                    <th className="py-3 px-4 font-medium">Suite</th>
-                    <th className="py-3 px-4 font-medium">Model</th>
-                    <th className="py-3 px-4 font-medium">Pass Rate</th>
-                    <th className="py-3 px-4 font-medium">P50 Latency</th>
-                    <th className="py-3 px-4 font-medium">Tokens</th>
-                    <th className="py-3 px-4 font-medium">Cost</th>
-                    <th className="py-3 px-4 font-medium">Timestamp</th>
-                    <th className="py-3 px-6 font-medium text-right">Actions</th>
+                    <th className="py-2.5 px-4 font-medium">Status</th>
+                    <th className="py-2.5 px-3 font-medium">Suite</th>
+                    <th className="py-2.5 px-3 font-medium">Model</th>
+                    <th className="py-2.5 px-3 font-medium">Pass Rate</th>
+                    <th className="py-2.5 px-3 font-medium">P50 Latency</th>
+                    <th className="py-2.5 px-3 font-medium">Tokens</th>
+                    <th className="py-2.5 px-3 font-medium">Cost</th>
+                    <th className="py-2.5 px-3 font-medium">Timestamp</th>
+                    <th className="py-2.5 px-4 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/40">
+                <tbody className="divide-y divide-border">
                   {runs.map((r) => (
-                    <tr key={r.run_id} className="hover:bg-accent/30 transition-colors">
-                      <td className="py-3.5 px-6">
+                    <tr key={r.run_id} className="hover:bg-zinc-900/50 transition-colors">
+                      <td className="py-3 px-4">
                         {r.passed ? (
-                          <Badge variant="success" className="gap-1 font-mono text-[10px]">
+                          <Badge variant="outline" className="gap-1 font-mono text-[10px] border-zinc-700 bg-zinc-900 text-zinc-200">
                             <CheckCircle2 className="h-3 w-3" />
                             PASSED
                           </Badge>
                         ) : (
-                          <Badge variant="failure" className="gap-1 font-mono text-[10px]">
+                          <Badge variant="outline" className="gap-1 font-mono text-[10px] border-zinc-800 bg-zinc-950 text-zinc-400">
                             <XCircle className="h-3 w-3" />
                             FAILED
                           </Badge>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 font-medium text-foreground">{r.suite_name}</td>
-                      <td className="py-3.5 px-4 font-mono text-muted-foreground">{r.target_model}</td>
-                      <td className="py-3.5 px-4 font-mono">
-                        <span className={r.pass_rate >= 1.0 ? "text-emerald-400 font-semibold" : "text-rose-400"}>
+                      <td className="py-3 px-3 font-medium text-white">{r.suite_name}</td>
+                      <td className="py-3 px-3 font-mono text-zinc-400">{r.target_model}</td>
+                      <td className="py-3 px-3 font-mono">
+                        <span className="text-white font-medium">
                           {formatPercent(r.pass_rate)}
                         </span>
-                        <span className="text-[10px] text-muted-foreground ml-1">
+                        <span className="text-[10px] text-zinc-500 ml-1">
                           ({r.passed_tests}/{r.total_tests})
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-muted-foreground">{formatMs(r.p50_latency_ms)}</td>
-                      <td className="py-3.5 px-4 font-mono text-muted-foreground">{r.total_tokens}</td>
-                      <td className="py-3.5 px-4 font-mono text-muted-foreground">{formatCost(r.total_cost_usd)}</td>
-                      <td className="py-3.5 px-4 font-mono text-muted-foreground">
+                      <td className="py-3 px-3 font-mono text-zinc-400">{formatMs(r.p50_latency_ms)}</td>
+                      <td className="py-3 px-3 font-mono text-zinc-400">{r.total_tokens}</td>
+                      <td className="py-3 px-3 font-mono text-zinc-400">{formatCost(r.total_cost_usd)}</td>
+                      <td className="py-3 px-3 font-mono text-zinc-500">
                         {new Date(r.timestamp).toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-6 text-right">
+                      <td className="py-3 px-4 text-right">
                         <Button
                           onClick={() => handleDeleteRun(r.run_id)}
                           disabled={deleteMutation.isPending}
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-rose-400"
+                          className="h-7 w-7 text-zinc-500 hover:text-white"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>

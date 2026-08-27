@@ -20,7 +20,6 @@ import {
   Play,
   Plus,
   Scale,
-  Sparkles,
   Trash2,
   XCircle,
   Zap,
@@ -124,30 +123,30 @@ export default function PlaygroundPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-emerald-400" />
+          <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
+            <Play className="h-5 w-5 fill-current" />
             Prompt Evaluation Playground
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-zinc-400 mt-1">
             Test prompt templates live with variable injection, strict assertions, and LLM-as-a-judge quality gates.
           </p>
         </div>
         <Button
           onClick={() => evaluateMutation.mutate()}
           disabled={evaluateMutation.isPending}
-          variant="glow"
-          className="gap-2 px-6"
+          variant="default"
+          className="gap-2 px-5 text-xs"
         >
           {evaluateMutation.isPending ? (
             <span className="flex items-center gap-2">
-              <span className="h-4 w-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
+              <span className="h-3.5 w-3.5 rounded-full border-2 border-black border-t-transparent animate-spin" />
               Evaluating...
             </span>
           ) : (
             <>
-              <Play className="h-4 w-4 fill-current" />
+              <Play className="h-3.5 w-3.5 fill-current" />
               Run Live Evaluation
             </>
           )}
@@ -155,8 +154,8 @@ export default function PlaygroundPage() {
       </div>
 
       {evaluateMutation.isError && (
-        <div className="p-4 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-sm flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 shrink-0 text-rose-400" />
+        <div className="p-3.5 rounded-lg border border-border bg-zinc-950 text-zinc-300 text-xs flex items-center gap-2.5">
+          <AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" />
           <span>{evaluateMutation.error.message}</span>
         </div>
       )}
@@ -166,17 +165,17 @@ export default function PlaygroundPage() {
         {/* Left Column: Config */}
         <div className="lg:col-span-7 space-y-6">
           {/* Target Model & Judge */}
-          <Card className="border-border/80">
-            <CardHeader className="p-5 pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-emerald-400" />
+          <Card className="border-border bg-card">
+            <CardHeader className="p-4 pb-3">
+              <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
+                <Cpu className="h-3.5 w-3.5 text-zinc-400" />
                 Target & Judge Configuration
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-5 pt-0 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CardContent className="p-4 pt-0 space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                  <label className="text-[11px] font-medium text-zinc-400 block mb-1">
                     Target Model
                   </label>
                   <Select value={model} onValueChange={setModel}>
@@ -193,7 +192,7 @@ export default function PlaygroundPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                  <label className="text-[11px] font-medium text-zinc-400 block mb-1">
                     Judge Model (Semantic Evals)
                   </label>
                   <Select value={judgeModel} onValueChange={setJudgeModel}>
@@ -212,7 +211,7 @@ export default function PlaygroundPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                <label className="text-[11px] font-medium text-zinc-400 block mb-1">
                   System Prompt Instructions
                 </label>
                 <Textarea
@@ -225,13 +224,13 @@ export default function PlaygroundPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1.5">
-                  Prompt Template (Supports <code className="text-emerald-400">{"{{variables}}"}</code>)
+                <label className="text-[11px] font-medium text-zinc-400 block mb-1">
+                  Prompt Template (Supports <code className="text-zinc-200">{"{{variables}}"}</code>)
                 </label>
                 <Textarea
                   value={template}
                   onChange={(e) => setTemplate(e.target.value)}
-                  rows={4}
+                  rows={3}
                   className="text-xs font-mono"
                   placeholder="Context: {{context}}\n\nQuestion: {{question}}"
                 />
@@ -240,14 +239,14 @@ export default function PlaygroundPage() {
           </Card>
 
           {/* Variables Matrix */}
-          <Card className="border-border/80">
-            <CardHeader className="p-5 pb-3 flex flex-row items-center justify-between">
+          <Card className="border-border bg-card">
+            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-sky-400" />
+                <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
+                  <Layers className="h-3.5 w-3.5 text-zinc-400" />
                   Test Case Variables
                 </CardTitle>
-                <CardDescription className="text-xs mt-0.5">
+                <CardDescription className="text-[11px] text-zinc-500 mt-0.5">
                   Injected into template placeholders during evaluation.
                 </CardDescription>
               </div>
@@ -256,14 +255,14 @@ export default function PlaygroundPage() {
                 Add Var
               </Button>
             </CardHeader>
-            <CardContent className="p-5 pt-0 space-y-3">
+            <CardContent className="p-4 pt-1 space-y-2.5">
               {variables.map((v, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <Input
                     value={v.key}
                     onChange={(e) => updateVariable(i, "key", e.target.value)}
                     placeholder="key"
-                    className="w-36 font-mono text-xs shrink-0"
+                    className="w-32 font-mono text-xs shrink-0"
                   />
                   <Textarea
                     value={v.value}
@@ -276,9 +275,9 @@ export default function PlaygroundPage() {
                     onClick={() => removeVariable(i)}
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 text-muted-foreground hover:text-rose-400 shrink-0"
+                    className="h-9 w-9 text-zinc-500 hover:text-white shrink-0"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               ))}
@@ -286,14 +285,14 @@ export default function PlaygroundPage() {
           </Card>
 
           {/* Quality Gates & Assertions */}
-          <Card className="border-border/80">
-            <CardHeader className="p-5 pb-3 flex flex-row items-center justify-between">
+          <Card className="border-border bg-card">
+            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Scale className="h-4 w-4 text-purple-400" />
+                <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
+                  <Scale className="h-3.5 w-3.5 text-zinc-400" />
                   Evaluation Gates & Assertions
                 </CardTitle>
-                <CardDescription className="text-xs mt-0.5">
+                <CardDescription className="text-[11px] text-zinc-500 mt-0.5">
                   Deterministic rules and semantic LLM judges.
                 </CardDescription>
               </div>
@@ -302,7 +301,7 @@ export default function PlaygroundPage() {
                 Add Assertion
               </Button>
             </CardHeader>
-            <CardContent className="p-5 pt-0 space-y-3">
+            <CardContent className="p-4 pt-1 space-y-2.5">
               {assertions.map((a, i) => {
                 const isSemantic = [
                   "faithfulness",
@@ -317,7 +316,7 @@ export default function PlaygroundPage() {
                 return (
                   <div
                     key={i}
-                    className="p-3 rounded-lg border border-border/60 bg-muted/20 space-y-3 text-xs"
+                    className="p-3 rounded-md border border-border bg-zinc-950/60 space-y-2.5 text-xs"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <Select
@@ -333,33 +332,33 @@ export default function PlaygroundPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="contains">contains (substring)</SelectItem>
+                          <SelectItem value="contains">contains</SelectItem>
                           <SelectItem value="not_contains">not_contains</SelectItem>
                           <SelectItem value="exact">exact match</SelectItem>
                           <SelectItem value="regex">regex pattern</SelectItem>
                           <SelectItem value="json_schema">json_schema</SelectItem>
-                          <SelectItem value="python_ast">python_ast syntax</SelectItem>
-                          <SelectItem value="sql_syntax">sql_syntax check</SelectItem>
+                          <SelectItem value="python_ast">python_ast</SelectItem>
+                          <SelectItem value="sql_syntax">sql_syntax</SelectItem>
                           <SelectItem value="faithfulness">faithfulness (judge)</SelectItem>
                           <SelectItem value="hallucination">hallucination (judge)</SelectItem>
                           <SelectItem value="relevancy">relevancy (judge)</SelectItem>
                           <SelectItem value="coherence">coherence (judge)</SelectItem>
-                          <SelectItem value="dynamic">dynamic rubric (judge)</SelectItem>
+                          <SelectItem value="dynamic">dynamic rubric</SelectItem>
                         </SelectContent>
                       </Select>
                       <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                        <label className="flex items-center gap-1.5 text-[11px] text-zinc-400 cursor-pointer">
                           <Switch
                             checked={a.strict ?? true}
                             onCheckedChange={(checked) => updateAssertion(i, { strict: checked })}
                           />
-                          <span>Strict Gate</span>
+                          <span>Strict</span>
                         </label>
                         <Button
                           onClick={() => removeAssertion(i)}
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-rose-400"
+                          className="h-8 w-8 text-zinc-500 hover:text-white"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -370,15 +369,15 @@ export default function PlaygroundPage() {
                       <Input
                         value={a.value || ""}
                         onChange={(e) => updateAssertion(i, { value: e.target.value })}
-                        placeholder="Expected substring / regex / schema"
+                        placeholder="Expected substring / pattern"
                         className="font-mono text-xs h-8"
                       />
                     )}
 
                     {isSemantic && (
                       <div className="flex items-center gap-3">
-                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                          Pass Threshold:
+                        <span className="text-[11px] text-zinc-400 whitespace-nowrap">
+                          Threshold:
                         </span>
                         <input
                           type="range"
@@ -389,9 +388,9 @@ export default function PlaygroundPage() {
                           onChange={(e) =>
                             updateAssertion(i, { threshold: parseFloat(e.target.value) })
                           }
-                          className="w-full accent-emerald-400"
+                          className="w-full accent-white"
                         />
-                        <span className="font-mono text-[11px] text-emerald-400 w-10 text-right">
+                        <span className="font-mono text-[11px] text-white w-10 text-right">
                           {((a.threshold ?? 0.85) * 100).toFixed(0)}%
                         </span>
                       </div>
@@ -405,16 +404,20 @@ export default function PlaygroundPage() {
 
         {/* Right Column: Execution Output & Trace */}
         <div className="lg:col-span-5 space-y-6">
-          <Card className="border-border/80 h-full flex flex-col">
-            <CardHeader className="p-5 pb-3 flex flex-row items-center justify-between border-b border-border/40">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-400" />
-                Live Evaluation Trace
+          <Card className="border-border bg-card h-full flex flex-col">
+            <CardHeader className="p-4 pb-3 flex flex-row items-center justify-between border-b border-border">
+              <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
+                <Zap className="h-3.5 w-3.5 text-zinc-400 fill-current" />
+                Evaluation Trace
               </CardTitle>
               {result && (
                 <Badge
-                  variant={result.passed ? "success" : "failure"}
-                  className="gap-1 font-mono text-[11px]"
+                  variant="outline"
+                  className={`gap-1 font-mono text-[10px] ${
+                    result.passed
+                      ? "border-zinc-700 bg-zinc-900 text-white"
+                      : "border-zinc-800 bg-zinc-950 text-zinc-400"
+                  }`}
                 >
                   {result.passed ? (
                     <>
@@ -428,73 +431,69 @@ export default function PlaygroundPage() {
                 </Badge>
               )}
             </CardHeader>
-            <CardContent className="p-5 flex-1 space-y-5">
+            <CardContent className="p-4 flex-1 space-y-4">
               {!result ? (
-                <div className="h-full flex flex-col items-center justify-center text-center py-20 text-muted-foreground space-y-3">
-                  <div className="h-12 w-12 rounded-xl bg-card border border-border/80 flex items-center justify-center text-muted-foreground">
-                    <Play className="h-5 w-5 opacity-40 ml-0.5" />
+                <div className="h-full flex flex-col items-center justify-center text-center py-20 text-zinc-500 space-y-2">
+                  <div className="h-10 w-10 rounded-md bg-zinc-900 border border-border flex items-center justify-center text-zinc-400">
+                    <Play className="h-4 w-4 fill-current ml-0.5" />
                   </div>
                   <p className="text-xs">
-                    Click <strong>&quot;Run Live Evaluation&quot;</strong> to generate completion and verify assertions.
+                    Click <strong>&quot;Run Live Evaluation&quot;</strong> to generate and verify assertions.
                   </p>
                 </div>
               ) : (
                 <>
                   {/* Execution KPIs */}
-                  <div className="grid grid-cols-3 gap-2 p-3 rounded-lg bg-muted/20 border border-border/60 text-center font-mono">
+                  <div className="grid grid-cols-3 gap-2 p-3 rounded-md bg-zinc-950 border border-border text-center font-mono">
                     <div>
-                      <span className="text-[10px] text-muted-foreground uppercase block">Latency</span>
-                      <span className="text-xs font-bold text-foreground">{formatMs(result.latency_ms)}</span>
+                      <span className="text-[10px] text-zinc-500 uppercase block">Latency</span>
+                      <span className="text-xs font-semibold text-white">{formatMs(result.latency_ms)}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-muted-foreground uppercase block">Tokens</span>
-                      <span className="text-xs font-bold text-foreground">{result.total_tokens}</span>
+                      <span className="text-[10px] text-zinc-500 uppercase block">Tokens</span>
+                      <span className="text-xs font-semibold text-white">{result.total_tokens}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-muted-foreground uppercase block">Cost</span>
-                      <span className="text-xs font-bold text-emerald-400">{formatCost(result.cost_usd)}</span>
+                      <span className="text-[10px] text-zinc-500 uppercase block">Cost</span>
+                      <span className="text-xs font-semibold text-zinc-300">{formatCost(result.cost_usd)}</span>
                     </div>
                   </div>
 
                   {/* Raw Output Preview */}
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-2">
+                    <label className="text-[11px] font-medium text-zinc-400 block mb-1.5">
                       Generated Completion
                     </label>
-                    <div className="p-3.5 rounded-lg border border-border/80 bg-black/40 font-mono text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-                      {result.completion || <span className="text-muted-foreground italic">No completion output</span>}
+                    <div className="p-3 rounded-md border border-border bg-black font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">
+                      {result.completion || <span className="text-zinc-600 italic">No output</span>}
                     </div>
                   </div>
 
                   {/* Assertion Checklist */}
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-2">
+                    <label className="text-[11px] font-medium text-zinc-400 block mb-1.5">
                       Assertion Breakdown ({result.assertion_results.filter((a) => a.passed).length}/{result.assertion_results.length})
                     </label>
                     <div className="space-y-2">
                       {result.assertion_results.map((ar, idx) => (
                         <div
                           key={idx}
-                          className={`p-3 rounded-lg border text-xs space-y-1.5 transition-all ${
-                            ar.passed
-                              ? "border-emerald-500/30 bg-emerald-500/5 text-foreground"
-                              : "border-rose-500/30 bg-rose-500/5 text-foreground"
-                          }`}
+                          className="p-2.5 rounded-md border border-border bg-zinc-950 text-xs space-y-1"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {ar.passed ? (
-                                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                                <CheckCircle2 className="h-3.5 w-3.5 text-white shrink-0" />
                               ) : (
-                                <XCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                                <XCircle className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
                               )}
-                              <span className="font-mono font-semibold text-xs">{ar.assertion_type}</span>
+                              <span className="font-mono font-medium text-xs text-white">{ar.assertion_type}</span>
                             </div>
-                            <span className="font-mono text-[11px] text-muted-foreground">
+                            <span className="font-mono text-[11px] text-zinc-400">
                               Score: {(ar.score * 100).toFixed(0)}%
                             </span>
                           </div>
-                          <p className="text-[11px] text-muted-foreground leading-relaxed pl-6">
+                          <p className="text-[11px] text-zinc-400 leading-relaxed pl-5">
                             {ar.reason}
                           </p>
                         </div>

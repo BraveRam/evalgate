@@ -118,29 +118,29 @@ export default function SuitesPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <Boxes className="h-6 w-6 text-sky-400" />
+          <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
+            <Boxes className="h-5 w-5 text-white" />
             Evaluation Suites & Test Matrix
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-zinc-400 mt-1">
             Declarative YAML test suites with regression gates, pre-flight cost estimation, and live streaming test execution.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={() => refetchSuites()} variant="outline" size="sm" className="gap-2 text-xs">
-            <RefreshCw className="h-3.5 w-3.5" />
+        <div className="flex items-center gap-2">
+          <Button onClick={() => refetchSuites()} variant="outline" size="sm" className="gap-1.5 text-xs">
+            <RefreshCw className="h-3 w-3" />
             Refresh
           </Button>
           {activeSuiteName && (
             <Button
               onClick={() => handleStartLiveStream(activeSuiteName)}
-              variant="glow"
+              variant="default"
               size="sm"
-              className="gap-2 text-xs"
+              className="gap-1.5 text-xs"
             >
-              <Zap className="h-3.5 w-3.5" />
+              <Zap className="h-3 w-3 fill-current" />
               Run Suite Live
             </Button>
           )}
@@ -151,7 +151,7 @@ export default function SuitesPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Suites List */}
         <div className="lg:col-span-4 space-y-3">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+          <h3 className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider px-1">
             Discovered Suites ({suites.length})
           </h3>
           <div className="space-y-2">
@@ -161,30 +161,30 @@ export default function SuitesPage() {
                 <div
                   key={s.name}
                   onClick={() => setSelectedSuiteName(s.name)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                     isSelected
-                      ? "border-emerald-500/50 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
-                      : "border-border/70 bg-card/40 hover:border-border hover:bg-card/70"
+                      ? "border-zinc-600 bg-zinc-900/90 shadow-sm"
+                      : "border-border bg-card hover:border-zinc-700 hover:bg-zinc-900/40"
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5">
-                        <FileCode className="h-4 w-4 text-sky-400" />
+                      <h4 className="font-semibold text-xs text-white flex items-center gap-1.5">
+                        <FileCode className="h-3.5 w-3.5 text-zinc-400" />
                         {s.name}
                       </h4>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                      <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">
                         {s.description || "No description provided"}
                       </p>
                     </div>
-                    <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isSelected ? "translate-x-1 text-emerald-400" : ""}`} />
+                    <ChevronRight className={`h-3.5 w-3.5 text-zinc-500 transition-transform ${isSelected ? "translate-x-0.5 text-white" : ""}`} />
                   </div>
-                  <div className="flex items-center gap-3 mt-3 text-[11px] font-mono text-muted-foreground">
+                  <div className="flex items-center gap-2 mt-2.5 text-[10px] font-mono text-zinc-400">
                     <span>{s.test_count} tests</span>
                     <span>•</span>
-                    <span className="truncate max-w-[140px]">{s.target_model}</span>
+                    <span className="truncate max-w-[130px]">{s.target_model}</span>
                     <span>•</span>
-                    <Badge variant="outline" className="text-[10px] px-1 py-0">
+                    <Badge variant="outline" className="text-[10px] px-1 py-0 border-zinc-800 text-zinc-400">
                       {formatPercent(s.min_pass_rate)} gate
                     </Badge>
                   </div>
@@ -197,23 +197,23 @@ export default function SuitesPage() {
         {/* Right: Suite Detail Inspector */}
         <div className="lg:col-span-8">
           {!selectedSuite ? (
-            <Card className="border-border/80 h-96 flex items-center justify-center text-center p-8 text-muted-foreground">
+            <Card className="border-border bg-card h-80 flex items-center justify-center text-center p-8 text-zinc-500 text-xs">
               {isDetailsLoading ? "Loading suite configuration..." : "Select a suite on the left to inspect test cases."}
             </Card>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {/* Suite Header Info Card */}
-              <Card className="border-border/80">
-                <CardHeader className="p-6 pb-4">
+              <Card className="border-border bg-card">
+                <CardHeader className="p-5 pb-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <CardTitle className="text-lg font-bold flex items-center gap-2">
+                      <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
                         {selectedSuite.name}
-                        <Badge variant="outline" className="font-mono text-[11px] text-emerald-400 border-emerald-500/30">
+                        <Badge variant="outline" className="font-mono text-[10px] text-zinc-300 border-zinc-700 bg-zinc-900">
                           {formatPercent(selectedSuite.min_pass_rate ?? 1.0)} required
                         </Badge>
                       </CardTitle>
-                      <CardDescription className="text-xs mt-1">
+                      <CardDescription className="text-xs text-zinc-400 mt-0.5">
                         {selectedSuite.description}
                       </CardDescription>
                     </div>
@@ -223,45 +223,45 @@ export default function SuitesPage() {
                         disabled={estimateMutation.isPending}
                         variant="outline"
                         size="sm"
-                        className="text-xs gap-1.5"
+                        className="text-xs gap-1.5 h-8"
                       >
-                        <Calculator className="h-3.5 w-3.5 text-amber-400" />
+                        <Calculator className="h-3 w-3 text-zinc-400" />
                         {estimateMutation.isPending ? "Estimating..." : "Estimate Cost"}
                       </Button>
                       <Button
                         onClick={() => handleStartLiveStream(selectedSuite.name)}
-                        variant="glow"
+                        variant="default"
                         size="sm"
-                        className="text-xs gap-1.5"
+                        className="text-xs gap-1.5 h-8"
                       >
-                        <Zap className="h-3.5 w-3.5" />
+                        <Zap className="h-3 w-3 fill-current" />
                         Run Suite
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6 pt-0 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-muted/30 border border-border/60 text-xs font-mono">
+                <CardContent className="p-5 pt-0 space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-md bg-zinc-950 border border-border text-xs font-mono">
                     <div>
-                      <span className="text-[10px] text-muted-foreground uppercase block">Target Model</span>
-                      <span className="font-semibold text-foreground">{selectedSuite.target.model}</span>
+                      <span className="text-[10px] text-zinc-500 uppercase block">Target Model</span>
+                      <span className="font-medium text-zinc-200">{selectedSuite.target.model}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-muted-foreground uppercase block">Target Type</span>
-                      <span className="font-semibold text-foreground">{selectedSuite.target.type}</span>
+                      <span className="text-[10px] text-zinc-500 uppercase block">Target Type</span>
+                      <span className="font-medium text-zinc-200">{selectedSuite.target.type}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-muted-foreground uppercase block">Test Cases</span>
-                      <span className="font-semibold text-foreground">{selectedSuite.tests.length} cases</span>
+                      <span className="text-[10px] text-zinc-500 uppercase block">Test Cases</span>
+                      <span className="font-medium text-zinc-200">{selectedSuite.tests.length} cases</span>
                     </div>
                   </div>
 
                   {selectedSuite.target.template && (
                     <div>
-                      <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
+                      <label className="text-[11px] font-medium text-zinc-400 block mb-1">
                         Prompt Template
                       </label>
-                      <div className="p-3 rounded-lg bg-black/40 border border-border/60 font-mono text-xs text-foreground whitespace-pre-wrap">
+                      <div className="p-2.5 rounded-md bg-black border border-border font-mono text-xs text-zinc-200 whitespace-pre-wrap">
                         {selectedSuite.target.template}
                       </div>
                     </div>
@@ -270,33 +270,33 @@ export default function SuitesPage() {
               </Card>
 
               {/* Test Cases Matrix */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="space-y-2.5">
+                <h3 className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
                   Test Case Matrix ({selectedSuite.tests.length})
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {selectedSuite.tests.map((tc, idx) => (
-                    <Card key={tc.id || idx} className="border-border/70 hover:border-border transition-all">
-                      <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+                    <Card key={tc.id || idx} className="border-border bg-card">
+                      <CardHeader className="p-3.5 pb-1.5 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="font-mono text-xs">
+                          <Badge variant="secondary" className="font-mono text-[10px] bg-zinc-800 text-zinc-200">
                             #{tc.id}
                           </Badge>
                           {tc.description && (
-                            <span className="text-xs text-muted-foreground">{tc.description}</span>
+                            <span className="text-xs text-zinc-400">{tc.description}</span>
                           )}
                         </div>
-                        <span className="text-[11px] font-mono text-muted-foreground">
+                        <span className="text-[10px] font-mono text-zinc-500">
                           {Object.keys(tc.vars).length} vars • {(tc.assertions || []).length} assertions
                         </span>
                       </CardHeader>
-                      <CardContent className="p-4 pt-1 space-y-3">
+                      <CardContent className="p-3.5 pt-1 space-y-2">
                         {/* Variables */}
-                        <div className="p-2.5 rounded-md bg-muted/20 border border-border/40 text-xs font-mono space-y-1">
+                        <div className="p-2 rounded bg-zinc-950 border border-border text-xs font-mono space-y-0.5">
                           {Object.entries(tc.vars).map(([k, v]) => (
                             <div key={k} className="flex items-start gap-2">
-                              <span className="text-emerald-400 shrink-0">{k}:</span>
-                              <span className="text-foreground truncate">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
+                              <span className="text-zinc-400 shrink-0">{k}:</span>
+                              <span className="text-zinc-200 truncate">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
                             </div>
                           ))}
                         </div>
@@ -308,7 +308,7 @@ export default function SuitesPage() {
                               <Badge
                                 key={aIdx}
                                 variant="outline"
-                                className="text-[10px] font-mono border-border/60 bg-card/40"
+                                className="text-[10px] font-mono border-border bg-zinc-950 text-zinc-400"
                               >
                                 {a.type} {a.value ? `="${a.value}"` : ""} {a.threshold ? `(>=${a.threshold})` : ""}
                               </Badge>
@@ -327,25 +327,25 @@ export default function SuitesPage() {
 
       {/* Live WebSocket Streaming Test Runner Dialog */}
       <Dialog open={isStreamingModalOpen} onOpenChange={setIsStreamingModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <Zap className="h-4 w-4 text-emerald-400" />
-              Live Evaluation Stream: <span className="font-mono text-emerald-400">{streamingSuiteName}</span>
+            <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-white">
+              <Zap className="h-4 w-4 fill-current" />
+              Live Evaluation Stream: <span className="font-mono text-zinc-300">{streamingSuiteName}</span>
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription className="text-xs text-zinc-400">
               Streaming real-time execution events from LangGraph state machine via WebSockets.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5 py-3">
+          <div className="space-y-4 py-2">
             {/* Progress bar */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-muted-foreground">
+                <span className="text-zinc-400">
                   {isStreamRunning ? "Running tests..." : finalRunResult ? "Execution Complete" : "Connecting..."}
                 </span>
-                <span className="text-emerald-400 font-bold">
+                <span className="text-white font-medium">
                   {streamCompletedResults.length} / {streamTotalTests || "?"} completed
                 </span>
               </div>
@@ -360,8 +360,8 @@ export default function SuitesPage() {
 
             {/* Error banner */}
             {streamError && (
-              <div className="p-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <div className="p-3 rounded-md border border-border bg-zinc-950 text-zinc-300 text-xs flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" />
                 <span>{streamError}</span>
               </div>
             )}
@@ -369,75 +369,67 @@ export default function SuitesPage() {
             {/* Final Summary Card */}
             {finalRunResult && (
               <div
-                className={`p-4 rounded-xl border space-y-3 font-mono text-xs ${
-                  finalRunResult.passed
-                    ? "border-emerald-500/40 bg-emerald-500/10"
-                    : "border-rose-500/40 bg-rose-500/10"
-                }`}
+                className="p-3.5 rounded-lg border border-border bg-zinc-950 space-y-2.5 font-mono text-xs"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm flex items-center gap-2">
+                  <span className="font-semibold text-xs text-white flex items-center gap-2">
                     {finalRunResult.passed ? (
                       <>
-                        <CheckCircle2 className="h-5 w-5 text-emerald-400" /> PASSED QUALITY GATE
+                        <CheckCircle2 className="h-4 w-4 text-white" /> PASSED QUALITY GATE
                       </>
                     ) : (
                       <>
-                        <XCircle className="h-5 w-5 text-rose-400" /> FAILED QUALITY GATE
+                        <XCircle className="h-4 w-4 text-zinc-500" /> FAILED QUALITY GATE
                       </>
                     )}
                   </span>
-                  <Badge variant={finalRunResult.passed ? "success" : "failure"} className="text-xs">
+                  <Badge variant="outline" className="text-xs border-zinc-700 bg-zinc-900 text-white">
                     {formatPercent(finalRunResult.pass_rate)}
                   </Badge>
                 </div>
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/40 text-center">
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border text-center">
                   <div>
-                    <span className="text-[10px] text-muted-foreground block">P50 Latency</span>
-                    <span className="font-bold">{formatMs(finalRunResult.p50_latency_ms)}</span>
+                    <span className="text-[10px] text-zinc-500 block">P50 Latency</span>
+                    <span className="font-medium text-white">{formatMs(finalRunResult.p50_latency_ms)}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground block">Total Tokens</span>
-                    <span className="font-bold">{finalRunResult.total_tokens}</span>
+                    <span className="text-[10px] text-zinc-500 block">Total Tokens</span>
+                    <span className="font-medium text-white">{finalRunResult.total_tokens}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground block">Total Cost</span>
-                    <span className="font-bold text-emerald-400">{formatCost(finalRunResult.total_cost_usd)}</span>
+                    <span className="text-[10px] text-zinc-500 block">Total Cost</span>
+                    <span className="font-medium text-zinc-300">{formatCost(finalRunResult.total_cost_usd)}</span>
                   </div>
                 </div>
               </div>
             )}
 
             {/* Live Streaming Test Results */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-muted-foreground">Test Case Stream</h4>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            <div className="space-y-1.5">
+              <h4 className="text-[11px] font-medium text-zinc-500 uppercase">Test Case Stream</h4>
+              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                 {streamCompletedResults.map((tc, i) => (
                   <div
                     key={tc.test_id || i}
-                    className={`p-3 rounded-lg border text-xs space-y-2 font-mono ${
-                      tc.passed
-                        ? "border-emerald-500/30 bg-card/60"
-                        : "border-rose-500/30 bg-rose-500/5"
-                    }`}
+                    className="p-2.5 rounded border border-border bg-card text-xs space-y-1 font-mono"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         {tc.passed ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                         ) : (
-                          <XCircle className="h-4 w-4 text-rose-400" />
+                          <XCircle className="h-3.5 w-3.5 text-zinc-500" />
                         )}
-                        <span className="font-semibold text-foreground">Test: {tc.test_id}</span>
+                        <span className="font-medium text-white">Test: {tc.test_id}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2 text-[10px] text-zinc-400">
                         <span>{formatMs(tc.latency_ms)}</span>
                         <span>•</span>
                         <span>{formatCost(tc.cost_usd)}</span>
                       </div>
                     </div>
-                    <div className="text-[11px] text-muted-foreground truncate pl-6">
-                      {tc.completion ? `"${tc.completion.slice(0, 100)}..."` : "No output"}
+                    <div className="text-[10px] text-zinc-400 truncate pl-5">
+                      {tc.completion ? `"${tc.completion.slice(0, 80)}..."` : "No output"}
                     </div>
                   </div>
                 ))}
@@ -449,46 +441,42 @@ export default function SuitesPage() {
 
       {/* Pre-Flight Cost Estimation Dialog */}
       <Dialog open={isCostModalOpen} onOpenChange={setIsCostModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <Calculator className="h-5 w-5 text-amber-400" />
+            <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-white">
+              <Calculator className="h-4 w-4 text-zinc-400" />
               Pre-Flight Cost Estimation
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription className="text-xs text-zinc-400">
               Projected token usage and USD inference cost before executing suite.
             </DialogDescription>
           </DialogHeader>
           {costEstimate && (
-            <div className="space-y-4 py-3 font-mono text-xs">
-              <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-3">
+            <div className="space-y-3 py-2 font-mono text-xs">
+              <div className="p-3.5 rounded-lg border border-border bg-zinc-950 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Suite:</span>
-                  <span className="font-bold text-foreground">{costEstimate.suite_name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Target Model:</span>
-                  <span className="font-bold text-foreground">{costEstimate.target_model}</span>
+                  <span className="text-zinc-500">Suite:</span>
+                  <span className="font-medium text-zinc-200">{costEstimate.suite_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Test Cases:</span>
-                  <span className="font-bold text-foreground">{costEstimate.total_tests}</span>
-                </div>
-                <div className="flex justify-between border-t border-border/40 pt-2">
-                  <span className="text-muted-foreground">Est. Input Tokens:</span>
-                  <span className="font-bold text-foreground">{costEstimate.estimated_input_tokens}</span>
+                  <span className="text-zinc-500">Target Model:</span>
+                  <span className="font-medium text-zinc-200">{costEstimate.target_model}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Est. Output Tokens:</span>
-                  <span className="font-bold text-foreground">{costEstimate.estimated_output_tokens}</span>
+                  <span className="text-zinc-500">Total Tests:</span>
+                  <span className="font-medium text-zinc-200">{costEstimate.total_tests}</span>
                 </div>
-                <div className="flex justify-between border-t border-border/40 pt-2 text-sm">
-                  <span className="font-bold text-foreground">Projected Cost:</span>
-                  <span className="font-bold text-emerald-400">{formatCost(costEstimate.estimated_cost_usd)}</span>
+                <div className="flex justify-between border-t border-border pt-1.5">
+                  <span className="text-zinc-500">Est. Input:</span>
+                  <span className="font-medium text-zinc-200">{costEstimate.estimated_input_tokens}</span>
                 </div>
-                <div className="flex justify-between text-[11px] text-muted-foreground">
-                  <span>Unit Cost per Test:</span>
-                  <span>{formatCost(costEstimate.cost_per_test_usd)}</span>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Est. Output:</span>
+                  <span className="font-medium text-zinc-200">{costEstimate.estimated_output_tokens}</span>
+                </div>
+                <div className="flex justify-between border-t border-border pt-1.5 text-xs font-semibold">
+                  <span className="text-white">Projected Cost:</span>
+                  <span className="text-white">{formatCost(costEstimate.estimated_cost_usd)}</span>
                 </div>
               </div>
             </div>

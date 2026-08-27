@@ -7,9 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   BarChart3,
   Boxes,
-  Compass,
   Download,
-  Flame,
   LayoutDashboard,
   Play,
   Swords,
@@ -32,7 +30,6 @@ const NAV_ITEMS: NavItem[] = [
     name: "Playground",
     href: "/playground",
     icon: Play,
-    badge: "Live",
   },
   {
     name: "Suites & Tests",
@@ -43,7 +40,6 @@ const NAV_ITEMS: NavItem[] = [
     name: "Arena Shootout",
     href: "/arena",
     icon: Swords,
-    badge: "A/B",
   },
   {
     name: "Analytics & Trends",
@@ -61,10 +57,10 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 shrink-0 border-r border-border/60 bg-card/30 flex flex-col justify-between py-6 px-4">
+    <aside className="w-60 shrink-0 border-r border-border bg-card flex flex-col justify-between py-6 px-3">
       <div className="space-y-6">
         <div className="px-3">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
             Evaluation Suite
           </p>
         </div>
@@ -82,32 +78,23 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all group",
+                  "flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors",
                   isActive
-                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                    ? "bg-zinc-800 text-white font-semibold"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-900"
                 )}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <Icon
                     className={cn(
-                      "h-4 w-4 transition-colors",
-                      isActive
-                        ? "text-emerald-400"
-                        : "text-muted-foreground group-hover:text-foreground"
+                      "h-4 w-4",
+                      isActive ? "text-white" : "text-zinc-400"
                     )}
                   />
                   <span>{item.name}</span>
                 </div>
                 {item.badge && (
-                  <span
-                    className={cn(
-                      "text-[10px] px-1.5 py-0.5 rounded-full font-mono font-medium",
-                      isActive
-                        ? "bg-emerald-500/20 text-emerald-300"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 font-mono">
                     {item.badge}
                   </span>
                 )}
@@ -118,12 +105,12 @@ export function Sidebar() {
       </div>
 
       {/* Footer Info Pill */}
-      <div className="p-3.5 rounded-xl border border-border/60 bg-card/60 space-y-2">
+      <div className="p-3 rounded-lg border border-border bg-zinc-950/80 space-y-1.5">
         <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-foreground">Local-First Engine</span>
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-medium text-zinc-200">Local-First Engine</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-white" />
         </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-[11px] text-zinc-500 leading-relaxed">
           SQLite WAL storage with deterministic metrics & LLM-as-a-judge gates.
         </p>
       </div>
