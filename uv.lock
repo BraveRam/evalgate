@@ -9,6 +9,12 @@ resolution-markers = [
     "python_full_version < '3.12'",
 ]
 
+[manifest]
+members = [
+    "evalgate",
+    "evalgate-workspace",
+]
+
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.7.1"
@@ -752,7 +758,7 @@ wheels = [
 [[package]]
 name = "evalgate"
 version = "0.1.0"
-source = { editable = "." }
+source = { editable = "packages/core" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "fastapi" },
@@ -810,6 +816,38 @@ requires-dist = [
     { name = "types-jsonschema", marker = "extra == 'dev'", specifier = ">=4.23.0.20240813" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12.20240808" },
     { name = "uvicorn", specifier = ">=0.30.6" },
+]
+provides-extras = ["dev"]
+
+[[package]]
+name = "evalgate-workspace"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "evalgate" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+    { name = "types-jsonschema" },
+    { name = "types-pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "evalgate", editable = "packages/core" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.0" },
+    { name = "types-jsonschema", marker = "extra == 'dev'", specifier = ">=4.23.0.20240813" },
+    { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12.20240808" },
 ]
 provides-extras = ["dev"]
 

@@ -1,0 +1,21 @@
+{
+  "name": "evalgate-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:client": "pnpm --filter @evalgate/client dev",
+    "dev:api": "uv run uvicorn evalgate.api.app:app --host 127.0.0.1 --port 8000 --reload",
+    "build": "turbo build",
+    "test": "turbo test",
+    "test:python": "uv run pytest --cov=evalgate",
+    "lint": "turbo lint",
+    "lint:python": "uv run ruff check packages/core/evalgate",
+    "typecheck:python": "uv run mypy packages/core/evalgate",
+    "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.4"
+  },
+  "packageManager": "pnpm@10.17.0"
+}

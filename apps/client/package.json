@@ -1,5 +1,5 @@
 {
-  "name": "evalgate-client",
+  "name": "@evalgate/client",
   "version": "0.1.0",
   "private": true,
   "scripts": {
