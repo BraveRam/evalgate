@@ -7,10 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
@@ -20,7 +18,6 @@ import {
 import {
   BarChart3,
   Boxes,
-  Cpu,
   Download,
   LayoutDashboard,
   Play,
@@ -137,22 +134,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      {/* Footer Info Pill */}
-      <SidebarFooter className="p-3 border-t border-border group-data-[collapsible=icon]:hidden">
-        <div className="p-2.5 rounded-lg border border-border bg-zinc-950/90 space-y-1">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-[11px] text-zinc-300 flex items-center gap-1.5">
-              <Cpu className="h-3 w-3 text-zinc-400" />
-              Local Engine
-            </span>
-            <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-          </div>
-          <p className="text-[10px] text-zinc-500 leading-tight">
-            SQLite WAL + LangGraph Pipeline.
-          </p>
-        </div>
-      </SidebarFooter>
 
       {/* Collapsible Rail Handle */}
       <SidebarRail />
