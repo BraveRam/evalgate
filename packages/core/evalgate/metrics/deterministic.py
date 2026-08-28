@@ -165,6 +165,16 @@ def evaluate_deterministic_assertion(
             reason=f"{'Found' if passed else 'Did not find'} substring: '{target_str}'",
         )
 
+    if atype in (AssertionType.EXACT, AssertionType.EXACT_MATCH):
+        target_str = str(expected or test_case.ground_truth or "")
+        passed = completion.strip() == target_str.strip()
+        return AssertionResult(
+            assertion_type=atype,
+            passed=passed,
+            score=1.0 if passed else 0.0,
+            reason=f"Completion {'matches' if passed else 'does not match'} expected value exactly",
+        )
+
     if atype == AssertionType.NOT_CONTAINS:
         target_str = str(expected or "")
         passed = target_str not in completion

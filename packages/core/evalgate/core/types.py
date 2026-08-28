@@ -30,6 +30,8 @@ class AssertionType(str, Enum):
     SQL_SYNTAX = "sql_syntax"
     CONTAINS = "contains"
     NOT_CONTAINS = "not_contains"
+    EXACT = "exact"
+    EXACT_MATCH = "exact_match"
     REGEX = "regex"
     STARTS_WITH = "starts_with"
     ENDS_WITH = "ends_with"
