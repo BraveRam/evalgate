@@ -46,6 +46,7 @@ class AssertionType(str, Enum):
     BIAS = "bias"
     INTENT = "intent"
     DYNAMIC_RUBRIC = "dynamic_rubric"
+    DYNAMIC = "dynamic"
 
 
 class TargetConfig(BaseModel):

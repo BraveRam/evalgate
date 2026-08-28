@@ -303,6 +303,7 @@ export default function PlaygroundPage() {
             </CardHeader>
             <CardContent className="p-4 pt-1 space-y-2.5">
               {assertions.map((a, i) => {
+                const isDynamic = a.type === "dynamic" || a.type === "dynamic_rubric";
                 const isSemantic = [
                   "faithfulness",
                   "hallucination",
@@ -311,6 +312,7 @@ export default function PlaygroundPage() {
                   "bias",
                   "intent",
                   "dynamic",
+                  "dynamic_rubric",
                 ].includes(a.type);
 
                 return (
@@ -324,7 +326,18 @@ export default function PlaygroundPage() {
                         onValueChange={(val) =>
                           updateAssertion(i, {
                             type: val as AssertionType,
-                            threshold: isSemantic ? 0.85 : undefined,
+                            threshold: [
+                              "faithfulness",
+                              "hallucination",
+                              "relevancy",
+                              "coherence",
+                              "bias",
+                              "intent",
+                              "dynamic",
+                              "dynamic_rubric",
+                            ].includes(val)
+                              ? 0.85
+                              : undefined,
                           })
                         }
                       >
@@ -364,6 +377,23 @@ export default function PlaygroundPage() {
                         </Button>
                       </div>
                     </div>
+
+                    {isDynamic && (
+                      <div className="space-y-1 pt-0.5">
+                        <label className="text-[10px] uppercase font-semibold text-zinc-400 block tracking-wider">
+                          Custom Rubric Criteria
+                        </label>
+                        <Textarea
+                          value={a.rubric || a.value || ""}
+                          onChange={(e) =>
+                            updateAssertion(i, { rubric: e.target.value, value: e.target.value })
+                          }
+                          placeholder="e.g. Must be polite, mention the 30-day refund window, and provide clear next steps."
+                          className="font-mono text-xs min-h-[64px] bg-zinc-900 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 resize-y"
+                          rows={2}
+                        />
+                      </div>
+                    )}
 
                     {!isSemantic && (
                       <Input

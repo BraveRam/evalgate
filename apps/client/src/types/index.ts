@@ -17,7 +17,8 @@ export type AssertionType =
   | "coherence"
   | "bias"
   | "intent"
-  | "dynamic";
+  | "dynamic"
+  | "dynamic_rubric";
 
 export interface TargetConfig {
   type: TargetType;

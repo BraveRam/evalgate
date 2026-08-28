@@ -26,6 +26,7 @@ SEMANTIC_METRIC_MAP: dict[AssertionType, type[BaseSemanticMetric]] = {
     AssertionType.BIAS: BiasMetric,
     AssertionType.INTENT: IntentMetric,
     AssertionType.DYNAMIC_RUBRIC: DynamicRubricMetric,
+    AssertionType.DYNAMIC: DynamicRubricMetric,
 }
 
 
