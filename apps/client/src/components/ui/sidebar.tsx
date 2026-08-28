@@ -439,6 +439,19 @@ const SidebarGroupLabel = React.forwardRef<
 });
 SidebarGroupLabel.displayName = "SidebarGroupLabel";
 
+const SidebarGroupContent = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div">
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    data-sidebar="group-content"
+    className={cn("w-full text-sm", className)}
+    {...props}
+  />
+));
+SidebarGroupContent.displayName = "SidebarGroupContent";
+
 const SidebarMenu = React.forwardRef<
   HTMLUListElement,
   React.ComponentProps<"ul">
@@ -568,6 +581,7 @@ export {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarInput,
