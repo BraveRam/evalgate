@@ -95,9 +95,6 @@ export function AppSidebar() {
       {/* Main Navigation Content */}
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase font-mono tracking-wider text-zinc-500 px-2 group-data-[collapsible=icon]:hidden">
-            Platform
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {NAV_ITEMS.map((item) => {
