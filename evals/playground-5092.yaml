@@ -1,0 +1,48 @@
+name: playground-5092
+description: Exported from Evaluation Playground
+target:
+  type: !!python/object/apply:evalgate.core.types.TargetType
+  - prompt
+  model: openai/gpt-4o-mini
+  template: 'Context: {{context}}
+
+
+    Question: {{question}}
+
+
+    Answer:'
+  system_prompt: You are a precise financial analyst assistant. Answer user queries
+    concisely using facts from context.
+  temperature: 0.0
+  allow_private_endpoints: false
+default_assertions: []
+tests:
+- id: playground-5092-case-1
+  description: Playground exported test case
+  vars:
+    context: ACME Corp reported Q3 2024 revenue of $45.2M, up 12% YoY with net margin
+      of 18.5%.
+    question: What was ACME Corp's Q3 revenue and net margin?
+  assertions:
+  - type: !!python/object/apply:evalgate.core.types.AssertionType
+    - contains
+    value: $45.2M
+    strict: true
+  - type: !!python/object/apply:evalgate.core.types.AssertionType
+    - contains
+    value: 18.5%
+    strict: true
+  - type: !!python/object/apply:evalgate.core.types.AssertionType
+    - faithfulness
+    threshold: 0.85
+    strict: true
+  - type: !!python/object/apply:evalgate.core.types.AssertionType
+    - hallucination
+    threshold: 0.85
+    strict: true
+  - type: !!python/object/apply:evalgate.core.types.AssertionType
+    - not_contains
+    value: ''
+    strict: true
+  metadata: {}
+min_pass_rate: 1.0

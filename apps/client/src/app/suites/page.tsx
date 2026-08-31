@@ -1,63 +1,127 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
 import { streamSuiteRun } from "@/lib/ws";
 import {
   CostEstimateResponse,
+  SuiteConfig,
   SuiteRunResult,
+  SuiteSummary,
   TestCaseResult,
 } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
+  AlertTriangle,
+  ArrowRight,
   Boxes,
   Calculator,
+  Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
+  Clock,
+  Coins,
+  Copy,
+  Cpu,
+  ExternalLink,
   FileCode,
+  Filter,
+  Layers,
+  Play,
+  Plus,
   RefreshCw,
+  Scale,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  Terminal,
+  Trash2,
   XCircle,
   Zap,
 } from "lucide-react";
 
+// Safe YAML serializer for source preview
+function jsonToYaml(obj: any, indent = 0): string {
+  const spaces = " ".repeat(indent);
+  if (obj === null || obj === undefined) return "null";
+  if (typeof obj === "string") {
+    if (obj.includes("\n")) {
+      return "|\n" + obj.split("\n").map((l) => spaces + "  " + l).join("\n");
+    }
+    return `"${obj.replace(/"/g, '\\"')}"`;
+  }
+  if (typeof obj === "number" || typeof obj === "boolean") return String(obj);
+  if (Array.isArray(obj)) {
+    if (obj.length === 0) return "[]";
+    return "\n" + obj.map((item) => `${spaces}- ` + jsonToYaml(item, indent + 2).trimStart()).join("\n");
+  }
+  if (typeof obj === "object") {
+    const keys = Object.keys(obj);
+    if (keys.length === 0) return "{}";
+    return (
+      (indent > 0 ? "\n" : "") +
+      keys
+        .map((k) => `${spaces}${k}: ` + jsonToYaml(obj[k], indent + 2).trimStart())
+        .join("\n")
+    );
+  }
+  return String(obj);
+}
+
 export default function SuitesPage() {
   const queryClient = useQueryClient();
+
+  // Search, Filter, and Sort Controls
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("name");
+
   const [selectedSuiteName, setSelectedSuiteName] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "cases" | "history" | "yaml">("overview");
 
-  // TanStack Query: Fetch all suites
-  const {
-    data: suites = [],
-    refetch: refetchSuites,
-  } = useQuery({
-    queryKey: ["suites"],
-    queryFn: api.listSuites,
-  });
-
-  // Select first suite by default if none selected
-  const activeSuiteName = selectedSuiteName || (suites.length > 0 ? suites[0].name : null);
-
-  // TanStack Query: Fetch details for selected suite
-  const {
-    data: selectedSuite,
-    isLoading: isDetailsLoading,
-  } = useQuery({
-    queryKey: ["suite", activeSuiteName],
-    queryFn: () => (activeSuiteName ? api.getSuite(activeSuiteName) : null),
-    enabled: !!activeSuiteName,
-  });
+  // Create Suite Modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newSuiteName, setNewSuiteName] = useState("");
+  const [newSuiteDescription, setNewSuiteDescription] = useState("");
+  const [newSuiteModel, setNewSuiteModel] = useState("openai/gpt-4o-mini");
+  const [newSuiteType, setNewSuiteType] = useState("prompt");
+  const [newSuiteMinPassRate, setNewSuiteMinPassRate] = useState(1.0);
+  const [newSuiteTemplate, setNewSuiteTemplate] = useState("Context: {{context}}\n\nQuestion: {{question}}\n\nAnswer:");
+  const [isCopiedYaml, setIsCopiedYaml] = useState(false);
+  const [isCopiedPath, setIsCopiedPath] = useState(false);
 
   // Live Stream Runner Modal state
   const [isStreamingModalOpen, setIsStreamingModalOpen] = useState(false);
@@ -72,6 +136,93 @@ export default function SuitesPage() {
   const [costEstimate, setCostEstimate] = useState<CostEstimateResponse | null>(null);
   const [isCostModalOpen, setIsCostModalOpen] = useState(false);
 
+  // Expanded Test Case row in matrix
+  const [expandedCaseId, setExpandedCaseId] = useState<string | null>(null);
+
+  // TanStack Queries
+  const { data: suites = [], isLoading: isSuitesLoading, refetch: refetchSuites } = useQuery({
+    queryKey: ["suites"],
+    queryFn: api.listSuites,
+  });
+
+  const { data: allRuns = [] } = useQuery({
+    queryKey: ["runs", "all"],
+    queryFn: () => api.listRuns(undefined, 100),
+  });
+
+  // Calculate latest run per suite
+  const suiteHealthMap = useMemo(() => {
+    const map = new Map<string, { latestRun?: SuiteRunResult; status: "PASSING" | "FAILING" | "NEVER_RUN" }>();
+    for (const s of suites) {
+      const suiteRuns = allRuns.filter((r) => r.suite_name === s.name);
+      if (suiteRuns.length === 0) {
+        map.set(s.name, { status: "NEVER_RUN" });
+      } else {
+        const latest = suiteRuns[0];
+        map.set(s.name, {
+          latestRun: latest,
+          status: latest.passed ? "PASSING" : "FAILING",
+        });
+      }
+    }
+    return map;
+  }, [suites, allRuns]);
+
+  // Filtered & Sorted Suites
+  const filteredSuites = useMemo(() => {
+    return suites
+      .filter((s) => {
+        // Search filter
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matchName = s.name.toLowerCase().includes(q);
+          const matchDesc = (s.description || "").toLowerCase().includes(q);
+          const matchModel = (s.target_model || "").toLowerCase().includes(q);
+          if (!matchName && !matchDesc && !matchModel) return false;
+        }
+
+        // Status filter
+        const health = suiteHealthMap.get(s.name)?.status || "NEVER_RUN";
+        if (statusFilter === "passing" && health !== "PASSING") return false;
+        if (statusFilter === "failing" && health !== "FAILING") return false;
+        if (statusFilter === "never_run" && health !== "NEVER_RUN") return false;
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === "name") return a.name.localeCompare(b.name);
+        if (sortBy === "tests") return (b.test_count || 0) - (a.test_count || 0);
+        if (sortBy === "pass_rate") return (b.min_pass_rate || 0) - (a.min_pass_rate || 0);
+        return 0;
+      });
+  }, [suites, searchQuery, statusFilter, sortBy, suiteHealthMap]);
+
+  // Active Selected Suite
+  const activeSuiteName =
+    selectedSuiteName && suites.some((s) => s.name === selectedSuiteName)
+      ? selectedSuiteName
+      : filteredSuites.length > 0
+      ? filteredSuites[0].name
+      : suites.length > 0
+      ? suites[0].name
+      : null;
+
+  // Selected Suite Details Query
+  const { data: selectedSuite, isLoading: isDetailsLoading } = useQuery({
+    queryKey: ["suite", activeSuiteName],
+    queryFn: () => (activeSuiteName ? api.getSuite(activeSuiteName) : null),
+    enabled: !!activeSuiteName,
+  });
+
+  // Runs for the active selected suite
+  const selectedSuiteRuns = useMemo(() => {
+    if (!activeSuiteName) return [];
+    return allRuns.filter((r) => r.suite_name === activeSuiteName);
+  }, [allRuns, activeSuiteName]);
+
+  const activeSuiteHealth = activeSuiteName ? suiteHealthMap.get(activeSuiteName) : null;
+  const latestSuiteRun = activeSuiteHealth?.latestRun || (selectedSuiteRuns.length > 0 ? selectedSuiteRuns[0] : null);
+
   // TanStack Mutation: Cost estimation
   const estimateMutation = useMutation({
     mutationFn: (suiteName: string) => api.estimateCost(suiteName),
@@ -84,6 +235,46 @@ export default function SuitesPage() {
     },
   });
 
+  // Create Suite Mutation
+  const createSuiteMutation = useMutation({
+    mutationFn: async () => {
+      const formattedName = newSuiteName.trim().toLowerCase().replace(/\s+/g, "-");
+      return api.createSuite(
+        {
+          name: formattedName,
+          description: newSuiteDescription || "Custom YAML test suite",
+          min_pass_rate: newSuiteMinPassRate,
+          target: {
+            type: newSuiteType as any,
+            model: newSuiteModel,
+            template: newSuiteTemplate,
+            temperature: 0.0,
+          },
+          tests: [
+            {
+              id: `${formattedName}-1`,
+              description: "Initial test case",
+              vars: {
+                context: "Sample reference context text.",
+                question: "What is the key information?",
+              },
+              assertions: [{ type: "contains", value: "information", strict: true }],
+            },
+          ],
+        },
+        `${formattedName}.yaml`
+      );
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["suites"] });
+      setSelectedSuiteName(newSuiteName.trim().toLowerCase().replace(/\s+/g, "-"));
+      setIsCreateModalOpen(false);
+      setNewSuiteName("");
+      setNewSuiteDescription("");
+    },
+  });
+
+  // Live WebSocket Streaming Execution
   const handleStartLiveStream = (suiteName: string) => {
     setStreamingSuiteName(suiteName);
     setStreamTotalTests(0);
@@ -114,10 +305,24 @@ export default function SuitesPage() {
     });
   };
 
+  const handleCopyYaml = () => {
+    if (!selectedSuite) return;
+    navigator.clipboard.writeText(jsonToYaml(selectedSuite));
+    setIsCopiedYaml(true);
+    setTimeout(() => setIsCopiedYaml(false), 2000);
+  };
+
+  const handleCopyPath = () => {
+    if (!activeSuiteName) return;
+    navigator.clipboard.writeText(`evals/${activeSuiteName}.yaml`);
+    setIsCopiedPath(true);
+    setTimeout(() => setIsCopiedPath(false), 2000);
+  };
+
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* 1. Header Toolbar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
             <Boxes className="h-5 w-5 text-white" />
@@ -128,72 +333,167 @@ export default function SuitesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => refetchSuites()} variant="outline" size="sm" className="gap-1.5 text-xs">
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            variant="default"
+            size="sm"
+            className="gap-1.5 text-xs h-8"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Create Suite
+          </Button>
+          <Button
+            onClick={() => {
+              refetchSuites();
+              queryClient.invalidateQueries({ queryKey: ["runs"] });
+            }}
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs h-8 text-zinc-300 hover:text-white"
+          >
             <RefreshCw className="h-3 w-3" />
             Refresh
           </Button>
-          {activeSuiteName && (
-            <Button
-              onClick={() => handleStartLiveStream(activeSuiteName)}
-              variant="default"
-              size="sm"
-              className="gap-1.5 text-xs"
-            >
-              <Zap className="h-3 w-3 fill-current" />
-              Run Suite Live
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Grid: Left Suites List, Right Suite Inspector */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Suites List */}
+      {/* 2. Main 2-Column Content Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* ========================================================================= */}
+        {/* LEFT COLUMN: Search, Filters & Suite List                                 */}
+        {/* ========================================================================= */}
         <div className="lg:col-span-4 space-y-3">
-          <h3 className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider px-1">
-            Discovered Suites ({suites.length})
-          </h3>
+          {/* Search and Filters Bar */}
           <div className="space-y-2">
-            {suites.map((s) => {
-              const isSelected = s.name === activeSuiteName;
-              return (
-                <div
-                  key={s.name}
-                  onClick={() => setSelectedSuiteName(s.name)}
-                  className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
-                    isSelected
-                      ? "border-zinc-600 bg-zinc-900/90 shadow-sm"
-                      : "border-border bg-card hover:border-zinc-700 hover:bg-zinc-900/40"
-                  }`}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search suites by name or model..."
+                className="pl-8 h-8 text-xs bg-zinc-950 border-border"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-7 text-xs flex-1 font-mono bg-zinc-950">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs">All Statuses</SelectItem>
+                  <SelectItem value="passing" className="text-xs">Passing</SelectItem>
+                  <SelectItem value="failing" className="text-xs">Failing</SelectItem>
+                  <SelectItem value="never_run" className="text-xs">Never Run</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="h-7 text-xs flex-1 font-mono bg-zinc-950">
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name" className="text-xs">Name (A-Z)</SelectItem>
+                  <SelectItem value="tests" className="text-xs">Most Tests</SelectItem>
+                  <SelectItem value="pass_rate" className="text-xs">Gate Threshold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Suites List */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between px-1 text-[11px] text-zinc-500 font-mono">
+              <span>SUITES ({filteredSuites.length})</span>
+            </div>
+
+            {filteredSuites.length === 0 ? (
+              <div className="p-6 rounded-lg border border-dashed border-border text-center text-xs text-zinc-500 space-y-2">
+                <p>No matching suites found.</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("all");
+                  }}
+                  className="text-xs text-zinc-400 hover:text-white h-7"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-semibold text-xs text-white flex items-center gap-1.5">
-                        <FileCode className="h-3.5 w-3.5 text-zinc-400" />
-                        {s.name}
-                      </h4>
-                      <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">
-                        {s.description || "No description provided"}
-                      </p>
+                  Clear Filters
+                </Button>
+              </div>
+            ) : (
+              filteredSuites.map((s) => {
+                const isSelected = s.name === activeSuiteName;
+                const health = suiteHealthMap.get(s.name);
+                const status = health?.status || "NEVER_RUN";
+
+                return (
+                  <div
+                    key={s.name}
+                    onClick={() => setSelectedSuiteName(s.name)}
+                    className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
+                      isSelected
+                        ? "border-zinc-500 bg-zinc-900/90 shadow-sm"
+                        : "border-border bg-card hover:border-zinc-700 hover:bg-zinc-900/40"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-xs text-white truncate">
+                            {s.name}
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">
+                          {s.description || "Prompt evaluation and assertion suite."}
+                        </p>
+                      </div>
+
+                      {/* Status Indicator Badge */}
+                      <Badge
+                        variant="outline"
+                        className={`text-[9px] px-1.5 py-0 font-mono shrink-0 ${
+                          status === "PASSING"
+                            ? "border-zinc-700 bg-zinc-900 text-zinc-200"
+                            : status === "FAILING"
+                            ? "border-zinc-800 bg-zinc-950 text-zinc-400"
+                            : "border-zinc-900 bg-zinc-950 text-zinc-600"
+                        }`}
+                      >
+                        {status === "PASSING"
+                          ? "PASSING"
+                          : status === "FAILING"
+                          ? "FAILING"
+                          : "NEVER RUN"}
+                      </Badge>
                     </div>
-                    <ChevronRight className={`h-3.5 w-3.5 text-zinc-500 transition-transform ${isSelected ? "translate-x-0.5 text-white" : ""}`} />
+
+                    <div className="flex items-center gap-2 mt-2.5 text-[10px] font-mono text-zinc-500">
+                      <span>{s.test_count ?? 0} tests</span>
+                      <span>•</span>
+                      <span className="truncate max-w-[110px] text-zinc-400">
+                        {s.target_model || "default"}
+                      </span>
+                      {s.min_pass_rate !== undefined && !isNaN(s.min_pass_rate) && (
+                        <>
+                          <span>•</span>
+                          <span className="text-zinc-400">
+                            {Math.round(s.min_pass_rate * 100)}% gate
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-2.5 text-[10px] font-mono text-zinc-400">
-                    <span>{s.test_count} tests</span>
-                    <span>•</span>
-                    <span className="truncate max-w-[130px]">{s.target_model}</span>
-                    <span>•</span>
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 border-zinc-800 text-zinc-400">
-                      {formatPercent(s.min_pass_rate)} gate
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
-        {/* Right: Suite Detail Inspector */}
+        {/* ========================================================================= */}
+        {/* RIGHT COLUMN: Selected Suite Detail & Health Inspector                    */}
+        {/* ========================================================================= */}
         <div className="lg:col-span-8">
           {!selectedSuite ? (
             <Card className="border-border bg-card h-80 flex items-center justify-center text-center p-8 text-zinc-500 text-xs">
@@ -201,130 +501,515 @@ export default function SuitesPage() {
             </Card>
           ) : (
             <div className="space-y-5">
-              {/* Suite Header Info Card */}
+              {/* 1. Header & Health Summary Banner */}
               <Card className="border-border bg-card">
                 <CardHeader className="p-5 pb-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
-                        {selectedSuite.name}
-                        <Badge variant="outline" className="font-mono text-[10px] text-zinc-300 border-zinc-700 bg-zinc-900">
-                          {formatPercent(selectedSuite.min_pass_rate ?? 1.0)} required
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-base font-semibold text-white">
+                          {selectedSuite.name}
+                        </CardTitle>
+                        <Badge
+                          variant="outline"
+                          className={`font-mono text-[10px] ${
+                            activeSuiteHealth?.status === "PASSING"
+                              ? "border-zinc-700 bg-zinc-900 text-zinc-200"
+                              : activeSuiteHealth?.status === "FAILING"
+                              ? "border-zinc-800 bg-zinc-950 text-zinc-400"
+                              : "border-zinc-900 bg-zinc-950 text-zinc-600"
+                          }`}
+                        >
+                          {activeSuiteHealth?.status === "PASSING"
+                            ? "PASSING"
+                            : activeSuiteHealth?.status === "FAILING"
+                            ? "FAILING"
+                            : "NEVER RUN"}
                         </Badge>
-                      </CardTitle>
-                      <CardDescription className="text-xs text-zinc-400 mt-0.5">
-                        {selectedSuite.description}
+                      </div>
+                      <CardDescription className="text-xs text-zinc-400 mt-1">
+                        {selectedSuite.description || "Declarative prompt evaluation suite."}
                       </CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
+
+                    {/* Suite Action Buttons */}
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <Button
                         onClick={() => estimateMutation.mutate(selectedSuite.name)}
                         disabled={estimateMutation.isPending}
                         variant="outline"
                         size="sm"
-                        className="text-xs gap-1.5 h-8"
+                        className="text-xs gap-1.5 h-8 text-zinc-300 hover:text-white whitespace-nowrap shrink-0"
                       >
-                        <Calculator className="h-3 w-3 text-zinc-400" />
+                        <Calculator className="h-3.5 w-3.5 text-zinc-400" />
                         {estimateMutation.isPending ? "Estimating..." : "Estimate Cost"}
                       </Button>
                       <Button
                         onClick={() => handleStartLiveStream(selectedSuite.name)}
                         variant="default"
                         size="sm"
-                        className="text-xs gap-1.5 h-8"
+                        className="text-xs gap-1.5 h-8 whitespace-nowrap shrink-0"
                       >
-                        <Zap className="h-3 w-3 fill-current" />
-                        Run Suite
+                        <Zap className="h-3.5 w-3.5 fill-current" />
+                        Run Suite Live
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-5 pt-0 space-y-3.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-md bg-zinc-950 border border-border text-xs font-mono">
+
+                {/* Telemetry & Spec Strip */}
+                <CardContent className="p-5 pt-0 space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-lg bg-zinc-950 border border-border text-xs font-mono">
                     <div>
-                      <span className="text-[10px] text-zinc-500 uppercase block">Target Model</span>
-                      <span className="font-medium text-zinc-200">{selectedSuite.target.model}</span>
+                      <span className="text-[10px] text-zinc-500 uppercase block">Architecture</span>
+                      <span className="font-medium text-zinc-200 truncate block">
+                        {selectedSuite.target?.type || "prompt"}
+                      </span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-zinc-500 uppercase block">Target Type</span>
-                      <span className="font-medium text-zinc-200">{selectedSuite.target.type}</span>
+                      <span className="text-[10px] text-zinc-500 uppercase block">Target Model</span>
+                      <span className="font-medium text-zinc-200 truncate block">
+                        {selectedSuite.target?.model || "default"}
+                      </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-zinc-500 uppercase block">Test Cases</span>
-                      <span className="font-medium text-zinc-200">{selectedSuite.tests.length} cases</span>
+                      <span className="font-medium text-zinc-200">
+                        {selectedSuite.tests?.length || 0} cases
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-zinc-500 uppercase block">Quality Gate</span>
+                      <span className="font-medium text-zinc-200">
+                        {selectedSuite.min_pass_rate !== undefined && !isNaN(selectedSuite.min_pass_rate)
+                          ? `${Math.round(selectedSuite.min_pass_rate * 100)}% Pass`
+                          : "No gate configured"}
+                      </span>
                     </div>
                   </div>
 
-                  {selectedSuite.target.template && (
-                    <div>
-                      <label className="text-[11px] font-medium text-zinc-400 block mb-1">
-                        Prompt Template
-                      </label>
-                      <div className="p-2.5 rounded-md bg-black border border-border font-mono text-xs text-zinc-200 whitespace-pre-wrap">
-                        {selectedSuite.target.template}
+                  {/* Health Telemetry Bar (if runs exist) */}
+                  {latestSuiteRun && (
+                    <div className="p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                      <div className="flex items-center gap-2">
+                        {latestSuiteRun.passed ? (
+                          <CheckCircle2 className="h-4 w-4 text-white" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-zinc-500" />
+                        )}
+                        <span className="text-white font-medium">
+                          Latest Run: {formatPercent(latestSuiteRun.pass_rate)} ({latestSuiteRun.passed_tests}/{latestSuiteRun.total_tests} passed)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-zinc-400 text-[11px]">
+                        <span>P50: {formatMs(latestSuiteRun.p50_latency_ms)}</span>
+                        <span>•</span>
+                        <span>Cost: {formatCost(latestSuiteRun.total_cost_usd)}</span>
+                        <span>•</span>
+                        <span>
+                          {new Date(latestSuiteRun.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                       </div>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Test Cases Matrix */}
-              <div className="space-y-2.5">
-                <h3 className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-                  Test Case Matrix ({selectedSuite.tests.length})
-                </h3>
-                <div className="space-y-2.5">
-                  {selectedSuite.tests.map((tc, idx) => (
-                    <Card key={tc.id || idx} className="border-border bg-card">
-                      <CardHeader className="p-3.5 pb-1.5 flex flex-row items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="font-mono text-[10px] bg-zinc-800 text-zinc-200">
-                            #{tc.id}
-                          </Badge>
-                          {tc.description && (
-                            <span className="text-xs text-zinc-400">{tc.description}</span>
-                          )}
-                        </div>
-                        <span className="text-[10px] font-mono text-zinc-500">
-                          {Object.keys(tc.vars).length} vars • {(tc.assertions || []).length} assertions
-                        </span>
-                      </CardHeader>
-                      <CardContent className="p-3.5 pt-1 space-y-2">
-                        {/* Variables */}
-                        <div className="p-2 rounded bg-zinc-950 border border-border text-xs font-mono space-y-0.5">
-                          {Object.entries(tc.vars).map(([k, v]) => (
-                            <div key={k} className="flex items-start gap-2">
-                              <span className="text-zinc-400 shrink-0">{k}:</span>
-                              <span className="text-zinc-200 truncate">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
-                            </div>
-                          ))}
-                        </div>
+              {/* 2. Detail Tabs: Overview, Test Matrix, Run History, YAML Source */}
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+                <TabsList className="grid grid-cols-4 w-full bg-zinc-950 border border-border h-9">
+                  <TabsTrigger value="overview" className="text-xs">
+                    Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="cases" className="text-xs">
+                    Test Cases ({selectedSuite.tests?.length || 0})
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="text-xs">
+                    History ({selectedSuiteRuns.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="yaml" className="text-xs">
+                    YAML Source
+                  </TabsTrigger>
+                </TabsList>
 
-                        {/* Assertions */}
-                        {tc.assertions && tc.assertions.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {tc.assertions.map((a, aIdx) => (
-                              <Badge
-                                key={aIdx}
-                                variant="outline"
-                                className="text-[10px] font-mono border-border bg-zinc-950 text-zinc-400"
-                              >
-                                {a.type} {a.value ? `="${a.value}"` : ""} {a.threshold ? `(>=${a.threshold})` : ""}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
+                {/* TAB 1: OVERVIEW */}
+                <TabsContent value="overview" className="space-y-4 pt-3">
+                  {selectedSuite.target?.template && (
+                    <Card className="border-border bg-card">
+                      <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+                        <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
+                          <Terminal className="h-3.5 w-3.5 text-zinc-400" />
+                          Prompt Template
+                        </CardTitle>
+                        <Link href="/playground">
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px] text-zinc-400 hover:text-white gap-1">
+                            <ExternalLink className="h-3 w-3" />
+                            Open in Playground
+                          </Button>
+                        </Link>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-1">
+                        <div className="p-3 rounded-md bg-black border border-zinc-900 font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed select-text max-h-60 overflow-y-auto">
+                          {selectedSuite.target.template}
+                        </div>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
-              </div>
+                  )}
+
+                  {selectedSuite.target?.system_prompt && (
+                    <Card className="border-border bg-card">
+                      <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-xs font-semibold text-white">System Prompt</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-1">
+                        <div className="p-3 rounded-md bg-zinc-950 border border-border font-mono text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed select-text">
+                          {selectedSuite.target.system_prompt}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                {/* TAB 2: TEST CASES MATRIX */}
+                <TabsContent value="cases" className="space-y-3 pt-3">
+                  <div className="space-y-2.5">
+                    {selectedSuite.tests?.map((tc, idx) => {
+                      const isExpanded = expandedCaseId === (tc.id || String(idx));
+                      const matchingResult = latestSuiteRun?.test_case_results?.find(
+                        (r) => r.test_id === tc.id
+                      );
+
+                      return (
+                        <Card key={tc.id || idx} className="border-border bg-card overflow-hidden">
+                          <div
+                            onClick={() =>
+                              setExpandedCaseId(isExpanded ? null : tc.id || String(idx))
+                            }
+                            className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-zinc-900/40 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Badge variant="secondary" className="font-mono text-[10px] bg-zinc-900 border border-zinc-800 text-zinc-200">
+                                #{tc.id}
+                              </Badge>
+                              {tc.description && (
+                                <span className="text-xs text-zinc-300 font-medium">
+                                  {tc.description}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] font-mono text-zinc-500">
+                                {Object.keys(tc.vars || {}).length} vars • {(tc.assertions || []).length} assertions
+                              </span>
+                              {matchingResult && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] font-mono ${
+                                    matchingResult.passed
+                                      ? "border-zinc-700 bg-zinc-900 text-zinc-200"
+                                      : "border-zinc-800 bg-zinc-950 text-zinc-400"
+                                  }`}
+                                >
+                                  {matchingResult.passed ? "PASSED" : "FAILED"}
+                                </Badge>
+                              )}
+                              <ChevronDown
+                                className={`h-3.5 w-3.5 text-zinc-500 transition-transform ${
+                                  isExpanded ? "rotate-180 text-white" : ""
+                                }`}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Expanded Case Details */}
+                          {isExpanded && (
+                            <CardContent className="p-3.5 pt-0 border-t border-border/50 space-y-3 bg-zinc-950/60">
+                              {/* Variables */}
+                              <div>
+                                <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-1">
+                                  Variables Payload
+                                </span>
+                                <div className="p-2.5 rounded bg-black border border-border text-xs font-mono space-y-1">
+                                  {Object.entries(tc.vars || {}).map(([k, v]) => (
+                                    <div key={k} className="flex items-start gap-2">
+                                      <span className="text-zinc-500 shrink-0">{k}:</span>
+                                      <span className="text-zinc-200 break-all select-text">
+                                        {typeof v === "object" ? JSON.stringify(v, null, 2) : String(v)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Assertions */}
+                              {tc.assertions && tc.assertions.length > 0 && (
+                                <div>
+                                  <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-1">
+                                    Quality Gate Assertions
+                                  </span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {tc.assertions.map((a, aIdx) => {
+                                      const formattedVal =
+                                        typeof a.value === "object" && a.value !== null
+                                          ? `(${Object.keys(a.value.properties || {}).length} properties)`
+                                          : a.value
+                                          ? `="${a.value}"`
+                                          : "";
+
+                                      return (
+                                        <Badge
+                                          key={aIdx}
+                                          variant="outline"
+                                          className="text-[10px] font-mono border-zinc-800 bg-zinc-950 text-zinc-300"
+                                        >
+                                          {a.type} {formattedVal} {a.threshold ? `(>=${a.threshold})` : ""}
+                                        </Badge>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Latest Execution Output (if available) */}
+                              {matchingResult?.completion && (
+                                <div>
+                                  <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-1">
+                                    Latest Completion ({formatMs(matchingResult.latency_ms)})
+                                  </span>
+                                  <div className="p-2.5 rounded bg-black border border-zinc-800 text-xs font-mono text-zinc-300 whitespace-pre-wrap select-text max-h-40 overflow-y-auto">
+                                    {matchingResult.completion}
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          )}
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </TabsContent>
+
+                {/* TAB 3: LOCAL RUN HISTORY */}
+                <TabsContent value="history" className="space-y-3 pt-3">
+                  {selectedSuiteRuns.length === 0 ? (
+                    <Card className="border-border bg-card p-8 text-center text-xs text-zinc-500 space-y-2">
+                      <p>No historical runs recorded for this suite.</p>
+                      <Button
+                        onClick={() => handleStartLiveStream(selectedSuite.name)}
+                        variant="default"
+                        size="sm"
+                        className="text-xs"
+                      >
+                        Execute First Run
+                      </Button>
+                    </Card>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedSuiteRuns.map((run) => (
+                        <div
+                          key={run.run_id}
+                          className="p-3.5 rounded-lg border border-border bg-card flex items-center justify-between gap-3 text-xs font-mono"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            {run.passed ? (
+                              <Badge variant="outline" className="border-zinc-700 bg-zinc-900 text-zinc-200 text-[10px]">
+                                PASSED
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-zinc-800 bg-zinc-950 text-zinc-400 text-[10px]">
+                                FAILED
+                              </Badge>
+                            )}
+                            <span className="text-white font-medium">
+                              {formatPercent(run.pass_rate)} ({run.passed_tests}/{run.total_tests})
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-zinc-400 text-[11px]">
+                            <span>P50: {formatMs(run.p50_latency_ms)}</span>
+                            <span>•</span>
+                            <span>{formatCost(run.total_cost_usd)}</span>
+                            <span>•</span>
+                            <span>{new Date(run.timestamp).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* TAB 4: YAML SOURCE & EDITING ACTIONS */}
+                <TabsContent value="yaml" className="space-y-3 pt-3">
+                  <Card className="border-border bg-card">
+                    <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileCode className="h-3.5 w-3.5 text-zinc-400" />
+                        <span className="font-mono text-xs text-zinc-300">
+                          evals/{selectedSuite.name}.yaml
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={handleCopyPath}
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px] gap-1 text-zinc-300 hover:text-white"
+                        >
+                          {isCopiedPath ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          {isCopiedPath ? "Copied Path" : "Copy Path"}
+                        </Button>
+                        <Button
+                          onClick={handleCopyYaml}
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px] gap-1 text-zinc-300 hover:text-white"
+                        >
+                          {isCopiedYaml ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          {isCopiedYaml ? "Copied YAML" : "Copy YAML"}
+                        </Button>
+                        <Link href="/playground">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-7 text-[11px] gap-1"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Open in Playground
+                          </Button>
+                        </Link>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-1">
+                      <pre className="p-3.5 rounded-md bg-black border border-zinc-900 font-mono text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed select-text max-h-96 overflow-y-auto">
+                        {jsonToYaml(selectedSuite)}
+                      </pre>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </div>
       </div>
 
-      {/* Live WebSocket Streaming Test Runner Dialog */}
+      {/* ========================================================================= */}
+      {/* MODAL: Create New Suite                                                  */}
+      {/* ========================================================================= */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold text-white flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Create Evaluation Suite
+            </DialogTitle>
+            <DialogDescription className="text-xs text-zinc-400">
+              Define a new declarative test suite saved to <code className="text-zinc-300">./evals/*.yaml</code>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs">
+            <div>
+              <label className="text-[11px] font-medium text-zinc-400 block mb-1">
+                Suite Name (Slug)
+              </label>
+              <Input
+                value={newSuiteName}
+                onChange={(e) => setNewSuiteName(e.target.value)}
+                placeholder="e.g. customer-support-gate"
+                className="font-mono text-xs bg-zinc-950 border-border"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-medium text-zinc-400 block mb-1">
+                Description
+              </label>
+              <Input
+                value={newSuiteDescription}
+                onChange={(e) => setNewSuiteDescription(e.target.value)}
+                placeholder="Evaluates tone, accuracy, and resolution speed"
+                className="text-xs bg-zinc-950 border-border"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-medium text-zinc-400 block mb-1">
+                  Target Model
+                </label>
+                <Select value={newSuiteModel} onValueChange={setNewSuiteModel}>
+                  <SelectTrigger className="h-8 text-xs font-mono bg-zinc-950">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openai/gpt-4o-mini" className="text-xs font-mono">OpenAI GPT-4o-mini</SelectItem>
+                    <SelectItem value="openai/gpt-4o" className="text-xs font-mono">OpenAI GPT-4o</SelectItem>
+                    <SelectItem value="anthropic/claude-3-5-sonnet" className="text-xs font-mono">Claude 3.5 Sonnet</SelectItem>
+                    <SelectItem value="google/gemini-2.0-flash" className="text-xs font-mono">Gemini 2.0 Flash</SelectItem>
+                    <SelectItem value="mock/simulator" className="text-xs font-mono">Mock Simulator ($0.00)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-medium text-zinc-400 block mb-1">
+                  Pass Threshold ({Math.round(newSuiteMinPassRate * 100)}%)
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="1.0"
+                  step="0.05"
+                  value={newSuiteMinPassRate}
+                  onChange={(e) => setNewSuiteMinPassRate(parseFloat(e.target.value))}
+                  className="w-full accent-white h-1.5 bg-zinc-800 rounded-lg cursor-pointer mt-2"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-medium text-zinc-400 block mb-1">
+                Prompt Template
+              </label>
+              <Textarea
+                value={newSuiteTemplate}
+                onChange={(e) => setNewSuiteTemplate(e.target.value)}
+                rows={3}
+                className="font-mono text-xs bg-zinc-950 border-border"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreateModalOpen(false)}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createSuiteMutation.mutate()}
+              disabled={!newSuiteName.trim() || createSuiteMutation.isPending}
+              variant="default"
+              size="sm"
+              className="text-xs gap-1.5"
+            >
+              <Plus className="h-3 w-3" />
+              {createSuiteMutation.isPending ? "Creating..." : "Create Suite"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* MODAL: Live WebSocket Streaming Test Runner                              */}
+      {/* ========================================================================= */}
       <Dialog open={isStreamingModalOpen} onOpenChange={setIsStreamingModalOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -342,7 +1027,7 @@ export default function SuitesPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs font-mono">
                 <span className="text-zinc-400">
-                  {isStreamRunning ? "Running tests..." : finalRunResult ? "Execution Complete" : "Connecting..."}
+                  {isStreamRunning ? "Running tests concurrently..." : finalRunResult ? "Execution Complete" : "Connecting..."}
                 </span>
                 <span className="text-white font-medium">
                   {streamCompletedResults.length} / {streamTotalTests || "?"} completed
@@ -367,9 +1052,7 @@ export default function SuitesPage() {
 
             {/* Final Summary Card */}
             {finalRunResult && (
-              <div
-                className="p-3.5 rounded-lg border border-border bg-zinc-950 space-y-2.5 font-mono text-xs"
-              >
+              <div className="p-3.5 rounded-lg border border-border bg-zinc-950 space-y-2.5 font-mono text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-xs text-white flex items-center gap-2">
                     {finalRunResult.passed ? (
@@ -438,23 +1121,25 @@ export default function SuitesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Pre-Flight Cost Estimation Dialog */}
+      {/* ========================================================================= */}
+      {/* MODAL: Pre-Flight Cost Estimation                                        */}
+      {/* ========================================================================= */}
       <Dialog open={isCostModalOpen} onOpenChange={setIsCostModalOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-white">
               <Calculator className="h-4 w-4 text-zinc-400" />
-              Pre-Flight Cost Estimation
+              Pre-Flight Run Estimate
             </DialogTitle>
             <DialogDescription className="text-xs text-zinc-400">
-              Projected token usage and USD inference cost before executing suite.
+              Projected invocations, token consumption, and dollar spend before execution.
             </DialogDescription>
           </DialogHeader>
           {costEstimate && (
             <div className="space-y-3 py-2 font-mono text-xs">
-              <div className="p-3.5 rounded-lg border border-border bg-zinc-950 space-y-2">
+              <div className="p-3.5 rounded-lg border border-border bg-zinc-950 space-y-2.5">
                 <div className="flex justify-between">
-                  <span className="text-zinc-500">Suite:</span>
+                  <span className="text-zinc-500">Suite Name:</span>
                   <span className="font-medium text-zinc-200">{costEstimate.suite_name}</span>
                 </div>
                 <div className="flex justify-between">
@@ -462,19 +1147,19 @@ export default function SuitesPage() {
                   <span className="font-medium text-zinc-200">{costEstimate.target_model}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-500">Total Tests:</span>
-                  <span className="font-medium text-zinc-200">{costEstimate.total_tests}</span>
+                  <span className="text-zinc-500">Test Cases:</span>
+                  <span className="font-medium text-zinc-200">{costEstimate.total_tests} test cases</span>
                 </div>
                 <div className="flex justify-between border-t border-border pt-1.5">
-                  <span className="text-zinc-500">Est. Input:</span>
-                  <span className="font-medium text-zinc-200">{costEstimate.estimated_input_tokens}</span>
+                  <span className="text-zinc-500">Estimated Input Tokens:</span>
+                  <span className="font-medium text-zinc-200">{costEstimate.estimated_input_tokens} tokens</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-500">Est. Output:</span>
-                  <span className="font-medium text-zinc-200">{costEstimate.estimated_output_tokens}</span>
+                  <span className="text-zinc-500">Estimated Output Tokens:</span>
+                  <span className="font-medium text-zinc-200">{costEstimate.estimated_output_tokens} tokens</span>
                 </div>
                 <div className="flex justify-between border-t border-border pt-1.5 text-xs font-semibold">
-                  <span className="text-white">Projected Cost:</span>
+                  <span className="text-white">Projected Total Cost:</span>
                   <span className="text-white">{formatCost(costEstimate.estimated_cost_usd)}</span>
                 </div>
               </div>
