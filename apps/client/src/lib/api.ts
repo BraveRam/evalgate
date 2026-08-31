@@ -13,8 +13,20 @@ import {
 
 export const api = {
   // System
-  getHealth: async (): Promise<{ status: string; version: string }> => {
-    const { data } = await apiClient.get<{ status: string; version: string }>("/health");
+  getHealth: async (): Promise<{
+    status: string;
+    version: string;
+    provider_configured?: boolean;
+    provider_mode?: string;
+    storage_engine?: string;
+  }> => {
+    const { data } = await apiClient.get<{
+      status: string;
+      version: string;
+      provider_configured?: boolean;
+      provider_mode?: string;
+      storage_engine?: string;
+    }>("/health");
     return data;
   },
 

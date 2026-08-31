@@ -4,8 +4,9 @@ EvalGate Studio FastAPI Backend Application.
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -56,8 +57,20 @@ def create_app() -> FastAPI:
     )
 
     @app.get("/health", tags=["System"])
-    async def health_check() -> dict[str, str]:
-        return {"status": "ok", "version": __version__}
+    async def health_check() -> dict[str, Any]:
+        has_key = bool(
+            os.getenv("VERCEL_AI_GATEWAY_KEY")
+            or os.getenv("AI_GATEWAY_KEY")
+            or os.getenv("OPENAI_API_KEY")
+            or os.getenv("ANTHROPIC_API_KEY")
+        )
+        return {
+            "status": "ok",
+            "version": __version__,
+            "provider_configured": has_key,
+            "provider_mode": "Gateway Active" if has_key else "Local Mock Mode",
+            "storage_engine": "SQLite WAL Active",
+        }
 
     @app.get("/version", tags=["System"])
     async def version_check() -> dict[str, str]:
