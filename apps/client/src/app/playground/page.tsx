@@ -569,12 +569,12 @@ export default function PlaygroundPage() {
           </div>
 
           {/* Right: Primary Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={handleResetDefaults}
-              className="h-8 text-xs gap-1.5 text-zinc-400 hover:text-white"
+              className="h-8 text-xs gap-1.5 text-zinc-400 hover:text-white shrink-0 whitespace-nowrap"
               title="Reset workbench to default settings"
             >
               <RotateCcw className="h-3 w-3" />
@@ -585,7 +585,7 @@ export default function PlaygroundPage() {
               variant="outline"
               size="sm"
               onClick={() => setIsHistoryOpen(true)}
-              className="h-8 text-xs gap-1.5 text-zinc-400 hover:text-white relative"
+              className="h-8 text-xs gap-1.5 text-zinc-400 hover:text-white relative shrink-0 whitespace-nowrap"
               title="View past workbench execution runs"
             >
               <History className="h-3 w-3" />
@@ -604,7 +604,7 @@ export default function PlaygroundPage() {
                 setSuiteName(`playground-${Date.now().toString().slice(-4)}`);
                 setIsSaveModalOpen(true);
               }}
-              className="h-8 text-xs gap-1.5 text-zinc-300 hover:text-white"
+              className="h-8 text-xs gap-1.5 text-zinc-300 hover:text-white shrink-0 whitespace-nowrap"
             >
               <Save className="h-3 w-3" />
               <span className="hidden sm:inline">Save as Suite</span>
@@ -615,7 +615,7 @@ export default function PlaygroundPage() {
               disabled={evaluateMutation.isPending}
               variant="default"
               size="sm"
-              className="h-8 text-xs gap-1.5 px-4"
+              className="h-8 text-xs gap-1.5 px-4 shrink-0 whitespace-nowrap"
             >
               {evaluateMutation.isPending ? (
                 <span className="flex items-center gap-1.5">
@@ -815,7 +815,7 @@ export default function PlaygroundPage() {
 
             {/* 4. Assertion & Quality Gate Rules */}
             <Card className="border-border bg-card">
-              <CardHeader className="p-4 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <CardHeader className="p-4 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
                     <Scale className="h-3.5 w-3.5 text-zinc-400" />
@@ -825,11 +825,11 @@ export default function PlaygroundPage() {
                     Deterministic string/regex validations and qualitative semantic LLM-as-a-judge gates.
                   </CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
                   <Select onValueChange={(val) => addDeterministicAssertion(val as AssertionType)}>
-                    <SelectTrigger className="h-7 text-xs w-36 font-mono">
-                      <Plus className="h-3 w-3 mr-1" />
-                      Deterministic
+                    <SelectTrigger className="h-7 text-xs px-2.5 w-auto min-w-[130px] font-mono whitespace-nowrap gap-1.5 bg-zinc-900 border-zinc-800 text-zinc-200 hover:text-white">
+                      <Plus className="h-3 w-3 shrink-0" />
+                      <span>Deterministic</span>
                     </SelectTrigger>
                     <SelectContent>
                       {DETERMINISTIC_TYPES.map((dt) => (
@@ -841,9 +841,9 @@ export default function PlaygroundPage() {
                   </Select>
 
                   <Select onValueChange={(val) => addSemanticAssertion(val as AssertionType)}>
-                    <SelectTrigger className="h-7 text-xs w-36 font-mono">
-                      <Plus className="h-3 w-3 mr-1" />
-                      Semantic Judge
+                    <SelectTrigger className="h-7 text-xs px-2.5 w-auto min-w-[145px] font-mono whitespace-nowrap gap-1.5 bg-zinc-900 border-zinc-800 text-zinc-200 hover:text-white">
+                      <Plus className="h-3 w-3 shrink-0" />
+                      <span>Semantic Judge</span>
                     </SelectTrigger>
                     <SelectContent>
                       {SEMANTIC_TYPES.map((st) => (
