@@ -16,7 +16,6 @@ import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertCircle,
   AlertTriangle,
   ArrowRight,
   Boxes,
@@ -31,7 +30,6 @@ import {
   Play,
   RefreshCw,
   Sparkles,
-  Swords,
   Terminal,
   TrendingUp,
   XCircle,
