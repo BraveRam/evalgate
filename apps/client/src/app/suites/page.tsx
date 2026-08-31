@@ -486,12 +486,9 @@ export default function SuitesPage() {
                         {s.target_model || "default"}
                       </span>
                       {s.min_pass_rate !== undefined && !isNaN(s.min_pass_rate) && (
-                        <>
-                          <span>•</span>
-                          <span className="text-zinc-400">
-                            {Math.round(s.min_pass_rate * 100)}% gate
-                          </span>
-                        </>
+                        <span className="text-zinc-400">
+                          • {Math.round(s.min_pass_rate * 100)}% gate
+                        </span>
                       )}
                     </div>
                   </div>
@@ -693,7 +690,7 @@ export default function SuitesPage() {
                       );
 
                       return (
-                        <Card key={tc.id || idx} className="border-border bg-card overflow-hidden">
+                        <Card key={tc.id ? `tc_${tc.id}` : `tc_idx_${idx}`} className="border-border bg-card overflow-hidden">
                           <div
                             onClick={() =>
                               setExpandedCaseId(isExpanded ? null : tc.id || String(idx))
