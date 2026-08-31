@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "node scripts/dev.js",
     "dev:client": "pnpm --filter @evalgate/client dev",
     "dev:api": "uv run uvicorn evalgate.api.app:app --host 127.0.0.1 --port 8000 --reload",
     "build": "turbo build",
