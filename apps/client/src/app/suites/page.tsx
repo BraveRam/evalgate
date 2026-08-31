@@ -153,7 +153,9 @@ export default function SuitesPage() {
   // Calculate latest run per suite
   const suiteHealthMap = useMemo(() => {
     const map = new Map<string, { latestRun?: SuiteRunResult; status: "PASSING" | "FAILING" | "NEVER_RUN" }>();
+    if (!Array.isArray(suites)) return map;
     for (const s of suites) {
+      if (!s || !s.name) continue;
       const suiteRuns = allRuns.filter((r) => r.suite_name === s.name);
       if (suiteRuns.length === 0) {
         map.set(s.name, { status: "NEVER_RUN" });
@@ -170,19 +172,25 @@ export default function SuitesPage() {
 
   // Filtered & Sorted Suites
   const filteredSuites = useMemo(() => {
+    if (!Array.isArray(suites)) return [];
     return suites
       .filter((s) => {
+        if (!s) return false;
+        const name = s.name || "";
+        const desc = s.description || "";
+        const model = s.target_model || "";
+
         // Search filter
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
-          const matchName = s.name.toLowerCase().includes(q);
-          const matchDesc = (s.description || "").toLowerCase().includes(q);
-          const matchModel = (s.target_model || "").toLowerCase().includes(q);
+          const matchName = name.toLowerCase().includes(q);
+          const matchDesc = desc.toLowerCase().includes(q);
+          const matchModel = model.toLowerCase().includes(q);
           if (!matchName && !matchDesc && !matchModel) return false;
         }
 
         // Status filter
-        const health = suiteHealthMap.get(s.name)?.status || "NEVER_RUN";
+        const health = (name ? suiteHealthMap.get(name)?.status : undefined) || "NEVER_RUN";
         if (statusFilter === "passing" && health !== "PASSING") return false;
         if (statusFilter === "failing" && health !== "FAILING") return false;
         if (statusFilter === "never_run" && health !== "NEVER_RUN") return false;
@@ -190,9 +198,11 @@ export default function SuitesPage() {
         return true;
       })
       .sort((a, b) => {
-        if (sortBy === "name") return a.name.localeCompare(b.name);
-        if (sortBy === "tests") return (b.test_count || 0) - (a.test_count || 0);
-        if (sortBy === "pass_rate") return (b.min_pass_rate || 0) - (a.min_pass_rate || 0);
+        const nameA = a?.name || "";
+        const nameB = b?.name || "";
+        if (sortBy === "name") return nameA.localeCompare(nameB);
+        if (sortBy === "tests") return (b?.test_count || 0) - (a?.test_count || 0);
+        if (sortBy === "pass_rate") return (b?.min_pass_rate || 0) - (a?.min_pass_rate || 0);
         return 0;
       });
   }, [suites, searchQuery, statusFilter, sortBy, suiteHealthMap]);
