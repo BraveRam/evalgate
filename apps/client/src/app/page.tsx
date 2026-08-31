@@ -763,60 +763,6 @@ export default function DashboardOverview() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Secondary Quick Action Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link href="/playground" prefetch={true} className="block group">
-              <Card className="h-full border-border bg-card hover:bg-zinc-900/60 hover:border-zinc-700 transition-all">
-                <CardHeader className="p-4">
-                  <div className="h-7 w-7 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center mb-2">
-                    <Play className="h-3.5 w-3.5 fill-current" />
-                  </div>
-                  <CardTitle className="text-xs font-semibold text-white flex items-center justify-between">
-                    <span>Prompt Playground</span>
-                    <ArrowRight className="h-3 w-3 text-zinc-500 group-hover:text-white transition-colors" />
-                  </CardTitle>
-                  <CardDescription className="text-[11px] text-zinc-400 mt-1">
-                    Experiment with system prompts, variables, JSON schemas, and live semantic judge evaluations.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-
-            <Link href="/arena" prefetch={true} className="block group">
-              <Card className="h-full border-border bg-card hover:bg-zinc-900/60 hover:border-zinc-700 transition-all">
-                <CardHeader className="p-4">
-                  <div className="h-7 w-7 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center mb-2">
-                    <Swords className="h-3.5 w-3.5" />
-                  </div>
-                  <CardTitle className="text-xs font-semibold text-white flex items-center justify-between">
-                    <span>Arena Shootout</span>
-                    <ArrowRight className="h-3 w-3 text-zinc-500 group-hover:text-white transition-colors" />
-                  </CardTitle>
-                  <CardDescription className="text-[11px] text-zinc-400 mt-1">
-                    Benchmark Model A vs Model B side-by-side with pass rate differences, latency curves, and cost deltas.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-
-            <Link href="/export" prefetch={true} className="block group">
-              <Card className="h-full border-border bg-card hover:bg-zinc-900/60 hover:border-zinc-700 transition-all">
-                <CardHeader className="p-4">
-                  <div className="h-7 w-7 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center mb-2">
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </div>
-                  <CardTitle className="text-xs font-semibold text-white flex items-center justify-between">
-                    <span>CI/CD & Export</span>
-                    <ArrowRight className="h-3 w-3 text-zinc-500 group-hover:text-white transition-colors" />
-                  </CardTitle>
-                  <CardDescription className="text-[11px] text-zinc-400 mt-1">
-                    Export automated GitHub Actions workflows, Pytest suites, and Pre-commit quality gates.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-          </div>
         </div>
       )}
     </div>
