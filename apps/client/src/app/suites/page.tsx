@@ -678,7 +678,7 @@ export default function SuitesPage() {
                   <div className="space-y-2.5">
                     {selectedSuite.tests?.map((tc, idx) => {
                       const isExpanded = expandedCaseId === (tc.id || String(idx));
-                      const matchingResult = latestSuiteRun?.test_case_results?.find(
+                      const matchingResult = latestSuiteRun?.results?.find(
                         (r) => r.test_id === tc.id
                       );
 
