@@ -216,10 +216,16 @@ tests:
               description="Automate prompt regression testing in pull requests with 1-click ZIP package exports."
             />
             <Card
+              href="/docs/mcp"
+              title="Model Context Protocol (MCP)"
+              icon={<Cpu className="h-4 w-4 text-white" />}
+              description="Connect AI coding assistants (Claude Desktop, Cursor, Antigravity) directly to test suites and quality gates."
+            />
+            <Card
               href="/docs/api"
               title="REST & WebSocket API"
               icon={<Server className="h-4 w-4 text-white" />}
-              description="OpenAPI specification, real-time WebSocket test streams, and SQLite engine storage."
+              description="FastAPI OpenAPI specs, WebSocket streaming endpoints, and CLI commands."
             />
           </Cards>
         </section>
@@ -789,7 +795,287 @@ ws.onmessage = (event) => {
             <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300">
               <span className="text-white font-bold">evalgate estimate</span> &lt;path.yaml&gt; : Estimates token burn and dollar cost
             </div>
+            <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300">
+              <span className="text-white font-bold">evalgate mcp</span> --transport stdio : Launches the Model Context Protocol server
+            </div>
           </div>
+        </section>
+      </div>
+    ),
+  },
+
+  mcp: {
+    slug: "mcp",
+    title: "Model Context Protocol (MCP)",
+    description: "Equip AI coding agents (Claude Desktop, Cursor, Antigravity, Windsurf) with native prompt evaluation, cost estimation, and quality gate tools.",
+    category: "DevOps & Reference",
+    toc: [
+      { title: "Overview & Architecture", url: "#overview", depth: 2 },
+      { title: "Registered MCP Tools", url: "#tools", depth: 2 },
+      { title: "Tool Specifications & Schemas", url: "#tool-schemas", depth: 2 },
+      { title: "Client Configuration", url: "#client-config", depth: 2 },
+      { title: "Running the Server", url: "#running-server", depth: 2 },
+    ],
+    content: (
+      <div className="space-y-8 text-sm leading-relaxed">
+        <section id="overview" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            Overview & Architecture
+          </h2>
+          <p className="text-zinc-300">
+            EvalGate includes a native <strong>Model Context Protocol (MCP) Server</strong> (<code>evalgate.mcp.server</code>) that exposes your test suites, preflight cost estimators, model arena shootouts, and historical regression metrics directly to AI coding assistants.
+          </p>
+
+          <Callout type="info" title="Zero-Context Prompt Iteration">
+            When connected via MCP, an AI coding agent can autonomously run regression tests whenever it edits a prompt template, verify whether pass rates exceed the gate threshold, and inspect failed assertion reasons without leaving the chat window.
+          </Callout>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+            <div className="p-3.5 rounded-lg border border-border bg-card space-y-1">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                <Cpu className="h-4 w-4 text-sky-400" />
+                <span>Local & Stdio Safe</span>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Runs as a standard subprocess over <code>stdio</code> with zero network exposure required.
+              </p>
+            </div>
+            <div className="p-3.5 rounded-lg border border-border bg-card space-y-1">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                <Zap className="h-4 w-4 text-emerald-400" />
+                <span>Pre-flight Cost Guard</span>
+              </div>
+              <p className="text-xs text-zinc-400">
+                AI agents can estimate token burn and \$USD cost before executing large test suites.
+              </p>
+            </div>
+            <div className="p-3.5 rounded-lg border border-border bg-card space-y-1">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                <ShieldCheck className="h-4 w-4 text-amber-400" />
+                <span>Quality Gate Enforcer</span>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Returns explicit pass/fail verdicts, failure reasons, and latency distribution deltas.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="tools" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            Registered MCP Tools
+          </h2>
+          <p className="text-zinc-300">
+            The EvalGate MCP server registers <strong>7 high-level tools</strong>:
+          </p>
+
+          <TypeTable
+            type={{
+              "evalgate_run_suite": {
+                type: "Function",
+                description: "Execute an evaluation suite YAML file, enforce quality gates, and return detailed failure diagnostics.",
+              },
+              "evalgate_estimate_cost": {
+                type: "Function",
+                description: "Calculate pre-flight token footprint and USD cost for a test suite without making external inference calls.",
+              },
+              "evalgate_compare_models": {
+                type: "Function",
+                description: "Run an A/B benchmark shootout comparing two LLMs side-by-side on the same evaluation suite.",
+              },
+              "evalgate_evaluate_completion": {
+                type: "Function",
+                description: "Evaluate raw completion text on-the-fly against assertion configs without creating a suite file.",
+              },
+              "evalgate_list_runs": {
+                type: "Function",
+                description: "List recent historical evaluation runs from the local SQLite storage engine.",
+              },
+              "evalgate_get_historical_trends": {
+                type: "Function",
+                description: "Fetch historical pass rate, P50/P95 latency, and token cost time-series regression trends.",
+              },
+              "evalgate_list_suites": {
+                type: "Function",
+                description: "Scan the repository workspace and list all available evaluation suite YAML files.",
+              },
+            }}
+          />
+        </section>
+
+        <section id="tool-schemas" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            Tool Specifications & Schemas
+          </h2>
+
+          <Accordions>
+            <Accordion title="1. evalgate_run_suite">
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-300">
+                  Executes a full test suite YAML specification, records telemetry to SQLite, and returns pass/fail status.
+                </p>
+                <TypeTable
+                  type={{
+                    "suite_path": { type: "string (required)", description: "Path to suite YAML file (e.g. 'evals/rag_qa.yaml')" },
+                    "model_override": { type: "string (optional)", description: "Model override (e.g. 'openai/gpt-4o-mini', 'mock/simulator')" },
+                    "concurrency": { type: "integer (default: 10)", description: "Number of parallel test case executions" },
+                  }}
+                />
+              </div>
+            </Accordion>
+
+            <Accordion title="2. evalgate_estimate_cost">
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-300">
+                  Calculates estimated token counts and dollar cost using prompt template variables and target model pricing.
+                </p>
+                <TypeTable
+                  type={{
+                    "suite_path": { type: "string (required)", description: "Path to the evaluation suite YAML file" },
+                    "model": { type: "string (optional)", description: "Target model identifier to price against" },
+                    "estimated_output_tokens_per_test": { type: "integer (default: 150)", description: "Anticipated completion tokens per test" },
+                  }}
+                />
+              </div>
+            </Accordion>
+
+            <Accordion title="3. evalgate_compare_models">
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-300">
+                  Executes an A/B benchmark shootout between Model A and Model B, reporting pass rate deltas and speed/cost trade-offs.
+                </p>
+                <TypeTable
+                  type={{
+                    "suite_path": { type: "string (required)", description: "Path to suite YAML file" },
+                    "model_a": { type: "string (required)", description: "First candidate model (e.g. 'openai/gpt-4o-mini')" },
+                    "model_b": { type: "string (required)", description: "Second candidate model (e.g. 'anthropic/claude-3-5-sonnet')" },
+                    "concurrency": { type: "integer (default: 10)", description: "Concurrent test executions" },
+                  }}
+                />
+              </div>
+            </Accordion>
+
+            <Accordion title="4. evalgate_evaluate_completion">
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-300">
+                  Allows an AI assistant to evaluate an ad-hoc text output against deterministic or semantic assertion lists.
+                </p>
+                <TypeTable
+                  type={{
+                    "completion": { type: "string (required)", description: "Raw LLM output string to validate" },
+                    "assertions": { type: "AssertionConfig[] (required)", description: "List of assertion objects (e.g. [{'type': 'contains', 'value': 'OK'}])" },
+                    "context": { type: "string[] (optional)", description: "Retrieved context passages for RAG grounding metrics" },
+                    "ground_truth": { type: "string (optional)", description: "Reference ground truth string" },
+                    "judge_model": { type: "string (default: 'openai/gpt-4o-mini')", description: "LLM-as-a-judge model for semantic metrics" },
+                  }}
+                />
+              </div>
+            </Accordion>
+
+            <Accordion title="5. evalgate_list_suites & evalgate_list_runs">
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-300">
+                  Discovery tools for finding existing test suites in the repository and inspecting historical execution runs.
+                </p>
+                <TypeTable
+                  type={{
+                    "evalgate_list_suites.search_dir": { type: "string (default: 'evals')", description: "Directory to scan for YAML suites" },
+                    "evalgate_list_runs.suite_name": { type: "string (optional)", description: "Filter run traces by specific suite name" },
+                    "evalgate_list_runs.limit": { type: "integer (default: 20)", description: "Maximum number of runs to return" },
+                  }}
+                />
+              </div>
+            </Accordion>
+          </Accordions>
+        </section>
+
+        <section id="client-config" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            Client Configuration
+          </h2>
+          <p className="text-zinc-300">
+            Configure your AI coding assistant or desktop app to connect to EvalGate:
+          </p>
+
+          <CodeTabs
+            tabs={[
+              {
+                label: "Claude Desktop",
+                language: "json",
+                filename: "claude_desktop_config.json",
+                code: `{
+  "mcpServers": {
+    "evalgate": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/absolute/path/to/evalgate",
+        "evalgate",
+        "mcp",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "sk-...",
+        "ANTHROPIC_API_KEY": "sk-ant-..."
+      }
+    }
+  }
+}`,
+              },
+              {
+                label: "Cursor / Windsurf",
+                language: "json",
+                filename: ".cursor/mcp.json",
+                code: `{
+  "mcpServers": {
+    "evalgate": {
+      "command": "evalgate",
+      "args": ["mcp", "--transport", "stdio"],
+      "env": {
+        "OPENAI_API_KEY": "\${env:OPENAI_API_KEY}"
+      }
+    }
+  }
+}`,
+              },
+              {
+                label: "Antigravity Sidecar",
+                language: "json",
+                filename: "~/.gemini/antigravity/mcp/evalgate.json",
+                code: `{
+  "name": "evalgate",
+  "command": "uv",
+  "args": ["run", "evalgate", "mcp", "--transport", "stdio"]
+}`,
+              },
+            ]}
+          />
+        </section>
+
+        <section id="running-server" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            Running the Server
+          </h2>
+          <p className="text-zinc-300">
+            You can also launch the MCP server manually from the terminal with <code>stdio</code> or <code>sse</code> transport:
+          </p>
+
+          <Steps>
+            <Step number={1} title="Run over Standard I/O (Default for Desktop & CLI Agents)">
+              <CodeBlock
+                language="bash"
+                code="uv run evalgate mcp --transport stdio"
+              />
+            </Step>
+            <Step number={2} title="Run over Server-Sent Events (SSE for Web & Remote Services)">
+              <CodeBlock
+                language="bash"
+                code="uv run evalgate mcp --transport sse"
+              />
+            </Step>
+          </Steps>
         </section>
       </div>
     ),

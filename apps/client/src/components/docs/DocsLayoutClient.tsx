@@ -10,6 +10,7 @@ import {
   BarChart3,
   BookOpen,
   Boxes,
+  Cpu,
   ExternalLink,
   Github,
   LayoutDashboard,
@@ -90,6 +91,11 @@ const DOCS_NAV_SECTIONS: NavSection[] = [
         name: "CI/CD & GitHub Actions",
         href: "/docs/ci-cd",
         icon: Workflow,
+      },
+      {
+        name: "Model Context Protocol (MCP)",
+        href: "/docs/mcp",
+        icon: Cpu,
       },
       {
         name: "REST & WebSocket API",

@@ -30,6 +30,7 @@ const PAGE_ORDER = [
   { key: "arena", label: "Model Arena Shootout", href: "/docs/arena" },
   { key: "analytics", label: "Historical Analytics", href: "/docs/analytics" },
   { key: "ci-cd", label: "CI/CD & GitHub Actions", href: "/docs/ci-cd" },
+  { key: "mcp", label: "Model Context Protocol (MCP)", href: "/docs/mcp" },
   { key: "api", label: "REST & WebSocket API", href: "/docs/api" },
 ];
 
@@ -42,6 +43,7 @@ export async function generateStaticParams() {
     { slug: ["arena"] },
     { slug: ["analytics"] },
     { slug: ["ci-cd"] },
+    { slug: ["mcp"] },
     { slug: ["api"] },
   ];
 }
