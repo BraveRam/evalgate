@@ -282,19 +282,6 @@ export function DocsTOC({ items }: { items: TOCItem[] }) {
           })}
         </nav>
       </div>
-
-      {/* Footer link: Edit on GitHub */}
-      <div className="pt-4 border-t border-border/40 space-y-2 text-xs">
-        <a
-          href="https://github.com/BraveRam/evalgate"
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors"
-        >
-          <Github className="h-3.5 w-3.5" />
-          <span>Edit on GitHub</span>
-        </a>
-      </div>
     </div>
   );
 }
