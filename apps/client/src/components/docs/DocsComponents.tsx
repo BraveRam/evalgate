@@ -332,38 +332,42 @@ export function TypeTable({
   type: Record<string, { type: string; default?: string; description: string }>;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-zinc-950 overflow-hidden my-4 text-xs">
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="border-b border-border bg-zinc-900/80 text-[11px] font-mono text-zinc-400">
-            <th className="p-2.5 pl-3 font-semibold">Property</th>
-            <th className="p-2.5 font-semibold">Type</th>
-            <th className="p-2.5 pr-3 font-semibold">Description</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/40">
-          {Object.entries(type).map(([propName, info]) => (
-            <tr key={propName} className="hover:bg-zinc-900/40 transition-colors">
-              <td className="p-2.5 pl-3 font-mono font-semibold text-white whitespace-nowrap align-top">
-                <code>{propName}</code>
-              </td>
-              <td className="p-2.5 font-mono text-zinc-400 whitespace-nowrap align-top">
-                <span className="bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded text-[11px]">
-                  {info.type}
-                </span>
-                {info.default && (
-                  <span className="block text-[10px] text-zinc-500 mt-0.5">
-                    default: {info.default}
-                  </span>
-                )}
-              </td>
-              <td className="p-2.5 pr-3 text-zinc-300 leading-relaxed align-top">
-                {info.description}
-              </td>
+    <div className="rounded-xl border border-border bg-zinc-950/90 overflow-hidden my-6 shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-border bg-zinc-900/90 text-[11px] font-mono text-zinc-400">
+              <th className="py-3 px-4 font-semibold uppercase tracking-wider w-1/4">Property</th>
+              <th className="py-3 px-4 font-semibold uppercase tracking-wider w-1/4">Type</th>
+              <th className="py-3 px-4 font-semibold uppercase tracking-wider w-1/2">Description</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border/40">
+            {Object.entries(type).map(([propName, info]) => (
+              <tr key={propName} className="hover:bg-zinc-900/50 transition-colors">
+                <td className="py-3.5 px-4 font-mono align-top">
+                  <span className="inline-block px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700/70 text-white font-semibold text-[11px]">
+                    {propName}
+                  </span>
+                </td>
+                <td className="py-3.5 px-4 font-mono align-top">
+                  <span className="inline-block px-2 py-0.5 rounded bg-zinc-900/60 border border-zinc-800 text-zinc-300 text-[11px]">
+                    {info.type}
+                  </span>
+                  {info.default && (
+                    <span className="block text-[10px] text-zinc-500 font-mono mt-1">
+                      default: {info.default}
+                    </span>
+                  )}
+                </td>
+                <td className="py-3.5 px-4 text-zinc-300 leading-relaxed text-xs align-top">
+                  {info.description}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
