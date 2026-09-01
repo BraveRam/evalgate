@@ -234,20 +234,26 @@ export default function AnalyticsPage() {
     queryFn: () => api.listRuns(undefined, 100),
   });
 
+  // Delete Confirmation State
+  const [runToDelete, setRunToDelete] = useState<string | null>(null);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
+
   // TanStack Mutation: Delete run
   const deleteMutation = useMutation({
     mutationFn: (runId: string) => api.deleteRun(runId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["runs"] });
+      setRunToDelete(null);
+      setDeleteErrorMessage(null);
     },
     onError: (err: Error) => {
-      alert(`Delete failed: ${err.message}`);
+      setDeleteErrorMessage(err.message);
     },
   });
 
   const handleDeleteRun = (runId: string) => {
-    if (!confirm("Are you sure you want to delete this evaluation run trace?")) return;
-    deleteMutation.mutate(runId);
+    setDeleteErrorMessage(null);
+    setRunToDelete(runId);
   };
 
   // Discovered models across runs
@@ -1156,6 +1162,79 @@ export default function AnalyticsPage() {
               </div>
             </DialogContent>
           )}
+        </Dialog>
+
+        {/* 8. Shadcn Delete Confirmation Dialog */}
+        <Dialog
+          open={!!runToDelete}
+          onOpenChange={(open) => {
+            if (!open) {
+              setRunToDelete(null);
+              setDeleteErrorMessage(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-md bg-zinc-950 border-border text-xs">
+            <DialogHeader>
+              <div className="flex items-center gap-2 text-white font-semibold">
+                <AlertTriangle className="h-4 w-4 text-zinc-400" />
+                <DialogTitle className="text-sm font-semibold text-white">
+                  Delete Evaluation Run Trace
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                Are you sure you want to permanently delete run trace{" "}
+                <code className="font-mono text-white bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                  {runToDelete}
+                </code>
+                ? This action removes the trace and its assertion logs from the local database.
+              </DialogDescription>
+            </DialogHeader>
+
+            {deleteErrorMessage && (
+              <div className="p-2.5 rounded bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 flex items-center gap-2">
+                <AlertCircle className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                <span>{deleteErrorMessage}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/40">
+              <Button
+                onClick={() => {
+                  setRunToDelete(null);
+                  setDeleteErrorMessage(null);
+                }}
+                variant="outline"
+                size="sm"
+                className="text-xs h-8"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (runToDelete) {
+                    deleteMutation.mutate(runToDelete);
+                  }
+                }}
+                disabled={deleteMutation.isPending}
+                variant="default"
+                size="sm"
+                className="text-xs h-8 gap-1.5"
+              >
+                {deleteMutation.isPending ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded-full border-2 border-black border-t-transparent animate-spin" />
+                    Deleting...
+                  </span>
+                ) : (
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Delete Run</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogContent>
         </Dialog>
       </div>
     </TooltipProvider>

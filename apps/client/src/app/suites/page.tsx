@@ -241,7 +241,7 @@ export default function SuitesPage() {
       setIsCostModalOpen(true);
     },
     onError: (err: Error) => {
-      alert(`Cost estimation failed: ${err.message}`);
+      console.error("Cost estimation error:", err);
     },
   });
 
