@@ -37,6 +37,7 @@ import {
 import { api } from "@/lib/api";
 import { formatPercent } from "@/lib/utils";
 import { usePageTitle } from "@/lib/use-page-title";
+import { CodeViewer } from "@/components/ui/CodeViewer";
 import { SuiteSummary } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -701,18 +702,13 @@ The CI workflow exits with code \`1\` whenever test cases fail strict assertions
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="p-4 bg-black overflow-x-auto">
-                  <div className="font-mono text-xs text-zinc-300 leading-relaxed space-y-0.5 select-text">
-                    {githubActionsYaml.split("\n").map((line, lIdx) => (
-                      <div key={lIdx} className="flex">
-                        <span className="w-8 shrink-0 text-zinc-600 text-right pr-3 select-none">
-                          {lIdx + 1}
-                        </span>
-                        <span className="whitespace-pre">{line}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <CodeViewer
+                  code={githubActionsYaml}
+                  language="yaml"
+                  showLineNumbers={true}
+                  header={false}
+                  copyable={false}
+                />
               </CardContent>
             </Card>
 
@@ -813,18 +809,13 @@ The CI workflow exits with code \`1\` whenever test cases fail strict assertions
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="p-4 bg-black overflow-x-auto">
-                  <div className="font-mono text-xs text-zinc-300 leading-relaxed space-y-0.5 select-text">
-                    {pytestCode.split("\n").map((line, lIdx) => (
-                      <div key={lIdx} className="flex">
-                        <span className="w-8 shrink-0 text-zinc-600 text-right pr-3 select-none">
-                          {lIdx + 1}
-                        </span>
-                        <span className="whitespace-pre">{line}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <CodeViewer
+                  code={pytestCode}
+                  language="python"
+                  showLineNumbers={true}
+                  header={false}
+                  copyable={false}
+                />
               </CardContent>
             </Card>
 
@@ -868,32 +859,23 @@ The CI workflow exits with code \`1\` whenever test cases fail strict assertions
 
           {/* TAB 3: MCP Client */}
           <TabsContent value="mcp" className="space-y-4">
-            <Card className="border-border bg-card">
-              <CardHeader className="p-4 pb-2.5 flex flex-row items-center justify-between border-b border-border">
+            <Card className="border-border bg-card overflow-hidden">
+              <CardHeader className="p-4 pb-3 border-b border-border/60 flex flex-row items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
-                    <Plug className="h-3.5 w-3.5 text-zinc-400" />
-                    claude_desktop_config.json / Antigravity MCP Config
+                    <FileCode className="h-3.5 w-3.5 text-zinc-400" />
+                    claude_desktop_config.json
                   </CardTitle>
-                  <CardDescription className="text-[11px] text-zinc-500 mt-0.5">
-                    Connect evaluation capabilities to an MCP-compatible agent (Claude Desktop, Cursor, Antigravity).
+                  <CardDescription className="text-[11px] text-zinc-400 mt-0.5">
+                    Add EvalGate MCP tools to Claude Desktop, Cursor, or any MCP client
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={() => copyToClipboard("uv run evalgate mcp", "mcp_cmd")}
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs gap-1 h-7 text-zinc-400 hover:text-white"
-                  >
-                    {copiedKey === "mcp_cmd" ? <Check className="h-3 w-3 text-white" /> : <Copy className="h-3 w-3" />}
-                    <span>Copy CLI Command</span>
-                  </Button>
-                  <Button
                     onClick={() => copyToClipboard(mcpConfigJson, "mcp")}
                     variant="outline"
                     size="sm"
-                    className="text-xs gap-1 h-7 bg-zinc-900 border-zinc-800 text-zinc-200"
+                    className="text-xs gap-1 h-7 border-border bg-zinc-950 text-zinc-300 hover:text-white"
                   >
                     {copiedKey === "mcp" ? <Check className="h-3 w-3 text-white" /> : <Copy className="h-3 w-3" />}
                     <span>{copiedKey === "mcp" ? "Copied!" : "Copy JSON"}</span>
@@ -910,18 +892,13 @@ The CI workflow exits with code \`1\` whenever test cases fail strict assertions
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="p-4 bg-black overflow-x-auto">
-                  <div className="font-mono text-xs text-zinc-300 leading-relaxed space-y-0.5 select-text">
-                    {mcpConfigJson.split("\n").map((line, lIdx) => (
-                      <div key={lIdx} className="flex">
-                        <span className="w-8 shrink-0 text-zinc-600 text-right pr-3 select-none">
-                          {lIdx + 1}
-                        </span>
-                        <span className="whitespace-pre">{line}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <CodeViewer
+                  code={mcpConfigJson}
+                  language="json"
+                  showLineNumbers={true}
+                  header={false}
+                  copyable={false}
+                />
               </CardContent>
             </Card>
 

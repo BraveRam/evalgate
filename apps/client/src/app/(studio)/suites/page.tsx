@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
 import { usePageTitle } from "@/lib/use-page-title";
+import { CodeViewer } from "@/components/ui/CodeViewer";
 import { streamSuiteRun } from "@/lib/ws";
 import {
   CostEstimateResponse,
@@ -661,9 +662,13 @@ export default function SuitesPage() {
                         </Link>
                       </CardHeader>
                       <CardContent className="p-4 pt-1">
-                        <div className="p-3 rounded-md bg-black border border-zinc-900 font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed select-text max-h-60 overflow-y-auto">
-                          {selectedSuite.target.template}
-                        </div>
+                        <CodeViewer
+                          code={selectedSuite.target.template}
+                          language="markdown"
+                          header={false}
+                          maxHeight="240px"
+                          compact={true}
+                        />
                       </CardContent>
                     </Card>
                   )}
@@ -674,9 +679,12 @@ export default function SuitesPage() {
                         <CardTitle className="text-xs font-semibold text-white">System Prompt</CardTitle>
                       </CardHeader>
                       <CardContent className="p-4 pt-1">
-                        <div className="p-3 rounded-md bg-zinc-950 border border-border font-mono text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed select-text">
-                          {selectedSuite.target.system_prompt}
-                        </div>
+                        <CodeViewer
+                          code={selectedSuite.target.system_prompt}
+                          language="markdown"
+                          header={false}
+                          compact={true}
+                        />
                       </CardContent>
                     </Card>
                   )}
@@ -789,9 +797,18 @@ export default function SuitesPage() {
                                   <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-1">
                                     Latest Completion ({formatMs(matchingResult.latency_ms)})
                                   </span>
-                                  <div className="p-2.5 rounded bg-black border border-zinc-800 text-xs font-mono text-zinc-300 whitespace-pre-wrap select-text max-h-40 overflow-y-auto">
-                                    {matchingResult.completion}
-                                  </div>
+                                  <CodeViewer
+                                    code={matchingResult.completion}
+                                    language={
+                                      matchingResult.completion.trim().startsWith("{") ||
+                                      matchingResult.completion.trim().startsWith("[")
+                                        ? "json"
+                                        : "markdown"
+                                    }
+                                    header={false}
+                                    maxHeight="160px"
+                                    compact={true}
+                                  />
                                 </div>
                               )}
                             </CardContent>
@@ -851,33 +868,27 @@ export default function SuitesPage() {
                   )}
                 </TabsContent>
 
-                {/* TAB 4: YAML SOURCE & EDITING ACTIONS */}
+                {/* TAB 4: RAW YAML SPEC */}
                 <TabsContent value="yaml" className="space-y-3 pt-3">
-                  <Card className="border-border bg-card">
-                    <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileCode className="h-3.5 w-3.5 text-zinc-400" />
-                        <span className="font-mono text-xs text-zinc-300">
+                  <Card className="border-border bg-card overflow-hidden">
+                    <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between border-b border-border/40">
+                      <div>
+                        <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
+                          <FileCode className="h-3.5 w-3.5 text-zinc-400" />
                           evals/{selectedSuite.name}.yaml
-                        </span>
+                        </CardTitle>
+                        <CardDescription className="text-[11px] text-zinc-400 mt-0.5">
+                          Declarative test configuration saved to disk
+                        </CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          onClick={handleCopyPath}
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-[11px] gap-1 text-zinc-300 hover:text-white"
-                        >
-                          {isCopiedPath ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                          {isCopiedPath ? "Copied Path" : "Copy Path"}
-                        </Button>
                         <Button
                           onClick={handleCopyYaml}
                           variant="outline"
                           size="sm"
-                          className="h-7 text-[11px] gap-1 text-zinc-300 hover:text-white"
+                          className="h-7 text-[11px] gap-1 border-border bg-zinc-950 text-zinc-300 hover:text-white"
                         >
-                          {isCopiedYaml ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          {isCopiedYaml ? <Check className="h-3 w-3 text-white" /> : <Copy className="h-3 w-3" />}
                           {isCopiedYaml ? "Copied YAML" : "Copy YAML"}
                         </Button>
                         <Link href="/playground">
@@ -892,10 +903,15 @@ export default function SuitesPage() {
                         </Link>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-4 pt-1">
-                      <pre className="p-3.5 rounded-md bg-black border border-zinc-900 font-mono text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed select-text max-h-96 overflow-y-auto">
-                        {jsonToYaml(selectedSuite)}
-                      </pre>
+                    <CardContent className="p-0">
+                      <CodeViewer
+                        code={jsonToYaml(selectedSuite)}
+                        language="yaml"
+                        showLineNumbers={true}
+                        header={false}
+                        maxHeight="420px"
+                        copyable={false}
+                      />
                     </CardContent>
                   </Card>
                 </TabsContent>

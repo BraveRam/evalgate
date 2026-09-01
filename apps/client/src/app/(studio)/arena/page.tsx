@@ -33,6 +33,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CodeViewer } from "@/components/ui/CodeViewer";
 import {
   Tooltip,
   TooltipContent,
@@ -1102,9 +1103,18 @@ export default function ArenaPage() {
                                 <span className="text-[10px] font-mono uppercase text-zinc-500 block">
                                   Model Completion Output
                                 </span>
-                                <div className="p-2.5 rounded bg-black border border-zinc-800 text-xs font-mono text-zinc-300 whitespace-pre-wrap max-h-40 overflow-y-auto select-text leading-relaxed">
-                                  {resA.completion || <span className="text-zinc-600 italic">No output generated</span>}
-                                </div>
+                                <CodeViewer
+                                  code={resA.completion || "No output generated"}
+                                  language={
+                                    resA.completion?.trim().startsWith("{") ||
+                                    resA.completion?.trim().startsWith("[")
+                                      ? "json"
+                                      : "markdown"
+                                  }
+                                  header={false}
+                                  maxHeight="160px"
+                                  compact={true}
+                                />
                               </div>
                             </div>
 
@@ -1166,9 +1176,18 @@ export default function ArenaPage() {
                                 <span className="text-[10px] font-mono uppercase text-zinc-500 block">
                                   Model Completion Output
                                 </span>
-                                <div className="p-2.5 rounded bg-black border border-zinc-800 text-xs font-mono text-zinc-300 whitespace-pre-wrap max-h-40 overflow-y-auto select-text leading-relaxed">
-                                  {resB.completion || <span className="text-zinc-600 italic">No output generated</span>}
-                                </div>
+                                <CodeViewer
+                                  code={resB.completion || "No output generated"}
+                                  language={
+                                    resB.completion?.trim().startsWith("{") ||
+                                    resB.completion?.trim().startsWith("[")
+                                      ? "json"
+                                      : "markdown"
+                                  }
+                                  header={false}
+                                  maxHeight="160px"
+                                  compact={true}
+                                />
                               </div>
                             </div>
                           </div>

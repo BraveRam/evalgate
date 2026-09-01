@@ -15,6 +15,16 @@ import {
   Terminal,
 } from "lucide-react";
 
+import Prism from "prismjs";
+import "prismjs/components/prism-yaml";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-bash";
+import "prismjs/components/prism-json";
+import "prismjs/components/prism-sql";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-markdown";
+
 // ==========================================
 // 1. CodeTabs Component (with Active Indicator & Copy Button)
 // ==========================================
@@ -25,11 +35,35 @@ export interface TabItem {
   filename?: string;
 }
 
+function highlightSnippet(code: string, language?: string) {
+  if (!code) return "";
+  const lang = (language || "yaml").toLowerCase();
+  const grammar =
+    Prism.languages[lang] ||
+    (lang === "yml" ? Prism.languages.yaml : null) ||
+    (lang === "py" ? Prism.languages.python : null) ||
+    (lang === "sh" || lang === "shell" ? Prism.languages.bash : null) ||
+    (lang === "ts" || lang === "tsx" ? Prism.languages.typescript : null) ||
+    (lang === "js" || lang === "jsx" ? Prism.languages.javascript : null) ||
+    Prism.languages.yaml ||
+    Prism.languages.plain;
+
+  try {
+    return Prism.highlight(code, grammar, lang);
+  } catch {
+    return code;
+  }
+}
+
 export function CodeTabs({ tabs }: { tabs: TabItem[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isCopied, setIsCopied] = useState(false);
 
   const activeTab = tabs[activeIndex] || tabs[0];
+
+  const highlightedHtml = React.useMemo(() => {
+    return highlightSnippet(activeTab.code, activeTab.language);
+  }, [activeTab.code, activeTab.language]);
 
   const handleCopy = () => {
     if (activeTab?.code) {
@@ -72,7 +106,7 @@ export function CodeTabs({ tabs }: { tabs: TabItem[] }) {
           )}
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-mono text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-mono text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800 transition-colors cursor-pointer"
             title="Copy code snippet"
           >
             {isCopied ? (
@@ -92,9 +126,10 @@ export function CodeTabs({ tabs }: { tabs: TabItem[] }) {
 
       {/* Code Content */}
       <div className="p-4 overflow-x-auto bg-black/60">
-        <pre className="font-mono text-xs text-zinc-200 whitespace-pre leading-relaxed">
-          {activeTab.code}
-        </pre>
+        <pre
+          className="font-mono text-xs text-zinc-200 whitespace-pre leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+        />
       </div>
     </div>
   );
@@ -105,7 +140,7 @@ export function CodeTabs({ tabs }: { tabs: TabItem[] }) {
 // ==========================================
 export function CodeBlock({
   code,
-  language,
+  language = "yaml",
   filename,
 }: {
   code: string;
@@ -113,6 +148,10 @@ export function CodeBlock({
   filename?: string;
 }) {
   const [isCopied, setIsCopied] = useState(false);
+
+  const highlightedHtml = React.useMemo(() => {
+    return highlightSnippet(code, language);
+  }, [code, language]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
@@ -129,7 +168,7 @@ export function CodeBlock({
         </span>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800 transition-colors"
+          className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800 transition-colors cursor-pointer"
         >
           {isCopied ? (
             <>
@@ -145,9 +184,10 @@ export function CodeBlock({
         </button>
       </div>
       <div className="p-4 overflow-x-auto bg-black/60">
-        <pre className="font-mono text-xs text-zinc-200 whitespace-pre leading-relaxed">
-          {code}
-        </pre>
+        <pre
+          className="font-mono text-xs text-zinc-200 whitespace-pre leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+        />
       </div>
     </div>
   );

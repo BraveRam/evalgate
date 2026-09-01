@@ -37,6 +37,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { CodeViewer } from "@/components/ui/CodeViewer";
 import {
   Tooltip,
   TooltipContent,
@@ -713,9 +714,13 @@ export default function PlaygroundPage() {
                     className="font-mono text-xs bg-zinc-950 border-border resize-y leading-relaxed"
                   />
                 ) : (
-                  <div className="p-3 rounded-md bg-zinc-950 border border-border font-mono text-xs text-zinc-200 whitespace-pre-wrap min-h-[140px] leading-relaxed select-text">
-                    {renderedPrompt || <span className="text-zinc-600 italic">No prompt content</span>}
-                  </div>
+                  <CodeViewer
+                    code={renderedPrompt || "No prompt content"}
+                    language="markdown"
+                    header={false}
+                    maxHeight="220px"
+                    compact={true}
+                  />
                 )}
 
                 {/* Variable Resolution Status Strip */}
@@ -1183,9 +1188,18 @@ export default function PlaygroundPage() {
                     </Button>
                   </CardHeader>
                   <CardContent className="p-4 pt-1">
-                    <div className="p-3 rounded-md bg-black font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto border border-zinc-900 select-text">
-                      {result.completion || <span className="text-zinc-600 italic">No output generated</span>}
-                    </div>
+                    <CodeViewer
+                      code={result.completion || "No output generated"}
+                      language={
+                        result.completion?.trim().startsWith("{") ||
+                        result.completion?.trim().startsWith("[")
+                          ? "json"
+                          : "markdown"
+                      }
+                      header={false}
+                      maxHeight="260px"
+                      compact={true}
+                    />
                   </CardContent>
                 </Card>
 

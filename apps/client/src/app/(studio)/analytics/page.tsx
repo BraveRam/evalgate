@@ -37,6 +37,7 @@ import {
 import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
 import { usePageTitle } from "@/lib/use-page-title";
+import { CodeViewer } from "@/components/ui/CodeViewer";
 import { SuiteRunResult, TestCaseResult } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -1151,10 +1152,19 @@ export default function AnalyticsPage() {
                         {/* Completion */}
                         {tc.completion && (
                           <div className="space-y-1 pt-1 border-t border-border/40">
-                            <span className="text-[10px] text-zinc-500 uppercase block">Completion</span>
-                            <div className="p-2 rounded bg-black text-[11px] text-zinc-300 whitespace-pre-wrap max-h-28 overflow-y-auto select-text">
-                              {tc.completion}
-                            </div>
+                            <span className="text-[10px] text-zinc-500 uppercase block font-mono">Completion</span>
+                            <CodeViewer
+                              code={tc.completion}
+                              language={
+                                tc.completion.trim().startsWith("{") ||
+                                tc.completion.trim().startsWith("[")
+                                  ? "json"
+                                  : "markdown"
+                              }
+                              header={false}
+                              maxHeight="120px"
+                              compact={true}
+                            />
                           </div>
                         )}
                       </Card>
