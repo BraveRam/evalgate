@@ -6,9 +6,13 @@ import { QueryProvider } from "@/components/providers/QueryProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export const metadata: Metadata = {
-  title: "EvalGate Studio — Applied AI Evaluation & Regression Testing",
+  title: {
+    default: "EvalGate Studio — Applied AI Evaluation & Regression Testing",
+    template: "%s | EvalGate Studio",
+  },
   description:
     "Fast, local-first prompt evaluation, LLM-as-a-judge quality gates, and model benchmark shootout platform.",
+  applicationName: "EvalGate Studio",
 };
 
 export default function RootLayout({

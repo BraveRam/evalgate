@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
+import { usePageTitle } from "@/lib/use-page-title";
 import { AssertionConfig, AssertionType, TestCaseResult } from "@/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -223,6 +224,7 @@ interface HistoryItem {
 }
 
 export default function PlaygroundPage() {
+  usePageTitle("Evaluation Workbench");
   const queryClient = useQueryClient();
 
   // Workbench Form State

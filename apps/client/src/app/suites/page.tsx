@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
+import { usePageTitle } from "@/lib/use-page-title";
 import { streamSuiteRun } from "@/lib/ws";
 import {
   CostEstimateResponse,
@@ -101,6 +102,7 @@ function jsonToYaml(obj: any, indent = 0): string {
 }
 
 export default function SuitesPage() {
+  usePageTitle("Suites & Test Matrix");
   const queryClient = useQueryClient();
 
   // Search, Filter, and Sort Controls

@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
+import { usePageTitle } from "@/lib/use-page-title";
 import { SuiteRunResult, TestCaseResult } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -202,6 +203,7 @@ function exportRunsToCSV(runsToExport: SuiteRunResult[]) {
 }
 
 export default function AnalyticsPage() {
+  usePageTitle("Analytics & Trends");
   const queryClient = useQueryClient();
 
   // Filters State

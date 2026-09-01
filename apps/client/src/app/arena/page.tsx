@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
+import { usePageTitle } from "@/lib/use-page-title";
 import { ArenaComparisonResult, SuiteRunResult, TestCaseResult } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -339,6 +340,7 @@ function computeLineDiff(textA: string, textB: string) {
 }
 
 export default function ArenaPage() {
+  usePageTitle("Model Arena Shootout");
   const [selectedSuite, setSelectedSuite] = useState<string>("");
   const [modelA, setModelA] = useState("openai/gpt-4o-mini");
   const [modelB, setModelB] = useState("deepseek/deepseek-v4-pro-0813");

@@ -14,6 +14,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
+import { usePageTitle } from "@/lib/use-page-title";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -37,6 +38,7 @@ import {
 } from "lucide-react";
 
 export default function DashboardOverview() {
+  usePageTitle("Overview");
   const queryClient = useQueryClient();
   const [isRetryingHealth, setIsRetryingHealth] = useState(false);
 

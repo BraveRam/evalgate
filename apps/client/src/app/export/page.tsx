@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
 import { formatPercent } from "@/lib/utils";
+import { usePageTitle } from "@/lib/use-page-title";
 import { SuiteSummary } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -171,6 +172,7 @@ function createZipArchive(files: { path: string; content: string }[]): Blob {
 }
 
 export default function ExportPage() {
+  usePageTitle("CI/CD Export");
   const [selectedSuiteName, setSelectedSuiteName] = useState<string>("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
