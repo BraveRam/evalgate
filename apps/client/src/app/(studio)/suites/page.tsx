@@ -34,6 +34,7 @@ import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
 import { usePageTitle } from "@/lib/use-page-title";
 import { CodeViewer } from "@/components/ui/CodeViewer";
+import { SearchableModelSelect } from "@/components/ui/SearchableModelSelect";
 import { streamSuiteRun } from "@/lib/ws";
 import {
   CostEstimateResponse,
@@ -966,18 +967,11 @@ export default function SuitesPage() {
                 <label className="text-[11px] font-medium text-zinc-400 block mb-1">
                   Target Model
                 </label>
-                <Select value={newSuiteModel} onValueChange={setNewSuiteModel}>
-                  <SelectTrigger className="h-8 text-xs font-mono bg-zinc-950">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="openai/gpt-4o-mini" className="text-xs font-mono">OpenAI GPT-4o-mini</SelectItem>
-                    <SelectItem value="openai/gpt-4o" className="text-xs font-mono">OpenAI GPT-4o</SelectItem>
-                    <SelectItem value="anthropic/claude-3-5-sonnet" className="text-xs font-mono">Claude 3.5 Sonnet</SelectItem>
-                    <SelectItem value="google/gemini-2.0-flash" className="text-xs font-mono">Gemini 2.0 Flash</SelectItem>
-                    <SelectItem value="mock/simulator" className="text-xs font-mono">Mock Simulator ($0.00)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableModelSelect
+                  value={newSuiteModel}
+                  onValueChange={setNewSuiteModel}
+                  triggerClassName="w-full h-8 bg-zinc-950 border border-zinc-800"
+                />
               </div>
 
               <div>

@@ -79,23 +79,8 @@ import {
   Zap,
 } from "lucide-react";
 
-const SUPPORTED_MODELS = [
-  { id: "openai/gpt-4o-mini", label: "OpenAI GPT-4o-mini" },
-  { id: "openai/gpt-4o", label: "OpenAI GPT-4o" },
-  { id: "anthropic/claude-3-5-sonnet", label: "Anthropic Claude 3.5 Sonnet" },
-  { id: "google/gemini-2.0-flash", label: "Google Gemini 2.0 Flash" },
-  { id: "deepseek/deepseek-v4-pro-0813", label: "DeepSeek v4 Pro" },
-  { id: "mock/simulator", label: "Mock Simulator (Offline $0.00)" },
-];
-
-const MODEL_PRICES: Record<string, { input: number; output: number }> = {
-  "openai/gpt-4o-mini": { input: 0.15, output: 0.6 },
-  "openai/gpt-4o": { input: 2.5, output: 10.0 },
-  "anthropic/claude-3-5-sonnet": { input: 3.0, output: 15.0 },
-  "google/gemini-2.0-flash": { input: 0.1, output: 0.4 },
-  "deepseek/deepseek-v4-pro-0813": { input: 0.14, output: 0.28 },
-  "mock/simulator": { input: 0.0, output: 0.0 },
-};
+import { SearchableModelSelect } from "@/components/ui/SearchableModelSelect";
+import { getModelPricing } from "@/lib/models-data";
 
 const DETERMINISTIC_TYPES: { type: AssertionType; label: string; placeholder: string }[] = [
   { type: "contains", label: "Contains String", placeholder: 'e.g. "$45.2M"' },
@@ -377,8 +362,8 @@ export default function PlaygroundPage() {
       SEMANTIC_TYPES.some((s) => s.type === type);
 
     const semanticCount = assertions.filter((a) => isSemantic(a.type)).length;
-    const targetPrice = MODEL_PRICES[model] || { input: 0.15, output: 0.6 };
-    const judgePrice = MODEL_PRICES[judgeModel] || { input: 0.15, output: 0.6 };
+    const targetPrice = getModelPricing(model);
+    const judgePrice = getModelPricing(judgeModel);
 
     // Estimate input tokens from systemPrompt + renderedPrompt (~4 chars/token)
     const promptLen = (systemPrompt?.length || 0) + renderedPrompt.length;
@@ -528,34 +513,20 @@ export default function PlaygroundPage() {
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-zinc-500 uppercase font-mono">Target:</span>
-              <Select value={model} onValueChange={setModel}>
-                <SelectTrigger className="w-44 h-8 text-xs font-mono border-0 bg-zinc-900/60">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-0 bg-zinc-900">
-                  {SUPPORTED_MODELS.map((m) => (
-                    <SelectItem key={m.id} value={m.id} className="text-xs font-mono">
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableModelSelect
+                value={model}
+                onValueChange={setModel}
+                triggerClassName="w-48 sm:w-56"
+              />
             </div>
 
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-zinc-500 uppercase font-mono">Judge:</span>
-              <Select value={judgeModel} onValueChange={setJudgeModel}>
-                <SelectTrigger className="w-44 h-8 text-xs font-mono border-0 bg-zinc-900/60">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-0 bg-zinc-900">
-                  {SUPPORTED_MODELS.map((m) => (
-                    <SelectItem key={m.id} value={m.id} className="text-xs font-mono">
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableModelSelect
+                value={judgeModel}
+                onValueChange={setJudgeModel}
+                triggerClassName="w-48 sm:w-56"
+              />
             </div>
 
             {/* Preflight Specs Pill */}

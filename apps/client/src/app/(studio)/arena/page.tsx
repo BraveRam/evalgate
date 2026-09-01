@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CodeViewer } from "@/components/ui/CodeViewer";
+import { SearchableModelSelect } from "@/components/ui/SearchableModelSelect";
+import { MODEL_MAP } from "@/lib/models-data";
 import {
   Tooltip,
   TooltipContent,
@@ -414,18 +416,17 @@ export default function ArenaPage() {
   const activeSuiteName = activeSuiteObj?.name || (suites.length > 0 ? suites[0].name : "");
 
   // Model helper names
-  const modelAObj = ARENA_MODELS.find((m) => m.id === modelA) || {
-    id: modelA,
-    name: modelA.split("/").pop() || modelA,
-    provider: modelA.split("/")[0] || "Custom",
-    badge: "Contender",
-  };
-  const modelBObj = ARENA_MODELS.find((m) => m.id === modelB) || {
-    id: modelB,
-    name: modelB.split("/").pop() || modelB,
-    provider: modelB.split("/")[0] || "Custom",
-    badge: "Contender",
-  };
+  const modelAObj = useMemo(() => {
+    const found = MODEL_MAP.get(modelA);
+    if (found) return { id: found.id, name: found.name, provider: found.lab, badge: found.lab };
+    return { id: modelA, name: modelA.split("/").pop() || modelA, provider: modelA.split("/")[0] || "Custom", badge: "Custom" };
+  }, [modelA]);
+
+  const modelBObj = useMemo(() => {
+    const found = MODEL_MAP.get(modelB);
+    if (found) return { id: found.id, name: found.name, provider: found.lab, badge: found.lab };
+    return { id: modelB, name: modelB.split("/").pop() || modelB, provider: modelB.split("/")[0] || "Custom", badge: "Custom" };
+  }, [modelB]);
 
   // TanStack Mutation: Arena comparison
   const arenaMutation = useMutation({
@@ -662,25 +663,11 @@ export default function ArenaPage() {
                   </label>
                   <span className="text-[10px] font-mono text-zinc-500">{modelAObj.provider}</span>
                 </div>
-                <Select value={modelA} onValueChange={setModelA}>
-                  <SelectTrigger className="font-mono text-xs bg-zinc-950 border-border h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ARENA_MODELS.map((m, idx) => (
-                      <SelectItem
-                        key={m.id ? `arena_m1_${m.id}` : `arena_m1_${idx}`}
-                        value={m.id}
-                        className="font-mono text-xs"
-                      >
-                        <div className="flex items-center justify-between w-full gap-2">
-                          <span className="font-medium text-white">{m.name}</span>
-                          <span className="text-[10px] text-zinc-500">{m.badge}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableModelSelect
+                  value={modelA}
+                  onValueChange={setModelA}
+                  triggerClassName="w-full h-9 bg-zinc-950 border-0"
+                />
                 <p className="text-[10px] font-mono text-zinc-500 truncate">
                   ID: {modelA}
                 </p>
@@ -694,25 +681,11 @@ export default function ArenaPage() {
                   </label>
                   <span className="text-[10px] font-mono text-zinc-500">{modelBObj.provider}</span>
                 </div>
-                <Select value={modelB} onValueChange={setModelB}>
-                  <SelectTrigger className="font-mono text-xs bg-zinc-950 border-border h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ARENA_MODELS.map((m, idx) => (
-                      <SelectItem
-                        key={m.id ? `arena_m2_${m.id}` : `arena_m2_${idx}`}
-                        value={m.id}
-                        className="font-mono text-xs"
-                      >
-                        <div className="flex items-center justify-between w-full gap-2">
-                          <span className="font-medium text-white">{m.name}</span>
-                          <span className="text-[10px] text-zinc-500">{m.badge}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableModelSelect
+                  value={modelB}
+                  onValueChange={setModelB}
+                  triggerClassName="w-full h-9 bg-zinc-950 border-0"
+                />
                 <p className="text-[10px] font-mono text-zinc-500 truncate">
                   ID: {modelB}
                 </p>
