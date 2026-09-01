@@ -102,6 +102,11 @@ const DOCS_NAV_SECTIONS: NavSection[] = [
         href: "/docs/api",
         icon: Server,
       },
+      {
+        name: "Open Source License",
+        href: "/docs/license",
+        icon: ShieldCheck,
+      },
     ],
   },
 ];

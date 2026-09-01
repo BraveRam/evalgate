@@ -32,6 +32,7 @@ const PAGE_ORDER = [
   { key: "ci-cd", label: "CI/CD & GitHub Actions", href: "/docs/ci-cd" },
   { key: "mcp", label: "Model Context Protocol (MCP)", href: "/docs/mcp" },
   { key: "api", label: "REST & WebSocket API", href: "/docs/api" },
+  { key: "license", label: "Open Source License", href: "/docs/license" },
 ];
 
 export async function generateStaticParams() {
@@ -45,6 +46,7 @@ export async function generateStaticParams() {
     { slug: ["ci-cd"] },
     { slug: ["mcp"] },
     { slug: ["api"] },
+    { slug: ["license"] },
   ];
 }
 

@@ -1162,4 +1162,105 @@ ws.onmessage = (event) => {
       </div>
     ),
   },
+
+  license: {
+    slug: "license",
+    title: "Open Source License",
+    description: "EvalGate is open-source software released under the permissive MIT License.",
+    category: "DevOps & Reference",
+    toc: [
+      { title: "MIT License", url: "#mit-license", depth: 2 },
+      { title: "Commercial Use & Permissions", url: "#permissions", depth: 2 },
+      { title: "Third-Party Acknowledgments", url: "#third-party", depth: 2 },
+    ],
+    content: (
+      <div className="space-y-8 text-sm leading-relaxed">
+        <section id="mit-license" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            MIT License
+          </h2>
+          <p className="text-zinc-300">
+            Copyright (c) 2026 EvalGate Contributors
+          </p>
+
+          <CodeBlock
+            language="text"
+            filename="LICENSE"
+            code={`MIT License
+
+Copyright (c) 2026 EvalGate Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.`}
+          />
+        </section>
+
+        <section id="permissions" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            Commercial Use & Permissions
+          </h2>
+          <p className="text-zinc-300">
+            The MIT License is a permissive license that is short and to the point. It lets people do anything they want with your code as long as they provide attribution back to you and don’t hold you liable.
+          </p>
+
+          <TypeTable
+            type={{
+              Commercial_Use: { type: "Allowed", description: "You can use EvalGate commercially in proprietary enterprise software and SaaS applications." },
+              Modification: { type: "Allowed", description: "You can modify, fork, and adapt the source code to fit your team's workflows." },
+              Distribution: { type: "Allowed", description: "You can distribute original or modified copies of the software." },
+              Private_Use: { type: "Allowed", description: "You can run EvalGate internally across private VPCs, air-gapped clusters, or local machines." },
+              Liability_Warranty: { type: "None", description: "The software is provided as-is without warranty of any kind." },
+            }}
+          />
+        </section>
+
+        <section id="third-party" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            Third-Party Acknowledgments
+          </h2>
+          <p className="text-zinc-300">
+            EvalGate is built upon outstanding open-source libraries and foundations:
+          </p>
+
+          <Cards>
+            <Card
+              title="FastAPI & Starlette"
+              href="https://fastapi.tiangolo.com"
+              description="High-performance async Python backend framework."
+            />
+            <Card
+              title="LangChain & LangGraph"
+              href="https://langchain.com"
+              description="Graph-based asynchronous execution engine."
+            />
+            <Card
+              title="Next.js & React 19"
+              href="https://nextjs.org"
+              description="React framework with App Router and Turbopack compiler."
+            />
+            <Card
+              title="Models.dev (SST)"
+              href="https://models.dev"
+              description="Open-source catalog and pricing index of frontier AI models."
+            />
+          </Cards>
+        </section>
+      </div>
+    ),
+  },
 };
