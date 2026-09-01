@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DOCS_PAGES } from "@/lib/docs-data";
+import { DocsTOC } from "@/components/docs/DocsTOC";
 import {
   ArrowLeft,
   ArrowRight,
@@ -139,36 +140,8 @@ export default async function DocPage(props: PageProps) {
       </article>
 
       {/* Right Table of Contents (Desktop) */}
-      <aside className="w-56 shrink-0 hidden xl:block sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto space-y-4">
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-zinc-300 tracking-tight">
-            On this page
-          </h4>
-          <nav className="space-y-1 text-xs">
-            {page.toc.map((item) => (
-              <a
-                key={item.url}
-                href={item.url}
-                className="block text-zinc-400 hover:text-white transition-colors py-1 leading-snug"
-                style={{ paddingLeft: `${(item.depth - 2) * 12}px` }}
-              >
-                {item.title}
-              </a>
-            ))}
-          </nav>
-        </div>
-
-        <div className="pt-4 border-t border-border/40 space-y-2 text-xs">
-          <a
-            href="https://github.com/BraveRam/evalgate"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors"
-          >
-            <Github className="h-3.5 w-3.5" />
-            <span>Edit on GitHub</span>
-          </a>
-        </div>
+      <aside className="w-56 shrink-0 hidden xl:block sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto">
+        <DocsTOC items={page.toc} />
       </aside>
     </div>
   );
