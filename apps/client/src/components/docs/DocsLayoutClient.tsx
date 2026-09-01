@@ -134,17 +134,9 @@ export function DocsLayoutClient({ children }: { children: React.ReactNode }) {
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-zinc-900 border border-zinc-700 text-white transition-colors group-hover:border-zinc-500">
               <Terminal className="h-3.5 w-3.5" />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm text-white tracking-tight">
-                EvalGate Docs
-              </span>
-              <Badge
-                variant="outline"
-                className="text-[10px] px-1.5 py-0 border-zinc-800 text-zinc-400 font-mono hidden sm:inline-flex"
-              >
-                v0.1.0
-              </Badge>
-            </div>
+            <span className="font-semibold text-sm text-white tracking-tight">
+              EvalGate Docs
+            </span>
           </Link>
         </div>
 

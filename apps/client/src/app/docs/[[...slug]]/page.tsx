@@ -92,12 +92,7 @@ export default async function DocPage(props: PageProps) {
         </div>
 
         {/* Page Header */}
-        <header className="space-y-3 border-b border-border/60 pb-6">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px] font-mono border-zinc-800 text-zinc-400">
-              {page.category}
-            </Badge>
-          </div>
+        <header className="space-y-2 border-b border-border/60 pb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
             {page.title}
           </h1>
