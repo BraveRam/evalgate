@@ -234,7 +234,7 @@ export default function DashboardOverview() {
       {/* 3. KPI Cards Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Pass Rate */}
-        <Card className="border-border bg-card">
+        <Card className="border-0 bg-zinc-950/60 shadow-none">
           <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
               Gate Pass Rate
@@ -266,7 +266,7 @@ export default function DashboardOverview() {
         </Card>
 
         {/* Total Suites & Tests */}
-        <Card className="border-border bg-card">
+        <Card className="border-0 bg-zinc-950/60 shadow-none">
           <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
               Discovered Suites
@@ -296,7 +296,7 @@ export default function DashboardOverview() {
         </Card>
 
         {/* P50 Latency */}
-        <Card className="border-border bg-card">
+        <Card className="border-0 bg-zinc-950/60 shadow-none">
           <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
               Avg P50 Latency
@@ -326,7 +326,7 @@ export default function DashboardOverview() {
         </Card>
 
         {/* Estimated Spend */}
-        <Card className="border-border bg-card">
+        <Card className="border-0 bg-zinc-950/60 shadow-none">
           <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
               Inference Spend
@@ -471,13 +471,13 @@ export default function DashboardOverview() {
                     prefetch={true}
                     className="block group"
                   >
-                    <Card className="h-full border-border bg-card hover:border-zinc-700 hover:bg-zinc-900/60 transition-all">
+                    <Card className="h-full border border-border bg-zinc-950/70 hover:border-zinc-700 hover:bg-zinc-900/60 transition-all">
                       <CardHeader className="p-4 pb-2">
                         <div className="flex items-start justify-between gap-2">
                           <CardTitle className="text-xs font-semibold text-white group-hover:text-zinc-200 truncate">
                             {s.name}
                           </CardTitle>
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-zinc-800 text-zinc-400 font-mono shrink-0">
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 border border-zinc-800 text-zinc-400 font-mono shrink-0">
                             {formatPercent(s.min_pass_rate)} gate
                           </Badge>
                         </div>
