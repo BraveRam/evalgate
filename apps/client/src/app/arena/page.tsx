@@ -140,8 +140,8 @@ export default function ArenaPage() {
                   <SelectValue placeholder="Select suite" />
                 </SelectTrigger>
                 <SelectContent>
-                  {suites.map((s) => (
-                    <SelectItem key={s.name} value={s.name} className="font-mono text-xs">
+                  {suites.map((s, idx) => (
+                    <SelectItem key={s.name ? `arena_suite_${s.name}` : `arena_suite_${idx}`} value={s.name} className="font-mono text-xs">
                       {s.name} ({s.test_count} tests)
                     </SelectItem>
                   ))}
@@ -159,8 +159,8 @@ export default function ArenaPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ARENA_MODELS.map((m) => (
-                    <SelectItem key={m.id} value={m.id} className="font-mono text-xs">
+                  {ARENA_MODELS.map((m, idx) => (
+                    <SelectItem key={m.id ? `arena_m1_${m.id}` : `arena_m1_${idx}`} value={m.id} className="font-mono text-xs">
                       {m.label}
                     </SelectItem>
                   ))}
@@ -178,8 +178,8 @@ export default function ArenaPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ARENA_MODELS.map((m) => (
-                    <SelectItem key={m.id} value={m.id} className="font-mono text-xs">
+                  {ARENA_MODELS.map((m, idx) => (
+                    <SelectItem key={m.id ? `arena_m2_${m.id}` : `arena_m2_${idx}`} value={m.id} className="font-mono text-xs">
                       {m.label}
                     </SelectItem>
                   ))}
@@ -287,7 +287,7 @@ export default function ArenaPage() {
 
                 return (
                   <Card
-                    key={resA.test_id || idx}
+                    key={resA.test_id ? `arena_res_${resA.test_id}` : `arena_res_idx_${idx}`}
                     className="border-border bg-card"
                   >
                     <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between border-b border-border">

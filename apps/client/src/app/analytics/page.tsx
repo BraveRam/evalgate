@@ -104,8 +104,8 @@ export default function AnalyticsPage() {
               <SelectItem value="all" className="font-mono text-xs">
                 All Suites ({suites.length})
               </SelectItem>
-              {suites.map((s) => (
-                <SelectItem key={s.name} value={s.name} className="font-mono text-xs">
+              {suites.map((s, idx) => (
+                <SelectItem key={s.name ? `suite_opt_${s.name}` : `suite_idx_${idx}`} value={s.name} className="font-mono text-xs">
                   {s.name}
                 </SelectItem>
               ))}
@@ -289,8 +289,8 @@ export default function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {runs.map((r) => (
-                    <tr key={r.run_id} className="hover:bg-zinc-900/50 transition-colors">
+                  {runs.map((r, idx) => (
+                    <tr key={r.run_id ? `analytics_run_${r.run_id}` : `analytics_run_idx_${idx}`} className="hover:bg-zinc-900/50 transition-colors">
                       <td className="py-3 px-4">
                         {r.passed ? (
                           <Badge variant="outline" className="gap-1 font-mono text-[10px] border-zinc-700 bg-zinc-900 text-zinc-200">

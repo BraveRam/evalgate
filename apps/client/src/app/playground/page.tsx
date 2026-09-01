@@ -868,13 +868,13 @@ export default function PlaygroundPage() {
                       No deterministic assertions added.
                     </div>
                   ) : (
-                    assertions.map((a, idx) => {
-                      if (SEMANTIC_TYPES.some((s) => s.type === a.type)) return null;
+                    deterministicAssertions.map((a, dIdx) => {
+                      const realIdx = assertions.indexOf(a);
                       const dtInfo = DETERMINISTIC_TYPES.find((d) => d.type === a.type);
 
                       return (
                         <div
-                          key={idx}
+                          key={`det_assert_${a.type}_${dIdx}`}
                           className="p-3 rounded-lg border border-border bg-zinc-950/70 space-y-2"
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -891,7 +891,7 @@ export default function PlaygroundPage() {
                                 <Switch
                                   checked={a.strict ?? true}
                                   onCheckedChange={(checked) =>
-                                    updateAssertion(idx, { strict: checked })
+                                    updateAssertion(realIdx, { strict: checked })
                                   }
                                 />
                                 <Tooltip>
@@ -905,7 +905,7 @@ export default function PlaygroundPage() {
                               </div>
 
                               <Button
-                                onClick={() => removeAssertion(idx)}
+                                onClick={() => removeAssertion(realIdx)}
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 text-zinc-500 hover:text-white"
@@ -919,7 +919,7 @@ export default function PlaygroundPage() {
                           {a.type !== "python_ast" && a.type !== "sql_syntax" && (
                             <Input
                               value={String(a.value ?? "")}
-                              onChange={(e) => updateAssertion(idx, { value: e.target.value })}
+                              onChange={(e) => updateAssertion(realIdx, { value: e.target.value })}
                               placeholder={dtInfo?.placeholder || "Expected value"}
                               className="h-7 font-mono text-xs bg-zinc-950 border-border"
                             />
@@ -946,24 +946,24 @@ export default function PlaygroundPage() {
                       No semantic judge metrics added.
                     </div>
                   ) : (
-                    assertions.map((a, idx) => {
+                    semanticAssertions.map((a, sIdx) => {
+                      const realIdx = assertions.indexOf(a);
                       const stInfo = SEMANTIC_TYPES.find((s) => s.type === a.type);
-                      if (!stInfo) return null;
 
                       return (
                         <div
-                          key={idx}
+                          key={`sem_assert_${a.type}_${sIdx}`}
                           className="p-3 rounded-lg border border-border bg-zinc-950/70 space-y-2.5"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div>
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline" className="font-mono text-[10px] border-zinc-700 bg-zinc-900 text-zinc-200">
-                                  {stInfo.label}
+                                  {stInfo?.label || a.type}
                                 </Badge>
                               </div>
                               <p className="text-[10px] text-zinc-500 mt-0.5">
-                                {stInfo.description}
+                                {stInfo?.description}
                               </p>
                             </div>
 
@@ -974,13 +974,13 @@ export default function PlaygroundPage() {
                                 <Switch
                                   checked={a.strict ?? true}
                                   onCheckedChange={(checked) =>
-                                    updateAssertion(idx, { strict: checked })
+                                    updateAssertion(realIdx, { strict: checked })
                                   }
                                 />
                               </div>
 
                               <Button
-                                onClick={() => removeAssertion(idx)}
+                                onClick={() => removeAssertion(realIdx)}
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 text-zinc-500 hover:text-white"
@@ -1002,7 +1002,7 @@ export default function PlaygroundPage() {
                               step="0.05"
                               value={a.threshold ?? 0.85}
                               onChange={(e) =>
-                                updateAssertion(idx, {
+                                updateAssertion(realIdx, {
                                   threshold: parseFloat(e.target.value),
                                 })
                               }
@@ -1022,7 +1022,7 @@ export default function PlaygroundPage() {
                               <Textarea
                                 value={a.rubric || ""}
                                 onChange={(e) =>
-                                  updateAssertion(idx, { rubric: e.target.value })
+                                  updateAssertion(realIdx, { rubric: e.target.value })
                                 }
                                 rows={2}
                                 placeholder="Explain grading rules, required keywords, or style criteria..."

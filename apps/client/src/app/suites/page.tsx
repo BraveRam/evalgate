@@ -433,14 +433,14 @@ export default function SuitesPage() {
                 </Button>
               </div>
             ) : (
-              filteredSuites.map((s) => {
+              filteredSuites.map((s, idx) => {
                 const isSelected = s.name === activeSuiteName;
                 const health = suiteHealthMap.get(s.name);
                 const status = health?.status || "NEVER_RUN";
 
                 return (
                   <div
-                    key={s.name}
+                    key={s.name ? `suite_list_${s.name}` : `suite_idx_${idx}`}
                     onClick={() => setSelectedSuiteName(s.name)}
                     className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                       isSelected
@@ -816,9 +816,9 @@ export default function SuitesPage() {
                     </Card>
                   ) : (
                     <div className="space-y-2">
-                      {selectedSuiteRuns.map((run) => (
+                      {selectedSuiteRuns.map((run, rIdx) => (
                         <div
-                          key={run.run_id}
+                          key={run.run_id ? `suite_run_${run.run_id}` : `suite_run_idx_${rIdx}`}
                           className="p-3.5 rounded-lg border border-border bg-card flex items-center justify-between gap-3 text-xs font-mono"
                         >
                           <div className="flex items-center gap-2.5">
@@ -1099,7 +1099,7 @@ export default function SuitesPage() {
               <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                 {streamCompletedResults.map((tc, i) => (
                   <div
-                    key={tc.test_id || i}
+                    key={tc.test_id ? `stream_tc_${tc.test_id}_${i}` : `stream_${i}`}
                     className="p-2.5 rounded border border-border bg-card text-xs space-y-1 font-mono"
                   >
                     <div className="flex items-center justify-between">

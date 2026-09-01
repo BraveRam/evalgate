@@ -160,8 +160,8 @@ async def test_evalgate_${(activeSuiteName || "suite").replace(/[^a-zA-Z0-9_]/g,
               <SelectValue placeholder="Select suite" />
             </SelectTrigger>
             <SelectContent>
-              {suites.map((s) => (
-                <SelectItem key={s.name} value={s.name} className="font-mono text-xs">
+              {suites.map((s, idx) => (
+                <SelectItem key={s.name ? `export_suite_${s.name}` : `export_suite_idx_${idx}`} value={s.name} className="font-mono text-xs">
                   {s.name}
                 </SelectItem>
               ))}
