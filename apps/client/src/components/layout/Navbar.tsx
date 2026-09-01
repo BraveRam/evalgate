@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { api } from "@/lib/api";
 import { BookOpen, ExternalLink, Github } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const ROUTE_NAMES: Record<string, string> = {
   "/": "Overview",
@@ -53,29 +54,29 @@ export function Navbar() {
           <Link
             href="/"
             prefetch={true}
-            className="text-xs font-medium text-zinc-400 hover:text-white transition-colors hidden sm:inline"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:inline"
           >
             Studio
           </Link>
-          <span className="text-xs text-zinc-600 hidden sm:inline">/</span>
-          <span className="text-xs font-semibold text-white truncate">{currentRouteName}</span>
+          <span className="text-xs text-muted-foreground/60 hidden sm:inline">/</span>
+          <span className="text-xs font-semibold text-foreground truncate">{currentRouteName}</span>
         </div>
       </div>
 
       {/* Right: Status & Actions */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5">
         {/* Status Indicator */}
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full border border-border bg-zinc-950 text-xs">
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full border border-border bg-card text-xs">
           <span
             className={`h-1.5 w-1.5 rounded-full shrink-0 ${
               backendStatus === "online"
-                ? "bg-white"
+                ? "bg-emerald-500"
                 : backendStatus === "offline"
-                ? "bg-zinc-600"
-                : "bg-zinc-400 animate-pulse"
+                ? "bg-rose-500"
+                : "bg-amber-500 animate-pulse"
             }`}
           />
-          <span className="text-zinc-400 text-[10px] sm:text-[11px] font-mono whitespace-nowrap">
+          <span className="text-muted-foreground text-[10px] sm:text-[11px] font-mono whitespace-nowrap">
             {backendStatus === "online" ? (
               <>
                 <span className="hidden sm:inline">API </span>v{backendVersion}
@@ -88,10 +89,13 @@ export function Navbar() {
           </span>
         </div>
 
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* Docs Link */}
         <Link
           href="/docs"
-          className="text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 px-2 py-1 rounded hover:bg-zinc-900 transition-colors"
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 py-1 rounded hover:bg-accent transition-colors"
           title="Fumadocs Documentation"
         >
           <BookOpen className="h-3.5 w-3.5" />
@@ -103,7 +107,7 @@ export function Navbar() {
           href="https://github.com/BraveRam/evalgate"
           target="_blank"
           rel="noreferrer"
-          className="text-zinc-400 hover:text-white p-1.5 rounded-md hover:bg-zinc-900 transition-colors"
+          className="text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-accent transition-colors"
           title="GitHub Repository"
         >
           <Github className="h-4 w-4" />

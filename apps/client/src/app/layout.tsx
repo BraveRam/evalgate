@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 export const metadata: Metadata = {
   title: {
@@ -22,9 +23,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
-        <QueryProvider>{children}</QueryProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <QueryProvider>{children}</QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -24,6 +24,7 @@ import {
   Workflow,
   X,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface NavLinkItem {
   name: string;
@@ -154,12 +155,14 @@ export function DocsLayoutClient({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
+          <ThemeToggle />
+
           <Link href="/" prefetch={true}>
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs gap-1.5 border-border bg-zinc-950/80 text-zinc-300 hover:text-white hover:bg-zinc-900"
+              className="h-8 text-xs gap-1.5 border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent"
             >
               <LayoutDashboard className="h-3.5 w-3.5" />
               <span>Back to Studio</span>
@@ -170,7 +173,7 @@ export function DocsLayoutClient({ children }: { children: React.ReactNode }) {
             href="https://github.com/BraveRam/evalgate"
             target="_blank"
             rel="noreferrer"
-            className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="GitHub Repository"
           >
             <Github className="h-4 w-4" />
