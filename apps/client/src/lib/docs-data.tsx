@@ -304,30 +304,93 @@ target:
                 code={`target:
   type: prompt
   model: openai/gpt-4o-mini
-  temperature: 0.2
-  template: "Translate to French: {{input_text}}"`}
+  temperature: 0.0
+  system_prompt: "You are a customer support classification assistant."
+  template: "Classify the sentiment of: {{customer_message}}"`}
               />
             </Accordion>
-            <Accordion title="2. Direct Completion (type: completion)">
+
+            <Accordion title="2. Tool & Function Calling (type: tool_call)">
               <p className="text-zinc-400 mb-2">
-                Sends raw inputs directly to the model without additional wrapper formatting.
+                Tests whether an LLM invokes the correct tool definitions with valid parameter arguments.
               </p>
               <CodeBlock
                 language="yaml"
                 code={`target:
-  type: completion
-  model: google/gemini-2.0-flash`}
+  type: tool_call
+  model: openai/gpt-4o
+  tools:
+    - name: check_inventory
+      description: "Query stock levels for a product"
+      parameters:
+        type: object
+        properties:
+          sku: { type: string }
+        required: ["sku"]`}
               />
             </Accordion>
-            <Accordion title="3. Mock Simulator (type: mock)">
+
+            <Accordion title="3. RAG & Retrieval Grounding (type: rag)">
+              <p className="text-zinc-400 mb-2">
+                Supplies retrieved context passages to evaluate hallucination, faithfulness, and answer citation grounding.
+              </p>
+              <CodeBlock
+                language="yaml"
+                code={`target:
+  type: rag
+  model: anthropic/claude-3-5-sonnet
+  template: |
+    Context Documents:
+    {{context}}
+
+    User Question:
+    {{question}}`}
+              />
+            </Accordion>
+
+            <Accordion title="4. Structured JSON Output (type: structured_output)">
+              <p className="text-zinc-400 mb-2">
+                Enforces strict JSON schema validation on the LLM completion using Pydantic / JSON Schema definitions.
+              </p>
+              <CodeBlock
+                language="yaml"
+                code={`target:
+  type: structured_output
+  model: openai/gpt-4o-mini
+  json_schema:
+    type: object
+    properties:
+      decision: { type: string, enum: ["APPROVE", "REJECT"] }
+      confidence: { type: number }
+    required: ["decision", "confidence"]`}
+              />
+            </Accordion>
+
+            <Accordion title="5. Live HTTP Webhook / API Endpoint (type: webhook)">
+              <p className="text-zinc-400 mb-2">
+                Evaluates an external backend service, LangChain agent, or microservice over live HTTP POST requests.
+              </p>
+              <CodeBlock
+                language="yaml"
+                code={`target:
+  type: webhook
+  webhook_url: "https://api.myapp.com/v1/chat/agent"
+  headers:
+    Authorization: "Bearer \${APP_SECRET_TOKEN}"
+    Content-Type: "application/json"`}
+              />
+            </Accordion>
+
+            <Accordion title="6. Offline Mock Simulator (provider: mock)">
               <p className="text-zinc-400 mb-2">
                 Fast, deterministic local simulator with zero API costs ($0.00) and zero latency. Ideal for CI unit tests and schema preflight validation.
               </p>
               <CodeBlock
                 language="yaml"
                 code={`target:
-  type: mock
-  model: mock/simulator`}
+  type: prompt
+  model: mock/simulator
+  provider: mock`}
               />
             </Accordion>
           </Accordions>
@@ -335,7 +398,7 @@ target:
 
         <section id="variables" className="space-y-4">
           <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
-            Variable Interpolation
+            Variable Interpolation & Context
           </h2>
           <p className="text-zinc-300">
             Variables are defined as key-value pairs per test case and are substituted into templates using double curly braces (<code>{"{{key}}"}</code>).
@@ -371,12 +434,13 @@ target:
 
           <TypeTable
             type={{
+              exact: { type: "string", description: "Verifies exact string match after whitespace normalization" },
               contains: { type: "string", description: "Verifies the output contains the given substring" },
               not_contains: { type: "string", description: "Verifies the output does NOT contain a forbidden term (e.g. confidential, error)" },
-              exact: { type: "string", description: "Verifies exact string match after whitespace normalization" },
               starts_with: { type: "string", description: "Ensures completion begins with a specific prefix (e.g. SELECT, {)" },
               ends_with: { type: "string", description: "Ensures completion terminates with an expected suffix (e.g. ;)" },
               regex: { type: "regex pattern", description: "Validates model response against regular expressions (e.g. ^[A-Z]{3}-\\d{4}$)" },
+              levenshtein: { type: "number (0.0 - 1.0)", description: "Computes fuzzy string similarity ratio against ground truth" },
             }}
           />
         </section>
@@ -431,17 +495,35 @@ target:
 
         <section id="llm-judge" className="space-y-4">
           <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
-            LLM-as-a-Judge Rubrics
+            Semantic LLM-as-a-Judge Rubrics
           </h2>
           <p className="text-zinc-300">
             When evaluation requires semantic reasoning, tone analysis, or factual fidelity, EvalGate employs secondary judge models:
           </p>
+
+          <TypeTable
+            type={{
+              faithfulness: { type: "Semantic Metric", description: "Verifies that claims made in the completion are strictly grounded in the provided context documents." },
+              hallucination: { type: "Semantic Metric", description: "Extracts individual factual claims and flags statements unsupported by context." },
+              relevancy: { type: "Semantic Metric", description: "Measures whether the model's answer directly addresses the user's inquiry." },
+              coherence: { type: "Semantic Metric", description: "Evaluates logical consistency, narrative flow, and syntactic cohesion." },
+              bias: { type: "Semantic Metric", description: "Detects demographic, political, or unfair bias in generated completions." },
+              intent: { type: "Semantic Metric", description: "Verifies whether the agent fulfilled the primary user intention." },
+              dynamic_rubric: { type: "Custom Rubric", description: "Evaluates the output against a custom grading rubric on a normalized score threshold." },
+            }}
+          />
+
           <CodeBlock
             language="yaml"
-            code={`- type: llm_rubric
-  rubric: "The response must clearly explain how to handle authentication errors without suggesting insecure bypasses."
-  judge_model: openai/gpt-4o-mini
-  min_score: 4.0        # Normalized 1-5 evaluation scale`}
+            filename="evals/rag-judge.yaml"
+            code={`assertions:
+  - type: faithfulness
+    threshold: 0.85
+    judge_model: openai/gpt-4o-mini
+  - type: dynamic_rubric
+    rubric: "The response must clearly explain how to handle authentication errors without suggesting insecure bypasses."
+    judge_model: anthropic/claude-3-5-sonnet
+    threshold: 0.80`}
           />
         </section>
       </div>
