@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180" fill="none">
+  <rect width="180" height="180" rx="40" fill="#09090b" stroke="#3f3f46" stroke-width="6"/>
+  <!-- Terminal Prompt > -->
+  <path d="M50 55L85 90L50 125" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Terminal Cursor _ -->
+  <line x1="95" y1="125" x2="130" y2="125" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+</svg>

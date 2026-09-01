@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   description:
     "Fast, local-first prompt evaluation, LLM-as-a-judge quality gates, and model benchmark shootout platform.",
   applicationName: "EvalGate Studio",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
