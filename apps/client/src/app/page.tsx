@@ -462,9 +462,9 @@ export default function DashboardOverview() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                {suites.map((s) => (
+                {suites.map((s, idx) => (
                   <Link
-                    key={s.name}
+                    key={s.name ? `suite_card_${s.name}` : `suite_idx_${idx}`}
                     href={`/suites`}
                     prefetch={true}
                     className="block group"
@@ -720,8 +720,8 @@ export default function DashboardOverview() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {recentRuns.map((run) => (
-                      <tr key={run.run_id} className="hover:bg-zinc-900/50 transition-colors">
+                    {recentRuns.map((run, idx) => (
+                      <tr key={run.run_id ? `run_row_${run.run_id}` : `run_row_idx_${idx}`} className="hover:bg-zinc-900/50 transition-colors">
                         <td className="py-3 px-5">
                           {run.passed ? (
                             <Badge variant="outline" className="gap-1 font-mono text-[10px] border-zinc-700 bg-zinc-900 text-zinc-200">
