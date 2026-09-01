@@ -50,7 +50,14 @@ export function Navbar() {
         <SidebarTrigger />
         <div className="h-4 w-px bg-border hidden sm:block" />
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-xs font-medium text-zinc-400 hidden sm:inline">Studio /</span>
+          <Link
+            href="/"
+            prefetch={true}
+            className="text-xs font-medium text-zinc-400 hover:text-white transition-colors hidden sm:inline"
+          >
+            Studio
+          </Link>
+          <span className="text-xs text-zinc-600 hidden sm:inline">/</span>
           <span className="text-xs font-semibold text-white truncate">{currentRouteName}</span>
         </div>
       </div>
