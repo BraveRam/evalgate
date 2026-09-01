@@ -32,6 +32,24 @@
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 14.9%;
     --sidebar-ring: 0 0% 83.1%;
+
+    /* Fumadocs Theme Mapping */
+    --color-fd-background: #09090b;
+    --color-fd-foreground: #fafafa;
+    --color-fd-muted: #18181b;
+    --color-fd-muted-foreground: #a1a1aa;
+    --color-fd-popover: #09090b;
+    --color-fd-popover-foreground: #fafafa;
+    --color-fd-card: #09090b;
+    --color-fd-card-foreground: #fafafa;
+    --color-fd-border: #27272a;
+    --color-fd-primary: #fafafa;
+    --color-fd-primary-foreground: #09090b;
+    --color-fd-secondary: #18181b;
+    --color-fd-secondary-foreground: #fafafa;
+    --color-fd-accent: #27272a;
+    --color-fd-accent-foreground: #fafafa;
+    --color-fd-ring: #d4d4d8;
   }
 
   * {

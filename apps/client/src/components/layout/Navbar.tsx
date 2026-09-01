@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { api } from "@/lib/api";
-import { ExternalLink, Github } from "lucide-react";
+import { BookOpen, ExternalLink, Github } from "lucide-react";
 
 const ROUTE_NAMES: Record<string, string> = {
   "/": "Overview",
@@ -88,17 +88,15 @@ export function Navbar() {
           </span>
         </div>
 
-        {/* API Docs Link */}
-        <a
+        {/* Docs Link */}
+        <Link
           href="/docs"
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-900 transition-colors"
-          title="Interactive API Documentation"
+          className="text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 px-2 py-1 rounded hover:bg-zinc-900 transition-colors"
+          title="Fumadocs Documentation"
         >
-          <span className="hidden md:inline">API Docs</span>
-          <ExternalLink className="h-3 w-3 opacity-70" />
-        </a>
+          <BookOpen className="h-3.5 w-3.5" />
+          <span className="hidden md:inline">Docs</span>
+        </Link>
 
         {/* GitHub Repository */}
         <a
