@@ -17,7 +17,7 @@ router = APIRouter(prefix="/runs", tags=["Runs"])
 @router.get("")
 async def list_runs(
     suite: str | None = Query(default=None, description="Filter by suite name"),
-    limit: int = Query(default=30, ge=1, le=100, description="Max runs to return"),
+    limit: int = Query(default=50, ge=1, le=1000, description="Max runs to return"),
     offset: int = Query(default=0, ge=0, description="Pagination offset"),
 ) -> list[SuiteRunResult]:
     """

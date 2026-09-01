@@ -231,7 +231,7 @@ export default function AnalyticsPage() {
     refetch: refetchRuns,
   } = useQuery({
     queryKey: ["runs", "analytics"],
-    queryFn: () => api.listRuns(undefined, 200),
+    queryFn: () => api.listRuns(undefined, 100),
   });
 
   // TanStack Mutation: Delete run
@@ -618,12 +618,12 @@ export default function AnalyticsPage() {
               ))}
             </CardContent>
           </Card>
-        ) : (
+        ) : totalRunsCount > 0 ? (
           <div className="p-3 rounded-lg border border-border bg-zinc-950/70 flex items-center gap-2 text-xs text-zinc-400">
             <CheckCircle2 className="h-4 w-4 text-white" />
             <span>All filtered evaluations are passing minimum quality thresholds with stable latency curves.</span>
           </div>
-        )}
+        ) : null}
 
         {/* 4. Aggregate Summary Stats Strip */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
