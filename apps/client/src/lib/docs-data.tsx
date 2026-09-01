@@ -28,13 +28,18 @@ import {
   Workflow,
   Zap,
 } from "lucide-react";
-import type * as PageTree from "fumadocs-core/page-tree";
-import { Callout } from "fumadocs-ui/components/callout";
-import { Card, Cards } from "fumadocs-ui/components/card";
-import { Tab, Tabs } from "fumadocs-ui/components/tabs";
-import { Step, Steps } from "fumadocs-ui/components/steps";
-import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
-import { TypeTable } from "fumadocs-ui/components/type-table";
+import {
+  Accordion,
+  Accordions,
+  Callout,
+  Card,
+  Cards,
+  CodeBlock,
+  CodeTabs,
+  Step,
+  Steps,
+  TypeTable,
+} from "@/components/docs/DocsComponents";
 
 export interface DocPageContent {
   slug: string;
@@ -85,33 +90,21 @@ export const DOCS_PAGES: Record<string, DocPageContent> = {
           </p>
 
           <Steps>
-            <Step>
-              <h4 className="font-semibold text-white">1. Experiment in the Workbench</h4>
-              <p className="text-zinc-400 mt-1">
-                Draft system prompts, configure Mustache/Jinja variable interpolation (e.g. <code>{"{{context}}"}</code>),
-                attach deterministic assertions, and evaluate test outputs in real time.
-              </p>
+            <Step number={1} title="Experiment in the Workbench">
+              Draft system prompts, configure Mustache/Jinja variable interpolation (e.g.{" "}
+              <code>{"{{context}}"}</code>), attach deterministic assertions, and evaluate test outputs in real time.
             </Step>
-            <Step>
-              <h4 className="font-semibold text-white">2. Version-Control YAML Test Suites</h4>
-              <p className="text-zinc-400 mt-1">
-                Save test configurations directly to human-readable <code>evals/*.yaml</code> files in your repository.
-                Keep prompts and test matrices versioned alongside your code.
-              </p>
+            <Step number={2} title="Version-Control YAML Test Suites">
+              Save test configurations directly to human-readable <code>evals/*.yaml</code> files in your repository.
+              Keep prompts and test matrices versioned alongside your code.
             </Step>
-            <Step>
-              <h4 className="font-semibold text-white">3. Compare in the Model Arena</h4>
-              <p className="text-zinc-400 mt-1">
-                Run head-to-head model shootouts between candidate models (e.g., GPT-4o vs DeepSeek vs Gemini Flash)
-                to assess quality delta, speed improvement, and cost reduction.
-              </p>
+            <Step number={3} title="Compare in the Model Arena">
+              Run head-to-head model shootouts between candidate models (e.g., GPT-4o vs DeepSeek vs Gemini Flash)
+              to assess quality delta, speed improvement, and cost reduction.
             </Step>
-            <Step>
-              <h4 className="font-semibold text-white">4. Enforce PR Quality Gates</h4>
-              <p className="text-zinc-400 mt-1">
-                Export GitHub Actions workflows to automatically execute your test suites on every pull request,
-                blocking merges whenever a prompt or model change introduces regressions.
-              </p>
+            <Step number={4} title="Enforce PR Quality Gates">
+              Export GitHub Actions workflows to automatically execute your test suites on every pull request,
+              blocking merges whenever a prompt or model change introduces regressions.
             </Step>
           </Steps>
         </section>
@@ -124,24 +117,27 @@ export const DOCS_PAGES: Record<string, DocPageContent> = {
             Get started by launching the studio and executing your first evaluation suite:
           </p>
 
-          <Tabs items={["CLI Launch", "Python SDK", "YAML Suite"]}>
-            <Tab value="CLI Launch">
-              <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-{`# 1. Start the EvalGate Studio UI & Backend Server
+          <CodeTabs
+            tabs={[
+              {
+                label: "CLI Launch",
+                language: "bash",
+                filename: "Terminal",
+                code: `# 1. Start the EvalGate Studio UI & Backend Server
 uv run evalgate studio --port 8000
 
 # 2. Run an evaluation suite directly from the terminal
 uv run evalgate run evals/support-ticket-classifier.yaml
 
 # 3. Estimate execution cost and token footprint
-uv run evalgate estimate evals/support-ticket-classifier.yaml`}
-              </pre>
-            </Tab>
-            <Tab value="Python SDK">
-              <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-{`import asyncio
+uv run evalgate estimate evals/support-ticket-classifier.yaml`,
+              },
+              {
+                label: "Python SDK",
+                language: "python",
+                filename: "quickstart.py",
+                code: `import asyncio
 from evalgate.core.engine import EvaluationEngine
-from evalgate.core.models import SuiteConfig
 
 async def main():
     engine = EvaluationEngine()
@@ -151,12 +147,13 @@ async def main():
     print(f"Pass Rate: {result.pass_rate * 100:.1f}%")
     print(f"Total Cost: \${result.total_cost:.4f}")
 
-asyncio.run(main())`}
-              </pre>
-            </Tab>
-            <Tab value="YAML Suite">
-              <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-{`name: support-ticket-classifier
+asyncio.run(main())`,
+              },
+              {
+                label: "YAML Suite",
+                language: "yaml",
+                filename: "evals/support-ticket-classifier.yaml",
+                code: `name: support-ticket-classifier
 description: Evaluates multi-class customer support intent classification
 min_pass_rate: 1.0
 
@@ -177,10 +174,10 @@ tests:
       - type: exact
         value: "CRITICAL"
       - type: max_latency_ms
-        value: 1200`}
-              </pre>
-            </Tab>
-          </Tabs>
+        value: 1200`,
+              },
+            ]}
+          />
         </section>
 
         <section id="capabilities" className="space-y-4">
@@ -239,7 +236,6 @@ tests:
       { title: "Suite File Structure", url: "#structure", depth: 2 },
       { title: "Target Types & Configurations", url: "#targets", depth: 2 },
       { title: "Variable Interpolation", url: "#variables", depth: 2 },
-      { title: "Test Case Definition", url: "#test-cases", depth: 2 },
     ],
     content: (
       <div className="space-y-8 text-sm leading-relaxed">
@@ -252,8 +248,10 @@ tests:
             Each suite contains metadata, execution target configuration, a minimum pass rate threshold, and an array of test cases.
           </p>
 
-          <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-{`name: rag-financial-qa
+          <CodeBlock
+            language="yaml"
+            filename="evals/rag-financial-qa.yaml"
+            code={`name: rag-financial-qa
 description: Evaluates accuracy and citation fidelity for financial queries
 min_pass_rate: 0.95
 
@@ -269,7 +267,7 @@ target:
     {{question}}
 
     Provide a concise answer with citation.`}
-          </pre>
+          />
 
           <TypeTable
             type={{
@@ -290,38 +288,41 @@ target:
             EvalGate supports multiple target modalities depending on your testing pipeline:
           </p>
 
-          <Accordions type="single">
-            <Accordion title="1. Prompt Template (type: prompt)">
+          <Accordions>
+            <Accordion title="1. Prompt Template (type: prompt)" defaultOpen={true}>
               <p className="text-zinc-400 mb-2">
                 Evaluates a structured prompt template by interpolating test case variables into placeholders like <code>{"{{variable_name}}"}</code>.
               </p>
-              <pre className="p-3 rounded bg-zinc-950 text-xs font-mono text-zinc-300">
-{`target:
+              <CodeBlock
+                language="yaml"
+                code={`target:
   type: prompt
   model: openai/gpt-4o-mini
   temperature: 0.2
   template: "Translate to French: {{input_text}}"`}
-              </pre>
+              />
             </Accordion>
             <Accordion title="2. Direct Completion (type: completion)">
               <p className="text-zinc-400 mb-2">
                 Sends raw inputs directly to the model without additional wrapper formatting.
               </p>
-              <pre className="p-3 rounded bg-zinc-950 text-xs font-mono text-zinc-300">
-{`target:
+              <CodeBlock
+                language="yaml"
+                code={`target:
   type: completion
   model: google/gemini-2.0-flash`}
-              </pre>
+              />
             </Accordion>
             <Accordion title="3. Mock Simulator (type: mock)">
               <p className="text-zinc-400 mb-2">
                 Fast, deterministic local simulator with zero API costs ($0.00) and zero latency. Ideal for CI unit tests and schema preflight validation.
               </p>
-              <pre className="p-3 rounded bg-zinc-950 text-xs font-mono text-zinc-300">
-{`target:
+              <CodeBlock
+                language="yaml"
+                code={`target:
   type: mock
   model: mock/simulator`}
-              </pre>
+              />
             </Accordion>
           </Accordions>
         </section>
@@ -351,7 +352,6 @@ target:
       { title: "Code & Syntax Assertions", url: "#code-syntax", depth: 2 },
       { title: "Latency & Budget Gates", url: "#budget-gates", depth: 2 },
       { title: "LLM-as-a-Judge Rubrics", url: "#llm-judge", depth: 2 },
-      { title: "Strictness & Quality Thresholds", url: "#strictness", depth: 2 },
     ],
     content: (
       <div className="space-y-8 text-sm leading-relaxed">
@@ -412,14 +412,15 @@ target:
           <p className="text-zinc-300">
             Ensure response times and unit economic costs remain within SLA limits:
           </p>
-          <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-{`- type: max_latency_ms
+          <CodeBlock
+            language="yaml"
+            code={`- type: max_latency_ms
   value: 1500           # Fails test if response takes longer than 1.5s
 - type: max_tokens
   value: 400            # Prevents runaway output token inflation
 - type: max_cost_usd
   value: 0.0025         # Keeps cost per inference under $0.0025`}
-          </pre>
+          />
         </section>
 
         <section id="llm-judge" className="space-y-4">
@@ -429,12 +430,13 @@ target:
           <p className="text-zinc-300">
             When evaluation requires semantic reasoning, tone analysis, or factual fidelity, EvalGate employs secondary judge models:
           </p>
-          <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-{`- type: llm_rubric
+          <CodeBlock
+            language="yaml"
+            code={`- type: llm_rubric
   rubric: "The response must clearly explain how to handle authentication errors without suggesting insecure bypasses."
   judge_model: openai/gpt-4o-mini
   min_score: 4.0        # Normalized 1-5 evaluation scale`}
-          </pre>
+          />
         </section>
       </div>
     ),
@@ -444,7 +446,7 @@ target:
     slug: "playground",
     title: "Evaluation Workbench",
     description: "Interactive playground for rapid prompt engineering, assertions feedback, and 1-click YAML serialization.",
-    category: "Features",
+    category: "Studio Features",
     toc: [
       { title: "Workbench Overview", url: "#overview", depth: 2 },
       { title: "Interactive Assertion Tuning", url: "#assertion-tuning", depth: 2 },
@@ -474,21 +476,17 @@ target:
             You can chain multiple assertions onto a single test run to verify both deterministic structure and semantic correctness:
           </p>
           <Steps>
-            <Step>
-              <h4 className="font-semibold text-white">Select Target Model</h4>
-              <p className="text-zinc-400 mt-1">Configure model provider, temperature, and system prompt instructions.</p>
+            <Step number={1} title="Select Target Model">
+              Configure model provider, temperature, and system prompt instructions.
             </Step>
-            <Step>
-              <h4 className="font-semibold text-white">Add Dynamic Variables</h4>
-              <p className="text-zinc-400 mt-1">Define key-value inputs that interpolate into the prompt template.</p>
+            <Step number={2} title="Add Dynamic Variables">
+              Define key-value inputs that interpolate into the prompt template.
             </Step>
-            <Step>
-              <h4 className="font-semibold text-white">Configure Assertions</h4>
-              <p className="text-zinc-400 mt-1">Add contains, regex, JSON schema, or LLM judge rubrics.</p>
+            <Step number={3} title="Configure Assertions">
+              Add contains, regex, JSON schema, or LLM judge rubrics.
             </Step>
-            <Step>
-              <h4 className="font-semibold text-white">Execute & Inspect Trace</h4>
-              <p className="text-zinc-400 mt-1">View token usage, inference latency in milliseconds, dollar cost, and individual assertion diagnostic results.</p>
+            <Step number={4} title="Execute & Inspect Trace">
+              View token usage, inference latency in milliseconds, dollar cost, and individual assertion diagnostic results.
             </Step>
           </Steps>
         </section>
@@ -510,11 +508,10 @@ target:
     slug: "arena",
     title: "Model Arena Shootout",
     description: "Benchmark candidate models side-by-side on quality, latency, and cost with multi-dimensional winner verdicts.",
-    category: "Features",
+    category: "Studio Features",
     toc: [
       { title: "Fair Multi-Dimensional Verdicts", url: "#verdicts", depth: 2 },
       { title: "Side-by-Side Diff Inspection", url: "#diffs", depth: 2 },
-      { title: "Decision Guidelines", url: "#guidelines", depth: 2 },
     ],
     content: (
       <div className="space-y-8 text-sm leading-relaxed">
@@ -569,7 +566,7 @@ target:
     slug: "analytics",
     title: "Historical Analytics & Regression Trends",
     description: "Track model accuracy, tail latencies, cost burn, and regression anomalies over time.",
-    category: "Features",
+    category: "Studio Features",
     toc: [
       { title: "Timestamped Regression Curves", url: "#regression-curves", depth: 2 },
       { title: "Anomaly Detection", url: "#anomaly-detection", depth: 2 },
@@ -625,7 +622,7 @@ target:
     slug: "ci-cd",
     title: "CI/CD & GitHub Actions Integration",
     description: "Automate prompt regression testing and quality gates directly inside GitHub Actions pull request pipelines.",
-    category: "DevOps & CI/CD",
+    category: "DevOps & Reference",
     toc: [
       { title: "GitHub Actions Workflow", url: "#github-actions", depth: 2 },
       { title: "Pytest Test Suite Integration", url: "#pytest", depth: 2 },
@@ -641,8 +638,10 @@ target:
             EvalGate integrates seamlessly into GitHub Actions to execute your test suites on pull requests:
           </p>
 
-          <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-{`name: EvalGate Prompt Quality Gates
+          <CodeBlock
+            language="yaml"
+            filename=".github/workflows/evals.yml"
+            code={`name: EvalGate Prompt Quality Gates
 
 on:
   pull_request:
@@ -674,7 +673,7 @@ jobs:
           ANTHROPIC_API_KEY: \${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           pytest tests/evals/ -v`}
-          </pre>
+          />
         </section>
 
         <section id="pytest" className="space-y-4">
@@ -685,8 +684,10 @@ jobs:
             Each YAML suite maps to a standard async pytest test file (e.g. <code>tests/evals/test_support_ticket_classifier.py</code>):
           </p>
 
-          <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-{`import pytest
+          <CodeBlock
+            language="python"
+            filename="tests/evals/test_support_ticket_classifier.py"
+            code={`import pytest
 from evalgate.core.engine import EvaluationEngine
 
 @pytest.mark.asyncio
@@ -698,7 +699,7 @@ async def test_suite_support_ticket_classifier():
         f"Quality gate failed: pass rate {result.pass_rate*100:.1f}% "
         f"is below min_pass_rate {result.min_pass_rate*100:.1f}%"
     )`}
-          </pre>
+          />
         </section>
 
         <section id="zip-export" className="space-y-4">
@@ -723,7 +724,7 @@ async def test_suite_support_ticket_classifier():
     slug: "api",
     title: "REST & WebSocket API Reference",
     description: "Complete API specification for programmatic evaluation, live WebSocket streaming, and SQLite storage.",
-    category: "Reference",
+    category: "DevOps & Reference",
     toc: [
       { title: "REST Endpoints", url: "#rest-endpoints", depth: 2 },
       { title: "WebSocket Live Streaming", url: "#websocket", depth: 2 },
@@ -760,8 +761,10 @@ async def test_suite_support_ticket_classifier():
           <p className="text-zinc-300">
             Stream test case execution events in real time via WebSocket:
           </p>
-          <pre className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-{`// Connect to live evaluation stream
+          <CodeBlock
+            language="javascript"
+            filename="websocket-client.js"
+            code={`// Connect to live evaluation stream
 const ws = new WebSocket("ws://localhost:8000/api/v1/ws/run/support-ticket-classifier");
 
 ws.onmessage = (event) => {
@@ -769,7 +772,7 @@ ws.onmessage = (event) => {
   // Types: "START", "PROGRESS", "TEST_RESULT", "SUITE_COMPLETE", "ERROR"
   console.log(msg.type, msg.data);
 };`}
-          </pre>
+          />
         </section>
 
         <section id="cli-commands" className="space-y-4">
@@ -791,70 +794,4 @@ ws.onmessage = (event) => {
       </div>
     ),
   },
-};
-
-export const DOCS_PAGE_TREE: PageTree.Root = {
-  name: "EvalGate Documentation",
-  children: [
-    {
-      type: "page",
-      name: "Overview & Quick Start",
-      url: "/docs",
-      icon: <Rocket className="h-4 w-4" />,
-    },
-    {
-      type: "separator",
-      name: "Core Concepts",
-    },
-    {
-      type: "page",
-      name: "Test Suites & YAML Spec",
-      url: "/docs/suites",
-      icon: <Boxes className="h-4 w-4" />,
-    },
-    {
-      type: "page",
-      name: "Assertions & Quality Gates",
-      url: "/docs/assertions",
-      icon: <ShieldCheck className="h-4 w-4" />,
-    },
-    {
-      type: "separator",
-      name: "Features",
-    },
-    {
-      type: "page",
-      name: "Evaluation Workbench",
-      url: "/docs/playground",
-      icon: <Play className="h-4 w-4" />,
-    },
-    {
-      type: "page",
-      name: "Model Arena Shootout",
-      url: "/docs/arena",
-      icon: <Swords className="h-4 w-4" />,
-    },
-    {
-      type: "page",
-      name: "Historical Analytics",
-      url: "/docs/analytics",
-      icon: <BarChart3 className="h-4 w-4" />,
-    },
-    {
-      type: "separator",
-      name: "DevOps & Reference",
-    },
-    {
-      type: "page",
-      name: "CI/CD & GitHub Actions",
-      url: "/docs/ci-cd",
-      icon: <Workflow className="h-4 w-4" />,
-    },
-    {
-      type: "page",
-      name: "REST & WebSocket API",
-      url: "/docs/api",
-      icon: <Server className="h-4 w-4" />,
-    },
-  ],
 };
