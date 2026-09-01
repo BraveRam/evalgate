@@ -491,7 +491,7 @@ export default function PlaygroundPage() {
     <TooltipProvider>
       <div className="space-y-6 max-w-7xl mx-auto">
         {/* Header Title */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
@@ -508,10 +508,10 @@ export default function PlaygroundPage() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-zinc-500 hidden sm:inline">Preset:</span>
             <Select onValueChange={handleLoadPreset}>
-              <SelectTrigger className="w-52 h-8 text-xs font-mono">
+              <SelectTrigger className="w-52 h-8 text-xs font-mono border-0 bg-zinc-900/60">
                 <SelectValue placeholder="Load Starter Template" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="border-0 bg-zinc-900">
                 {STARTER_PRESETS.map((p) => (
                   <SelectItem key={p.name} value={p.name} className="text-xs">
                     {p.name}
@@ -523,16 +523,16 @@ export default function PlaygroundPage() {
         </div>
 
         {/* 2. Sticky Action Toolbar */}
-        <div className="sticky top-14 z-30 -mx-3 sm:-mx-5 md:-mx-8 px-3 sm:px-5 md:px-8 py-2.5 bg-background/95 backdrop-blur border-b border-border flex flex-wrap items-center justify-between gap-3 shadow-sm">
+        <div className="sticky top-14 z-30 -mx-3 sm:-mx-5 md:-mx-8 px-3 sm:px-5 md:px-8 py-2.5 bg-background/95 backdrop-blur flex flex-wrap items-center justify-between gap-3 shadow-none">
           {/* Left: Quick Model Selectors & Preflight Badges */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-zinc-500 uppercase font-mono">Target:</span>
               <Select value={model} onValueChange={setModel}>
-                <SelectTrigger className="w-44 h-8 text-xs font-mono">
+                <SelectTrigger className="w-44 h-8 text-xs font-mono border-0 bg-zinc-900/60">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-0 bg-zinc-900">
                   {SUPPORTED_MODELS.map((m) => (
                     <SelectItem key={m.id} value={m.id} className="text-xs font-mono">
                       {m.label}
@@ -545,10 +545,10 @@ export default function PlaygroundPage() {
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-zinc-500 uppercase font-mono">Judge:</span>
               <Select value={judgeModel} onValueChange={setJudgeModel}>
-                <SelectTrigger className="w-44 h-8 text-xs font-mono">
+                <SelectTrigger className="w-44 h-8 text-xs font-mono border-0 bg-zinc-900/60">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-0 bg-zinc-900">
                   {SUPPORTED_MODELS.map((m) => (
                     <SelectItem key={m.id} value={m.id} className="text-xs font-mono">
                       {m.label}
@@ -559,7 +559,7 @@ export default function PlaygroundPage() {
             </div>
 
             {/* Preflight Specs Pill */}
-            <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded bg-zinc-950 border border-border text-[11px] font-mono text-zinc-400">
+            <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded bg-zinc-900/50 text-[11px] font-mono text-zinc-400">
               <span>
                 {targetCalls} Target + {judgeCalls} Judge {judgeCalls === 1 ? "Call" : "Calls"}
               </span>
@@ -574,7 +574,7 @@ export default function PlaygroundPage() {
               variant="outline"
               size="sm"
               onClick={handleResetDefaults}
-              className="h-8 text-xs gap-1.5 text-zinc-400 hover:text-white shrink-0 whitespace-nowrap"
+              className="h-8 text-xs gap-1.5 text-zinc-400 hover:text-white border-0 bg-zinc-900/60 hover:bg-zinc-800 shrink-0 whitespace-nowrap"
               title="Reset workbench to default settings"
             >
               <RotateCcw className="h-3 w-3" />
@@ -585,7 +585,7 @@ export default function PlaygroundPage() {
               variant="outline"
               size="sm"
               onClick={() => setIsHistoryOpen(true)}
-              className="h-8 text-xs gap-1.5 text-zinc-400 hover:text-white relative shrink-0 whitespace-nowrap"
+              className="h-8 text-xs gap-1.5 text-zinc-400 hover:text-white relative border-0 bg-zinc-900/60 hover:bg-zinc-800 shrink-0 whitespace-nowrap"
               title="View past workbench execution runs"
             >
               <History className="h-3 w-3" />
@@ -604,7 +604,7 @@ export default function PlaygroundPage() {
                 setSuiteName(`playground-${Date.now().toString().slice(-4)}`);
                 setIsSaveModalOpen(true);
               }}
-              className="h-8 text-xs gap-1.5 text-zinc-300 hover:text-white shrink-0 whitespace-nowrap"
+              className="h-8 text-xs gap-1.5 text-zinc-300 hover:text-white border-0 bg-zinc-900/60 hover:bg-zinc-800 shrink-0 whitespace-nowrap"
             >
               <Save className="h-3 w-3" />
               <span className="hidden sm:inline">Save as Suite</span>
@@ -615,7 +615,7 @@ export default function PlaygroundPage() {
               disabled={evaluateMutation.isPending}
               variant="default"
               size="sm"
-              className="h-8 text-xs gap-1.5 px-4 shrink-0 whitespace-nowrap"
+              className="h-8 text-xs gap-1.5 px-4 shrink-0 whitespace-nowrap border-0"
             >
               {evaluateMutation.isPending ? (
                 <span className="flex items-center gap-1.5">
@@ -635,7 +635,7 @@ export default function PlaygroundPage() {
         {/* Mobile Tab Switcher (< lg screens) */}
         <div className="block lg:hidden">
           <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as any)}>
-            <TabsList className="grid grid-cols-2 w-full">
+            <TabsList className="grid grid-cols-2 w-full border-0 bg-zinc-900/60">
               <TabsTrigger value="configure" className="text-xs">
                 Workbench & Config
               </TabsTrigger>
@@ -651,7 +651,7 @@ export default function PlaygroundPage() {
 
         {/* Error Alert */}
         {evaluateMutation.isError && (
-          <div className="p-3.5 rounded-lg border border-border bg-zinc-950 text-zinc-300 text-xs flex items-center gap-2.5">
+          <div className="p-3.5 rounded-lg bg-zinc-900/80 text-zinc-300 text-xs flex items-center gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" />
             <span>{evaluateMutation.error.message}</span>
           </div>
@@ -664,7 +664,7 @@ export default function PlaygroundPage() {
           {/* ========================================================================= */}
           <div className={`lg:col-span-7 space-y-6 ${mobileTab === "results" ? "hidden lg:block" : "block"}`}>
             {/* 1. System Prompt Instructions */}
-            <Card className="border-border bg-card">
+            <Card className="border-0 bg-zinc-950/60 shadow-none">
               <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
                 <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
                   <Terminal className="h-3.5 w-3.5 text-zinc-400" />
@@ -678,13 +678,13 @@ export default function PlaygroundPage() {
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   rows={2}
                   placeholder="You are a helpful and precise assistant..."
-                  className="font-mono text-xs bg-zinc-950 border-border resize-y leading-relaxed"
+                  className="font-mono text-xs bg-zinc-900/40 border-0 focus-visible:ring-1 focus-visible:ring-zinc-700 resize-y leading-relaxed"
                 />
               </CardContent>
             </Card>
 
             {/* 2. Prompt Template & Live Rendered Preview */}
-            <Card className="border-border bg-card">
+            <Card className="border-0 bg-zinc-950/60 shadow-none">
               <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FileCode className="h-3.5 w-3.5 text-zinc-400" />
@@ -692,7 +692,7 @@ export default function PlaygroundPage() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Tabs value={templateTab} onValueChange={(v) => setTemplateTab(v as any)}>
-                    <TabsList className="h-7 p-0.5 bg-zinc-900 border border-zinc-800">
+                    <TabsList className="h-7 p-0.5 bg-zinc-900/80 border-0">
                       <TabsTrigger value="template" className="h-6 text-[11px] px-2">
                         Template
                       </TabsTrigger>
@@ -711,7 +711,7 @@ export default function PlaygroundPage() {
                     onChange={(e) => setTemplate(e.target.value)}
                     rows={6}
                     placeholder="Enter prompt template with {{variables}}..."
-                    className="font-mono text-xs bg-zinc-950 border-border resize-y leading-relaxed"
+                    className="font-mono text-xs bg-zinc-900/40 border-0 focus-visible:ring-1 focus-visible:ring-zinc-700 resize-y leading-relaxed"
                   />
                 ) : (
                   <CodeViewer
@@ -734,7 +734,7 @@ export default function PlaygroundPage() {
                         <Badge
                           key={v}
                           variant="outline"
-                          className="text-[10px] px-1.5 py-0 border-zinc-800 bg-zinc-950 text-zinc-300"
+                          className="text-[10px] px-1.5 py-0 border-0 bg-zinc-900 text-zinc-300"
                         >
                           {"{{"}
                           {v}
@@ -760,7 +760,7 @@ export default function PlaygroundPage() {
             </Card>
 
             {/* 3. Test Variables Editor */}
-            <Card className="border-border bg-card">
+            <Card className="border-0 bg-zinc-950/60 shadow-none">
               <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
@@ -775,7 +775,7 @@ export default function PlaygroundPage() {
                   onClick={addVariable}
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs gap-1 text-zinc-300 hover:text-white"
+                  className="h-7 text-xs gap-1 text-zinc-300 hover:text-white border-0 bg-zinc-900/60 hover:bg-zinc-800"
                 >
                   <Plus className="h-3 w-3" />
                   Add Variable
@@ -783,16 +783,16 @@ export default function PlaygroundPage() {
               </CardHeader>
               <CardContent className="p-4 pt-1 space-y-3">
                 {variables.map((v, idx) => (
-                  <div key={idx} className="p-3 rounded-lg border border-border bg-zinc-950/60 space-y-2">
+                  <div key={idx} className="p-3 rounded-lg bg-zinc-900/30 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-1">
                         <Input
                           value={v.key}
                           onChange={(e) => updateVariable(idx, "key", e.target.value)}
                           placeholder="variable_name"
-                          className="h-7 w-44 font-mono text-xs bg-zinc-950 border-border"
+                          className="h-7 w-44 font-mono text-xs bg-zinc-900/60 border-0 focus-visible:ring-1 focus-visible:ring-zinc-700"
                         />
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 border-zinc-800 text-zinc-500 font-mono">
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 border-0 bg-zinc-900 text-zinc-400 font-mono">
                           {v.value.includes("\n") || v.value.length > 50 ? "multiline" : "string"}
                         </Badge>
                       </div>
@@ -810,7 +810,7 @@ export default function PlaygroundPage() {
                       onChange={(e) => updateVariable(idx, "value", e.target.value)}
                       rows={v.value.includes("\n") || v.value.length > 60 ? 3 : 1}
                       placeholder="Variable value or multiline context..."
-                      className="font-mono text-xs bg-zinc-950 border-border resize-y leading-relaxed"
+                      className="font-mono text-xs bg-zinc-900/60 border-0 focus-visible:ring-1 focus-visible:ring-zinc-700 resize-y leading-relaxed"
                     />
                   </div>
                 ))}
@@ -818,7 +818,7 @@ export default function PlaygroundPage() {
             </Card>
 
             {/* 4. Assertion & Quality Gate Rules */}
-            <Card className="border-border bg-card">
+            <Card className="border-0 bg-zinc-950/60 shadow-none">
               <CardHeader className="p-4 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
@@ -831,11 +831,11 @@ export default function PlaygroundPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
                   <Select onValueChange={(val) => addDeterministicAssertion(val as AssertionType)}>
-                    <SelectTrigger className="h-7 text-xs px-2.5 w-auto min-w-[130px] font-mono whitespace-nowrap gap-1.5 bg-zinc-900 border-zinc-800 text-zinc-200 hover:text-white">
+                    <SelectTrigger className="h-7 text-xs px-2.5 w-auto min-w-[130px] font-mono whitespace-nowrap gap-1.5 bg-zinc-900/80 border-0 text-zinc-200 hover:text-white">
                       <Plus className="h-3 w-3 shrink-0" />
                       <span>Deterministic</span>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="border-0 bg-zinc-900">
                       {DETERMINISTIC_TYPES.map((dt) => (
                         <SelectItem key={dt.type} value={dt.type} className="text-xs font-mono">
                           {dt.label}
@@ -845,11 +845,11 @@ export default function PlaygroundPage() {
                   </Select>
 
                   <Select onValueChange={(val) => addSemanticAssertion(val as AssertionType)}>
-                    <SelectTrigger className="h-7 text-xs px-2.5 w-auto min-w-[145px] font-mono whitespace-nowrap gap-1.5 bg-zinc-900 border-zinc-800 text-zinc-200 hover:text-white">
+                    <SelectTrigger className="h-7 text-xs px-2.5 w-auto min-w-[145px] font-mono whitespace-nowrap gap-1.5 bg-zinc-900/80 border-0 text-zinc-200 hover:text-white">
                       <Plus className="h-3 w-3 shrink-0" />
                       <span>Semantic Judge</span>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="border-0 bg-zinc-900">
                       {SEMANTIC_TYPES.map((st) => (
                         <SelectItem key={st.type} value={st.type} className="text-xs font-mono">
                           {st.label}
@@ -868,7 +868,7 @@ export default function PlaygroundPage() {
                     </span>
                   </div>
                   {deterministicAssertions.length === 0 ? (
-                    <div className="p-3 rounded border border-dashed border-border text-center text-[11px] text-zinc-500">
+                    <div className="p-3 rounded bg-zinc-900/20 text-center text-[11px] text-zinc-500">
                       No deterministic assertions added.
                     </div>
                   ) : (
@@ -879,11 +879,11 @@ export default function PlaygroundPage() {
                       return (
                         <div
                           key={`det_assert_${a.type}_${dIdx}`}
-                          className="p-3 rounded-lg border border-border bg-zinc-950/70 space-y-2"
+                          className="p-3 rounded-lg bg-zinc-900/30 space-y-2"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="font-mono text-[10px] border-zinc-700 bg-zinc-900 text-zinc-200">
+                              <Badge variant="outline" className="font-mono text-[10px] border-0 bg-zinc-900 text-zinc-200">
                                 {dtInfo?.label || a.type}
                               </Badge>
                             </div>
@@ -925,7 +925,7 @@ export default function PlaygroundPage() {
                               value={String(a.value ?? "")}
                               onChange={(e) => updateAssertion(realIdx, { value: e.target.value })}
                               placeholder={dtInfo?.placeholder || "Expected value"}
-                              className="h-7 font-mono text-xs bg-zinc-950 border-border"
+                              className="h-7 font-mono text-xs bg-zinc-900/60 border-0 focus-visible:ring-1 focus-visible:ring-zinc-700"
                             />
                           )}
                         </div>
@@ -935,7 +935,7 @@ export default function PlaygroundPage() {
                 </div>
 
                 {/* B. Semantic LLM-as-a-Judge Assertions */}
-                <div className="space-y-2 pt-2 border-t border-border/60">
+                <div className="space-y-2 pt-2">
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[10px] uppercase font-mono font-semibold text-zinc-500">
                       Semantic LLM-as-a-Judge Gates ({semanticAssertions.length})
@@ -946,7 +946,7 @@ export default function PlaygroundPage() {
                   </div>
 
                   {semanticAssertions.length === 0 ? (
-                    <div className="p-3 rounded border border-dashed border-border text-center text-[11px] text-zinc-500">
+                    <div className="p-3 rounded bg-zinc-900/20 text-center text-[11px] text-zinc-500">
                       No semantic judge metrics added.
                     </div>
                   ) : (
@@ -957,12 +957,12 @@ export default function PlaygroundPage() {
                       return (
                         <div
                           key={`sem_assert_${a.type}_${sIdx}`}
-                          className="p-3 rounded-lg border border-border bg-zinc-950/70 space-y-2.5"
+                          className="p-3 rounded-lg bg-zinc-900/30 space-y-2.5"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div>
                               <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="font-mono text-[10px] border-zinc-700 bg-zinc-900 text-zinc-200">
+                                <Badge variant="outline" className="font-mono text-[10px] border-0 bg-zinc-900 text-zinc-200">
                                   {stInfo?.label || a.type}
                                 </Badge>
                               </div>
@@ -1030,7 +1030,7 @@ export default function PlaygroundPage() {
                                 }
                                 rows={2}
                                 placeholder="Explain grading rules, required keywords, or style criteria..."
-                                className="font-mono text-xs bg-zinc-950 border-border"
+                                className="font-mono text-xs bg-zinc-900/60 border-0 focus-visible:ring-1 focus-visible:ring-zinc-700"
                               />
                             </div>
                           )}
@@ -1049,7 +1049,7 @@ export default function PlaygroundPage() {
           <div className={`lg:col-span-5 space-y-5 sticky top-28 ${mobileTab === "configure" ? "hidden lg:block" : "block"}`}>
             {!result ? (
               /* PRE-RUN EVALUATION READINESS SURFACE */
-              <Card className="border-border bg-card">
+              <Card className="border-0 bg-zinc-950/60 shadow-none">
                 <CardHeader className="p-5 pb-3">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-white" />
@@ -1063,7 +1063,7 @@ export default function PlaygroundPage() {
                 </CardHeader>
                 <CardContent className="p-5 pt-1 space-y-4">
                   {/* Summary Metric Cards */}
-                  <div className="grid grid-cols-2 gap-2.5 p-3 rounded-lg bg-zinc-950 border border-border text-xs font-mono">
+                  <div className="grid grid-cols-2 gap-2.5 p-3 rounded-lg bg-zinc-900/40 text-xs font-mono">
                     <div>
                       <span className="text-[10px] text-zinc-500 uppercase block">Target Model</span>
                       <span className="font-medium text-zinc-200 truncate block">{model}</span>
@@ -1104,12 +1104,12 @@ export default function PlaygroundPage() {
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-border/60">
+                  <div className="pt-2">
                     <Button
                       onClick={() => evaluateMutation.mutate()}
                       disabled={evaluateMutation.isPending}
                       variant="default"
-                      className="w-full text-xs gap-1.5 h-9"
+                      className="w-full text-xs gap-1.5 h-9 border-0"
                     >
                       <Play className="h-3.5 w-3.5 fill-current" />
                       Run Live Evaluation
@@ -1121,7 +1121,7 @@ export default function PlaygroundPage() {
               /* POST-RUN RESULTS & TRACE SURFACE */
               <div className="space-y-4">
                 {/* 1. Overall Pass / Fail Banner */}
-                <Card className={`border ${result.passed ? "border-zinc-700 bg-zinc-950" : "border-zinc-800 bg-zinc-950"}`}>
+                <Card className="border-0 bg-zinc-900/40 shadow-none">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {result.passed ? (
@@ -1146,7 +1146,7 @@ export default function PlaygroundPage() {
                       disabled={evaluateMutation.isPending}
                       variant="outline"
                       size="sm"
-                      className="h-8 text-xs gap-1 text-zinc-300 hover:text-white"
+                      className="h-8 text-xs gap-1 text-zinc-300 hover:text-white border-0 bg-zinc-900/80 hover:bg-zinc-800"
                     >
                       <RefreshCw className={`h-3 w-3 ${evaluateMutation.isPending ? "animate-spin" : ""}`} />
                       Re-run
@@ -1155,7 +1155,7 @@ export default function PlaygroundPage() {
                 </Card>
 
                 {/* 2. Telemetry Metadata Bar */}
-                <div className="grid grid-cols-3 gap-2.5 p-3 rounded-lg bg-zinc-950 border border-border text-xs font-mono text-center">
+                <div className="grid grid-cols-3 gap-2.5 p-3 rounded-lg bg-zinc-900/40 text-xs font-mono text-center">
                   <div>
                     <span className="text-[10px] text-zinc-500 uppercase block">Latency</span>
                     <span className="font-medium text-white">{formatMs(result.latency_ms)}</span>
@@ -1171,7 +1171,7 @@ export default function PlaygroundPage() {
                 </div>
 
                 {/* 3. Generated Model Response */}
-                <Card className="border-border bg-card">
+                <Card className="border-0 bg-zinc-950/60 shadow-none">
                   <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
                     <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
                       <Terminal className="h-3.5 w-3.5 text-zinc-400" />
@@ -1204,7 +1204,7 @@ export default function PlaygroundPage() {
                 </Card>
 
                 {/* 4. Assertion Breakdown Checklist */}
-                <Card className="border-border bg-card">
+                <Card className="border-0 bg-zinc-950/60 shadow-none">
                   <CardHeader className="p-4 pb-2">
                     <CardTitle className="text-xs font-semibold text-white flex items-center gap-2">
                       <Scale className="h-3.5 w-3.5 text-zinc-400" />
@@ -1215,11 +1215,7 @@ export default function PlaygroundPage() {
                     {result.assertion_results.map((a, idx) => (
                       <div
                         key={idx}
-                        className={`p-3 rounded-lg border text-xs space-y-1.5 ${
-                          a.passed
-                            ? "border-zinc-800 bg-zinc-950"
-                            : "border-zinc-700 bg-zinc-900/90"
-                        }`}
+                        className="p-3 rounded-lg bg-zinc-900/30 text-xs space-y-1.5"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -1231,7 +1227,7 @@ export default function PlaygroundPage() {
                             <span className="font-mono font-medium text-white">{a.assertion_type}</span>
                           </div>
                           {a.score !== undefined && (
-                            <Badge variant="outline" className="font-mono text-[10px] border-zinc-800 bg-zinc-950 text-zinc-300">
+                            <Badge variant="outline" className="font-mono text-[10px] border-0 bg-zinc-900 text-zinc-300">
                               Score: {formatPercent(a.score)}
                             </Badge>
                           )}
