@@ -202,7 +202,7 @@ async def create_suite(
     if target_path.exists():
         raise HTTPException(status_code=409, detail=f"File '{safe_filename}' already exists")
 
-    content = yaml.dump(suite.model_dump(exclude_none=True), sort_keys=False)
+    content = yaml.safe_dump(suite.model_dump(mode="json", exclude_none=True), sort_keys=False)
     target_path.write_text(content, encoding="utf-8")
 
     return {
@@ -218,7 +218,7 @@ async def update_suite(suite_name: str, suite: SuiteConfig) -> dict[str, Any]:
     Update an existing evaluation suite YAML file.
     """
     p = _find_suite_path(suite_name)
-    content = yaml.dump(suite.model_dump(exclude_none=True), sort_keys=False)
+    content = yaml.safe_dump(suite.model_dump(mode="json", exclude_none=True), sort_keys=False)
     p.write_text(content, encoding="utf-8")
 
     return {

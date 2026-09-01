@@ -1,4 +1,4 @@
-name: playground-3337
+name: playground-5649
 description: Exported from Evaluation Playground
 target:
   type: prompt
@@ -16,7 +16,7 @@ target:
   allow_private_endpoints: false
 default_assertions: []
 tests:
-- id: playground-3337-case-1
+- id: playground-5649-case-1
   description: Playground exported test case
   vars:
     context: ACME Corp reported Q3 2024 revenue of $45.2M, up 12% YoY with net margin
@@ -34,9 +34,6 @@ tests:
     strict: true
   - type: hallucination
     threshold: 0.85
-    strict: true
-  - type: not_contains
-    value: ''
     strict: true
   metadata: {}
 min_pass_rate: 1.0
