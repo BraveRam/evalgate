@@ -4,55 +4,6 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-
-    /* Fumadocs Light Theme Mapping */
-    --color-fd-background: #ffffff;
-    --color-fd-foreground: #09090b;
-    --color-fd-muted: #f4f4f5;
-    --color-fd-muted-foreground: #71717a;
-    --color-fd-popover: #ffffff;
-    --color-fd-popover-foreground: #09090b;
-    --color-fd-card: #ffffff;
-    --color-fd-card-foreground: #09090b;
-    --color-fd-border: #e4e4e7;
-    --color-fd-primary: #09090b;
-    --color-fd-primary-foreground: #ffffff;
-    --color-fd-secondary: #f4f4f5;
-    --color-fd-secondary-foreground: #09090b;
-    --color-fd-accent: #f4f4f5;
-    --color-fd-accent-foreground: #09090b;
-    --color-fd-ring: #18181b;
-  }
-
-  .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
     --card: 0 0% 3.9%;
@@ -72,6 +23,7 @@
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
+    --radius: 0.5rem;
     --sidebar-background: 0 0% 3.9%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 0 0% 98%;
@@ -81,7 +33,7 @@
     --sidebar-border: 0 0% 14.9%;
     --sidebar-ring: 0 0% 83.1%;
 
-    /* Fumadocs Dark Theme Mapping */
+    /* Fumadocs Theme Mapping */
     --color-fd-background: #09090b;
     --color-fd-foreground: #fafafa;
     --color-fd-muted: #18181b;
@@ -107,6 +59,8 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-color: #09090b;
+    color: #fafafa;
   }
 }
 
@@ -116,14 +70,14 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #09090b;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
+  background: #27272a;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground));
+  background: #3f3f46;
 }
 
 /* =========================================================
