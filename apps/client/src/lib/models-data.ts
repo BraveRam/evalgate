@@ -22,7 +22,69 @@ export const TOP_50_MODELS: ModelInfo[] = [
     description: "Zero-cost offline simulator for CI/CD test plumbing and prompt regressions.",
   },
 
-  // 2-11. OpenAI
+  // 2-6. Frontier Leaders (#1 LMSYS / Benchmark Champions)
+  {
+    id: "anthropic/claude-fable-5",
+    name: "Anthropic Claude Fable 5",
+    provider: "Anthropic",
+    lab: "Anthropic",
+    costInput: 15.0,
+    costOutput: 75.0,
+    contextWindow: 2000000,
+    description: "#1 Ranked on LMSYS Chatbot Arena for creative nuance, planning, and agent execution.",
+  },
+  {
+    id: "anthropic/claude-opus-5",
+    name: "Anthropic Claude Opus 5",
+    provider: "Anthropic",
+    lab: "Anthropic",
+    costInput: 15.0,
+    costOutput: 75.0,
+    contextWindow: 2000000,
+    description: "Next-generation flagship Opus model for deep scientific reasoning and software architecture.",
+  },
+  {
+    id: "anthropic/claude-opus-4.7",
+    name: "Anthropic Claude Opus 4.7",
+    provider: "Anthropic",
+    lab: "Anthropic",
+    costInput: 12.0,
+    costOutput: 60.0,
+    contextWindow: 1000000,
+    description: "High-ranking Opus series for multi-step agent workflows and complex refactoring.",
+  },
+  {
+    id: "openai/gpt-5.6-sol",
+    name: "OpenAI GPT-5.6 Sol",
+    provider: "OpenAI",
+    lab: "OpenAI",
+    costInput: 5.0,
+    costOutput: 20.0,
+    contextWindow: 1050000,
+    description: "Frontier GPT-5.6 model for complex professional work, coding, and autonomous agents.",
+  },
+  {
+    id: "openai/gpt-5.5-pro",
+    name: "OpenAI GPT-5.5 Pro",
+    provider: "OpenAI",
+    lab: "OpenAI",
+    costInput: 4.0,
+    costOutput: 16.0,
+    contextWindow: 1050000,
+    description: "Advanced GPT-5.5 tier optimized for reasoning, tool use, and enterprise pipelines.",
+  },
+  {
+    id: "meta/muse-spark-1.2-xhigh",
+    name: "Meta Muse Spark 1.2 (xHigh)",
+    provider: "Meta",
+    lab: "Meta",
+    costInput: 3.0,
+    costOutput: 12.0,
+    contextWindow: 512000,
+    description: "Top-ranking Meta proprietary flagship on LMSYS Chatbot Arena leaderboards.",
+  },
+
+  // 7-15. OpenAI Series
   {
     id: "openai/gpt-4o-mini",
     name: "OpenAI GPT-4o-mini",
@@ -42,6 +104,36 @@ export const TOP_50_MODELS: ModelInfo[] = [
     costOutput: 10.0,
     contextWindow: 128000,
     description: "Flagship multimodal frontier model with strong reasoning and coding capabilities.",
+  },
+  {
+    id: "openai/o1",
+    name: "OpenAI o1",
+    provider: "OpenAI",
+    lab: "OpenAI",
+    costInput: 15.0,
+    costOutput: 60.0,
+    contextWindow: 200000,
+    description: "Deep reasoning model trained with reinforcement learning for complex math and logic.",
+  },
+  {
+    id: "openai/o3-mini",
+    name: "OpenAI o3-mini",
+    provider: "OpenAI",
+    lab: "OpenAI",
+    costInput: 1.1,
+    costOutput: 4.4,
+    contextWindow: 200000,
+    description: "High-efficiency reasoning model with configurable reasoning effort.",
+  },
+  {
+    id: "openai/o1-mini",
+    name: "OpenAI o1-mini",
+    provider: "OpenAI",
+    lab: "OpenAI",
+    costInput: 3.0,
+    costOutput: 12.0,
+    contextWindow: 128000,
+    description: "Fast reasoning model optimized for STEM, math, and code generation.",
   },
   {
     id: "openai/gpt-4.1-mini",
@@ -64,36 +156,6 @@ export const TOP_50_MODELS: ModelInfo[] = [
     description: "Frontier GPT model for advanced software engineering and deep knowledge work.",
   },
   {
-    id: "openai/o1",
-    name: "OpenAI o1",
-    provider: "OpenAI",
-    lab: "OpenAI",
-    costInput: 15.0,
-    costOutput: 60.0,
-    contextWindow: 200000,
-    description: "Deep reasoning model trained with reinforcement learning for complex math and logic.",
-  },
-  {
-    id: "openai/o1-mini",
-    name: "OpenAI o1-mini",
-    provider: "OpenAI",
-    lab: "OpenAI",
-    costInput: 3.0,
-    costOutput: 12.0,
-    contextWindow: 128000,
-    description: "Fast reasoning model optimized for STEM, math, and code generation.",
-  },
-  {
-    id: "openai/o3-mini",
-    name: "OpenAI o3-mini",
-    provider: "OpenAI",
-    lab: "OpenAI",
-    costInput: 1.1,
-    costOutput: 4.4,
-    contextWindow: 200000,
-    description: "Next-generation high-efficiency reasoning model with configurable reasoning effort.",
-  },
-  {
     id: "openai/gpt-4-turbo",
     name: "OpenAI GPT-4 Turbo",
     provider: "OpenAI",
@@ -103,18 +165,8 @@ export const TOP_50_MODELS: ModelInfo[] = [
     contextWindow: 128000,
     description: "General-purpose GPT-4 model with 128k context and Vision support.",
   },
-  {
-    id: "openai/gpt-3.5-turbo",
-    name: "OpenAI GPT-3.5 Turbo",
-    provider: "OpenAI",
-    lab: "OpenAI",
-    costInput: 0.5,
-    costOutput: 1.5,
-    contextWindow: 16385,
-    description: "Legacy fast completion model for basic formatting and classification.",
-  },
 
-  // 12-18. Anthropic Claude
+  // 16-20. Anthropic Claude Series
   {
     id: "anthropic/claude-3-5-sonnet",
     name: "Anthropic Claude 3.5 Sonnet",
@@ -146,16 +198,6 @@ export const TOP_50_MODELS: ModelInfo[] = [
     description: "Deep analytical and nuanced prose generation for high-stakes evaluations.",
   },
   {
-    id: "anthropic/claude-opus-4.7",
-    name: "Anthropic Claude Opus 4.7",
-    provider: "Anthropic",
-    lab: "Anthropic",
-    costInput: 12.0,
-    costOutput: 60.0,
-    contextWindow: 1000000,
-    description: "Next-gen Opus tier with 1M context for complex architecture and repo refactoring.",
-  },
-  {
     id: "anthropic/claude-3-sonnet",
     name: "Anthropic Claude 3 Sonnet",
     provider: "Anthropic",
@@ -176,7 +218,7 @@ export const TOP_50_MODELS: ModelInfo[] = [
     description: "Compact Claude 3 tier for near-instant responses.",
   },
 
-  // 19-24. Google Gemini
+  // 21-25. Google Gemini Series
   {
     id: "google/gemini-2.0-flash",
     name: "Google Gemini 2.0 Flash",
@@ -198,6 +240,16 @@ export const TOP_50_MODELS: ModelInfo[] = [
     description: "2M context frontier reasoning model for massive codebase comprehension.",
   },
   {
+    id: "google/gemini-3.5-flash",
+    name: "Google Gemini 3.5 Flash",
+    provider: "Google",
+    lab: "Google",
+    costInput: 0.12,
+    costOutput: 0.45,
+    contextWindow: 1000000,
+    description: "Next-gen Flash tier with improved coding and structured outputs.",
+  },
+  {
     id: "google/gemini-1.5-pro",
     name: "Google Gemini 1.5 Pro",
     provider: "Google",
@@ -217,18 +269,8 @@ export const TOP_50_MODELS: ModelInfo[] = [
     contextWindow: 1000000,
     description: "High-frequency lightweight model optimized for low latency and high volume.",
   },
-  {
-    id: "google/gemini-3.5-flash",
-    name: "Google Gemini 3.5 Flash",
-    provider: "Google",
-    lab: "Google",
-    costInput: 0.12,
-    costOutput: 0.45,
-    contextWindow: 1000000,
-    description: "Next-gen Flash tier with improved coding and structured outputs.",
-  },
 
-  // 25-30. DeepSeek
+  // 26-30. DeepSeek Series
   {
     id: "deepseek/deepseek-v4-pro-0813",
     name: "DeepSeek v4 Pro",
@@ -280,7 +322,7 @@ export const TOP_50_MODELS: ModelInfo[] = [
     description: "Specialized code generation and repository synthesis model.",
   },
 
-  // 31-36. Meta Llama
+  // 31-36. Meta Llama Series
   {
     id: "meta/llama-3.3-70b-instruct",
     name: "Meta Llama 3.3 70B",
@@ -342,7 +384,7 @@ export const TOP_50_MODELS: ModelInfo[] = [
     description: "Multimodal Llama model with native document, image, and visual question answering.",
   },
 
-  // 37-42. Mistral AI
+  // 37-41. Mistral AI Series
   {
     id: "mistral/mistral-large",
     name: "Mistral Large 2",
@@ -393,18 +435,8 @@ export const TOP_50_MODELS: ModelInfo[] = [
     contextWindow: 64000,
     description: "High-performance sparse mixture-of-experts model for math and reasoning.",
   },
-  {
-    id: "mistral/mixtral-8x7b",
-    name: "Mixtral 8x7B",
-    provider: "Mistral AI",
-    lab: "Mistral AI",
-    costInput: 0.24,
-    costOutput: 0.24,
-    contextWindow: 32768,
-    description: "Classic high-throughput open MoE model.",
-  },
 
-  // 43-46. Alibaba Qwen
+  // 42-45. Alibaba Qwen Series
   {
     id: "alibaba/qwen3.8-flash",
     name: "Alibaba Qwen 3.8 Flash",
@@ -446,7 +478,7 @@ export const TOP_50_MODELS: ModelInfo[] = [
     description: "Specialized 32B coding model competitive with proprietary frontier models.",
   },
 
-  // 47-48. xAI Grok
+  // 46-47. xAI Grok Series
   {
     id: "xai/grok-2",
     name: "xAI Grok 2",
@@ -468,7 +500,7 @@ export const TOP_50_MODELS: ModelInfo[] = [
     description: "Multimodal Grok model for visual reasoning and document processing.",
   },
 
-  // 49-50. Additional Labs (Cohere, Moonshot, Zhipu, MiniMax)
+  // 48-50. Specialist Labs (Cohere, Moonshot, Zhipu)
   {
     id: "cohere/command-r-plus",
     name: "Cohere Command R+",
@@ -499,16 +531,6 @@ export const TOP_50_MODELS: ModelInfo[] = [
     contextWindow: 1000000,
     description: "Multimodal GLM model for coding, document parsing, and agent tasks.",
   },
-  {
-    id: "minimax/minimax-m2.5",
-    name: "MiniMax M2.5",
-    provider: "MiniMax",
-    lab: "MiniMax",
-    costInput: 0.2,
-    costOutput: 0.6,
-    contextWindow: 196000,
-    description: "Prior MiniMax model for agent workflows, office edits, and automation.",
-  },
 ];
 
 export const ALL_MODELS = TOP_50_MODELS;
@@ -525,6 +547,9 @@ export function getModelPricing(modelId: string): { input: number; output: numbe
   if (modelId.startsWith("mock/")) return { input: 0.0, output: 0.0 };
   if (modelId.includes("mini") || modelId.includes("flash") || modelId.includes("8b")) {
     return { input: 0.15, output: 0.6 };
+  }
+  if (modelId.includes("fable") || modelId.includes("opus-5") || modelId.includes("5.6")) {
+    return { input: 5.0, output: 20.0 };
   }
   return { input: 2.0, output: 8.0 };
 }
