@@ -187,9 +187,9 @@ export function DocsLayoutClient({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* 2. Main Content Grid */}
-      <div className="flex-1 max-w-7xl w-full mx-auto flex">
+      <div className="flex-1 max-w-7xl w-full mx-auto flex items-start">
         {/* Left Sidebar (Desktop) */}
-        <aside className="w-64 shrink-0 border-r border-border/60 hidden md:block p-4 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto">
+        <aside className="w-64 shrink-0 border-r border-border/60 hidden md:block p-4 sticky top-14 self-start h-[calc(100vh-3.5rem)] overflow-y-auto">
           <nav className="space-y-6">
             {filteredSections.map((sec) => (
               <div key={sec.title} className="space-y-1.5">

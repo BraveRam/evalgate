@@ -77,7 +77,7 @@ export default async function DocPage(props: PageProps) {
   const nextPage = currentIndex < PAGE_ORDER.length - 1 ? PAGE_ORDER[currentIndex + 1] : null;
 
   return (
-    <div className="flex gap-10">
+    <div className="flex items-start justify-between gap-10 w-full">
       {/* Center Article Content */}
       <article className="flex-1 min-w-0 max-w-4xl space-y-8">
         {/* Breadcrumb */}
@@ -139,8 +139,8 @@ export default async function DocPage(props: PageProps) {
         </div>
       </article>
 
-      {/* Right Table of Contents (Desktop) */}
-      <aside className="w-56 shrink-0 hidden xl:block sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto">
+      {/* Right Table of Contents (Desktop - Fixed Sticky) */}
+      <aside className="w-56 shrink-0 hidden xl:block sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto">
         <DocsTOC items={page.toc} />
       </aside>
     </div>
