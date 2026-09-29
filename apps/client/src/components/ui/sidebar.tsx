@@ -98,7 +98,13 @@ const SidebarProvider = React.forwardRef<
     // Close mobile drawer on route change
     const pathname = usePathname();
     React.useEffect(() => {
-      setOpenMobile(false);
+      let cancelled = false;
+      queueMicrotask(() => {
+        if (!cancelled) setOpenMobile(false);
+      });
+      return () => {
+        cancelled = true;
+      };
     }, [pathname]);
 
     // Keyboard shortcut (Cmd/Ctrl + B)

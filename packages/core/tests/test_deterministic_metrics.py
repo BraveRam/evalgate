@@ -161,3 +161,22 @@ def test_budget_and_slo_assertions():
         evaluate_deterministic_assertion(cost_assertion, "Text", test_case, cost_usd=0.0025).passed
         is False
     )
+
+
+def test_explicit_zero_budget_limits():
+    test_case = TestCase(id="zero-limits")
+    for assertion_type, metric_name, amount in [
+        (AssertionType.MAX_LATENCY_MS, "latency_ms", 1.0),
+        (AssertionType.MAX_TOKENS, "total_tokens", 1),
+        (AssertionType.MAX_COST_USD, "cost_usd", 0.005),
+    ]:
+        assertion = AssertionConfig(type=assertion_type, value=0)
+        failed = evaluate_deterministic_assertion(
+            assertion, "Text", test_case, **{metric_name: amount}
+        )
+        passed = evaluate_deterministic_assertion(assertion, "Text", test_case)
+        assert failed.passed is False
+        assert failed.threshold == 0
+        assert passed.passed is True
+        assert passed.threshold == 0
+    assert failed.score == 0.0

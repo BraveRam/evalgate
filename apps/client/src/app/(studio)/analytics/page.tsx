@@ -230,6 +230,7 @@ export default function AnalyticsPage() {
   // TanStack Query: Fetch runs
   const {
     data: allRuns = [],
+    dataUpdatedAt,
     isLoading: isRunsLoading,
     refetch: refetchRuns,
   } = useQuery({
@@ -270,7 +271,7 @@ export default function AnalyticsPage() {
 
   // Filtered runs based on active filters
   const filteredRuns = useMemo(() => {
-    const now = Date.now();
+    const now = dataUpdatedAt;
 
     return allRuns.filter((r) => {
       // Suite filter
@@ -294,7 +295,7 @@ export default function AnalyticsPage() {
 
       return true;
     });
-  }, [allRuns, selectedSuite, selectedModel, statusFilter, dateRange]);
+  }, [allRuns, dataUpdatedAt, selectedSuite, selectedModel, statusFilter, dateRange]);
 
   // Filtered runs for table (with search query)
   const tableRuns = useMemo(() => {
@@ -408,10 +409,10 @@ export default function AnalyticsPage() {
 
   // Chart Data: Run-by-run with formatted timestamp
   const chartData = useMemo(() => {
-    let cumulativeCost = 0;
-
     return chronologicalRuns.map((r, idx) => {
-      cumulativeCost += r.total_cost_usd || 0;
+      const cumulativeCost = chronologicalRuns
+        .slice(0, idx + 1)
+        .reduce((sum, run) => sum + (run.total_cost_usd || 0), 0);
 
       const dateObj = new Date(r.timestamp);
       const timeLabel = dateObj.toLocaleTimeString([], {

@@ -15,7 +15,7 @@ from evalgate.api.routes.suites import _find_suite_path
 from evalgate.cli.loader import load_suite_from_yaml
 from evalgate.core.types import TestCaseResult
 from evalgate.providers.factory import get_provider
-from evalgate.runner.runner import SuiteRunner
+from evalgate.runner.runner import SuiteRunner, validate_min_pass_rate, validate_run_inputs
 
 logger = logging.getLogger(__name__)
 
@@ -77,11 +77,14 @@ async def websocket_run_stream(websocket: WebSocket) -> None:
 
         min_pass_rate = params.get("min_pass_rate")
         if min_pass_rate is not None:
-            suite = suite.model_copy(update={"min_pass_rate": float(min_pass_rate)})
+            suite = suite.model_copy(
+                update={"min_pass_rate": validate_min_pass_rate(min_pass_rate)}
+            )
 
         judge_model = params.get("judge_model")
         judge_provider = get_provider(model=judge_model) if judge_model else None
-        concurrency = int(params.get("concurrency", 10))
+        concurrency = params.get("concurrency", 10)
+        validate_run_inputs(suite, concurrency)
 
         # Notify client of suite start
         await send_queue.put(

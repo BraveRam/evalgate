@@ -108,6 +108,23 @@ async def test_mcp_run_suite_invalid_path(mcp_server):
 
 
 @pytest.mark.asyncio
+async def test_mcp_rejects_invalid_run_inputs(mcp_server, sample_suite_yaml: Path, tmp_path: Path):
+    invalid = await call_tool(
+        mcp_server,
+        "evalgate_run_suite",
+        {"suite_path": str(sample_suite_yaml), "concurrency": 0},
+    )
+    assert invalid["passed"] is False
+    assert "concurrency" in invalid["error"]
+
+    empty_suite = tmp_path / "empty.yaml"
+    empty_suite.write_text("name: draft\ntarget:\n  model: mock/simulator\ntests: []\n")
+    empty = await call_tool(mcp_server, "evalgate_run_suite", {"suite_path": str(empty_suite)})
+    assert empty["passed"] is False
+    assert "zero tests" in empty["error"]
+
+
+@pytest.mark.asyncio
 async def test_mcp_estimate_cost(mcp_server, sample_suite_yaml: Path):
     res = await call_tool(
         mcp_server,

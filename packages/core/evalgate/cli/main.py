@@ -23,7 +23,12 @@ from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
 from evalgate.core.storage import StorageEngine
 from evalgate.core.types import TestCaseResult
 from evalgate.providers.factory import get_provider
-from evalgate.runner.runner import SuiteRunner, compare_arena
+from evalgate.runner.runner import (
+    SuiteRunner,
+    compare_arena,
+    validate_min_pass_rate,
+    validate_run_inputs,
+)
 
 app = typer.Typer(
     name="evalgate",
@@ -241,8 +246,15 @@ def run(
     target = suite.target
     if model:
         target = target.model_copy(update={"model": model})
-    if min_pass_rate is not None:
-        suite = suite.model_copy(update={"min_pass_rate": min_pass_rate})
+    try:
+        if min_pass_rate is not None:
+            suite = suite.model_copy(
+                update={"min_pass_rate": validate_min_pass_rate(min_pass_rate)}
+            )
+        validate_run_inputs(suite, concurrency)
+    except ValueError as err:
+        console.print(f"[bold red]Invalid run configuration:[/] {err}")
+        raise typer.Exit(code=1) from err
 
     judge_provider = get_provider(model=judge) if judge else None
 
@@ -325,6 +337,12 @@ def compare(
     except SuiteLoadError as err:
         console.print(f"[bold red]Error loading suite:[/] {err}")
         raise typer.Exit(code=1)
+
+    try:
+        validate_run_inputs(suite, concurrency)
+    except ValueError as err:
+        console.print(f"[bold red]Invalid run configuration:[/] {err}")
+        raise typer.Exit(code=1) from err
 
     with console.status(f"[bold green]Running Arena Shootout: {model_a} vs {model_b}...[/]"):
         comparison = asyncio.run(

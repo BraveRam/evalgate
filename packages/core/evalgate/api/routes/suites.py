@@ -18,7 +18,7 @@ from evalgate.core.pricing import calculate_cost, estimate_tokens
 from evalgate.core.template import render_template
 from evalgate.core.types import SuiteConfig, SuiteRunResult
 from evalgate.providers.factory import get_provider
-from evalgate.runner.runner import SuiteRunner
+from evalgate.runner.runner import SuiteRunner, validate_min_pass_rate, validate_run_inputs
 
 router = APIRouter(prefix="/suites", tags=["Suites"])
 
@@ -91,7 +91,7 @@ def _find_suite_path(suite_name: str, base_dir: Path = DEFAULT_EVALS_DIR) -> Pat
 class RunSuiteRequest(BaseModel):
     model_override: str | None = None
     judge_override: str | None = None
-    min_pass_rate_override: float | None = None
+    min_pass_rate_override: float | None = Field(default=None, ge=0.0, le=1.0)
     concurrency: int = Field(default=10, ge=1, le=50)
 
 
@@ -257,10 +257,16 @@ async def run_suite_endpoint(
         target = target.model_copy(update={"model": req.model_override})
 
     if req and req.min_pass_rate_override is not None:
-        suite = suite.model_copy(update={"min_pass_rate": req.min_pass_rate_override})
+        suite = suite.model_copy(
+            update={"min_pass_rate": validate_min_pass_rate(req.min_pass_rate_override)}
+        )
 
     judge_provider = get_provider(model=req.judge_override) if req and req.judge_override else None
     concurrency = req.concurrency if req else 10
+    try:
+        validate_run_inputs(suite, concurrency)
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
 
     runner = SuiteRunner()
     result = await runner.run_suite(

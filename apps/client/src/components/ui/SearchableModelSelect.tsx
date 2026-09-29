@@ -45,12 +45,17 @@ export function SearchableModelSelect({
   useEffect(() => {
     if (open) {
       setTimeout(() => searchInputRef.current?.focus(), 40);
-    } else {
+    }
+  }, [open]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
       setSearch("");
       setIsAddingCustom(false);
       setCustomInput("");
     }
-  }, [open]);
+  };
 
   useEffect(() => {
     if (isAddingCustom) {
@@ -79,7 +84,7 @@ export function SearchableModelSelect({
 
   const handleSelect = (modelId: string) => {
     onValueChange(modelId);
-    setOpen(false);
+    handleOpenChange(false);
   };
 
   const handleSaveCustom = (e?: React.FormEvent) => {
@@ -87,12 +92,12 @@ export function SearchableModelSelect({
     const trimmed = customInput.trim();
     if (trimmed) {
       onValueChange(trimmed);
-      setOpen(false);
+      handleOpenChange(false);
     }
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           type="button"

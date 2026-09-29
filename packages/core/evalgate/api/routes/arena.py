@@ -33,10 +33,13 @@ async def run_arena_shootout(req: ArenaCompareRequest) -> ArenaComparisonResult:
     except Exception as err:
         raise HTTPException(status_code=400, detail=f"Failed to load suite: {err}")
 
-    comparison = await compare_arena(
-        suite=suite,
-        model_a=req.model_a,
-        model_b=req.model_b,
-        concurrency=req.concurrency,
-    )
+    try:
+        comparison = await compare_arena(
+            suite=suite,
+            model_a=req.model_a,
+            model_b=req.model_b,
+            concurrency=req.concurrency,
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
     return comparison

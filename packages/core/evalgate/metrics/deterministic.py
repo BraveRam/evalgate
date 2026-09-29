@@ -240,19 +240,22 @@ def evaluate_deterministic_assertion(
 
     # 6. Performance & Budget SLOs
     if atype == AssertionType.MAX_LATENCY_MS:
-        max_limit = float(expected or 1000.0)
+        max_limit = float(expected if expected is not None else 1000.0)
         passed = latency_ms <= max_limit
         status_word = "within" if passed else "exceeded"
+        score = (1.0 if passed else 0.0) if max_limit == 0 else round(
+            max(0.0, 1.0 - (latency_ms / max_limit)), 2
+        )
         return AssertionResult(
             assertion_type=atype,
             passed=passed,
-            score=round(max(0.0, 1.0 - (latency_ms / max_limit)), 2),
+            score=score,
             threshold=max_limit,
             reason=f"Latency {latency_ms:.1f}ms {status_word} budget {max_limit:.1f}ms",
         )
 
     if atype == AssertionType.MAX_TOKENS:
-        max_limit = int(expected or 1000)
+        max_limit = int(expected if expected is not None else 1000)
         passed = total_tokens <= max_limit
         status_word = "within" if passed else "exceeded"
         return AssertionResult(
@@ -264,7 +267,7 @@ def evaluate_deterministic_assertion(
         )
 
     if atype == AssertionType.MAX_COST_USD:
-        max_limit = float(expected or 0.01)
+        max_limit = float(expected if expected is not None else 0.01)
         passed = cost_usd <= max_limit
         status_word = "within" if passed else "exceeded"
         return AssertionResult(

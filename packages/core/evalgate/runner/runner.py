@@ -46,6 +46,31 @@ def calculate_percentiles(latencies: list[float]) -> tuple[float, float, float]:
     return round(avg_val, 2), round(p50_val, 2), round(p95_val, 2)
 
 
+def validate_concurrency(concurrency: int) -> int:
+    """Validate the shared concurrency bound for every runner entry point."""
+    if (
+        isinstance(concurrency, bool)
+        or not isinstance(concurrency, int)
+        or not 1 <= concurrency <= 50
+    ):
+        raise ValueError("concurrency must be an integer between 1 and 50")
+    return concurrency
+
+
+def validate_min_pass_rate(value: float) -> float:
+    """Validate an override using the same range as SuiteConfig."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0.0 <= value <= 1.0:
+        raise ValueError("min_pass_rate must be between 0.0 and 1.0")
+    return float(value)
+
+
+def validate_run_inputs(suite: SuiteConfig, concurrency: int) -> None:
+    validate_concurrency(concurrency)
+    validate_min_pass_rate(suite.min_pass_rate)
+    if not suite.tests:
+        raise ValueError("Cannot run a suite with zero tests")
+
+
 class SuiteRunner:
     """
     Concurrent async runner executing complete evaluation suites against targets and LLMs.
@@ -66,6 +91,7 @@ class SuiteRunner:
         """
         Execute all test cases in a SuiteConfig concurrently with bounded concurrency.
         """
+        validate_run_inputs(suite, concurrency)
         target = target_override or suite.target
         semaphore = asyncio.Semaphore(concurrency)
 
@@ -93,7 +119,7 @@ class SuiteRunner:
         total_tests = len(results)
         passed_tests = sum(1 for r in results if r.passed)
         failed_tests = total_tests - passed_tests
-        pass_rate = round(passed_tests / total_tests, 4) if total_tests > 0 else 1.0
+        pass_rate = round(passed_tests / total_tests, 4)
 
         latencies = [r.latency_ms for r in results]
         avg_lat, p50_lat, p95_lat = calculate_percentiles(latencies)

@@ -167,6 +167,21 @@ def test_cli_run_malformed_suite_exits_1(tmp_path: Path):
     assert "Error loading suite" in result.stdout
 
 
+def test_cli_rejects_invalid_run_inputs(tmp_path: Path):
+    empty_suite = tmp_path / "empty.yaml"
+    empty_suite.write_text("name: draft\ntarget:\n  model: mock/simulator\ntests: []\n")
+    empty_result = runner.invoke(app, ["run", str(empty_suite), "--no-save"])
+    assert empty_result.exit_code == 1
+    assert "zero tests" in empty_result.stdout
+
+    suite = tmp_path / "one.yaml"
+    suite.write_text("name: one\ntarget:\n  model: mock/simulator\ntests:\n  - id: one\n")
+    for args in (["--concurrency", "0"], ["--min-pass-rate", "1.1"]):
+        result = runner.invoke(app, ["run", str(suite), "--no-save", *args])
+        assert result.exit_code == 1
+        assert "Invalid run configuration" in result.stdout
+
+
 def test_cli_compare_malformed_suite_exits_1(tmp_path: Path):
     broken_file = tmp_path / "malformed_compare.yaml"
     broken_file.write_text("invalid: yaml: syntax: [", encoding="utf-8")

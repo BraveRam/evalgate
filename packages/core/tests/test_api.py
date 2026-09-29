@@ -270,3 +270,39 @@ def test_websocket_error_handling():
         ws.send_json({"suite_name": "nonexistent_suite_xyz"})
         msg = ws.receive_json()
         assert msg["type"] == "error"
+
+
+def test_run_rejects_empty_suite_and_invalid_overrides(tmp_path: Path, monkeypatch):
+    empty_suite = tmp_path / "empty.yaml"
+    empty_suite.write_text("name: empty\ntarget:\n  model: mock/simulator\ntests: []\n")
+    monkeypatch.setattr("evalgate.api.routes.suites._find_suite_path", lambda name: empty_suite)
+    monkeypatch.setattr("evalgate.api.routes.ws._find_suite_path", lambda name: empty_suite)
+
+    response = client.post("/api/v1/suites/empty/run", json={})
+    assert response.status_code == 400
+    assert "zero tests" in response.json()["detail"]
+
+    with client.websocket_connect("/api/v1/ws/run") as ws:
+        ws.send_json({"suite_name": "empty"})
+        assert "zero tests" in ws.receive_json()["message"]
+
+    populated_suite = tmp_path / "populated.yaml"
+    populated_suite.write_text(
+        "name: populated\ntarget:\n  model: mock/simulator\ntests:\n  - id: one\n"
+    )
+    monkeypatch.setattr("evalgate.api.routes.suites._find_suite_path", lambda name: populated_suite)
+    monkeypatch.setattr("evalgate.api.routes.ws._find_suite_path", lambda name: populated_suite)
+    for invalid_rate in (-0.1, 1.1):
+        response = client.post(
+            "/api/v1/suites/populated/run",
+            json={"min_pass_rate_override": invalid_rate},
+        )
+        assert response.status_code == 422
+        with client.websocket_connect("/api/v1/ws/run") as ws:
+            ws.send_json({"suite_name": "populated", "min_pass_rate": invalid_rate})
+            assert ws.receive_json()["type"] == "error"
+
+    for invalid_concurrency in (0, 51):
+        with client.websocket_connect("/api/v1/ws/run") as ws:
+            ws.send_json({"suite_name": "populated", "concurrency": invalid_concurrency})
+            assert ws.receive_json()["type"] == "error"

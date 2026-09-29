@@ -16,7 +16,13 @@ from evalgate.core.types import (
     TargetType,
     TestCase,
 )
-from evalgate.runner.runner import SuiteRunner, calculate_percentiles, compare_arena
+from evalgate.runner.runner import (
+    SuiteRunner,
+    calculate_percentiles,
+    compare_arena,
+    validate_concurrency,
+    validate_min_pass_rate,
+)
 
 
 def test_calculate_percentiles():
@@ -29,6 +35,13 @@ def test_calculate_percentiles():
     assert avg == 55.0
     assert p50 == 50.0
     assert p95 == 100.0
+
+
+def test_run_validation_accepts_boundaries():
+    assert validate_concurrency(1) == 1
+    assert validate_concurrency(50) == 50
+    assert validate_min_pass_rate(0.0) == 0.0
+    assert validate_min_pass_rate(1.0) == 1.0
 
 
 @pytest.mark.asyncio
@@ -146,6 +159,35 @@ async def test_suite_runner_parallel_execution(tmp_path: Path):
     fetched = await storage.get_run(run_result.run_id)
     assert fetched is not None
     assert fetched.run_id == run_result.run_id
+
+
+@pytest.mark.asyncio
+async def test_suite_runner_rejects_empty_suite_without_saving(tmp_path: Path):
+    db_file = tmp_path / "empty.db"
+    runner = SuiteRunner(storage=StorageEngine(db_path=db_file))
+    suite = SuiteConfig(name="draft", target=TargetConfig(model="mock/simulator"), tests=[])
+
+    with pytest.raises(ValueError, match="zero tests"):
+        await runner.run_suite(suite)
+    assert not db_file.exists()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("concurrency", [0, -1, 51, 1.5, True])
+async def test_suite_runner_rejects_invalid_concurrency_without_saving(
+    tmp_path: Path, concurrency: int
+):
+    db_file = tmp_path / "invalid-concurrency.db"
+    runner = SuiteRunner(storage=StorageEngine(db_path=db_file))
+    suite = SuiteConfig(
+        name="one-case",
+        target=TargetConfig(model="mock/simulator", template="hello"),
+        tests=[TestCase(id="one")],
+    )
+
+    with pytest.raises(ValueError, match="concurrency"):
+        await runner.run_suite(suite, concurrency=concurrency)
+    assert not db_file.exists()
 
 
 @pytest.mark.asyncio

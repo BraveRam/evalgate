@@ -362,14 +362,21 @@ export default function ArenaPage() {
   const [history, setHistory] = useState<StoredComparisonRecord[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     try {
       const saved = localStorage.getItem("evalgate_arena_history");
       if (saved) {
-        setHistory(JSON.parse(saved));
+        const parsed: StoredComparisonRecord[] = JSON.parse(saved);
+        queueMicrotask(() => {
+          if (!cancelled) setHistory(parsed);
+        });
       }
     } catch {
       // ignore
     }
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const saveToHistory = (res: ArenaComparisonResult, verdict: VerdictAnalysis) => {

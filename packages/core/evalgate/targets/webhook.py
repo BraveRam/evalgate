@@ -4,8 +4,10 @@ Live HTTP API / Webhook Target Executor.
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import json
+import socket
 import time
 from urllib.parse import urlparse
 
@@ -32,27 +34,55 @@ class WebhookTarget(BaseTarget):
         if not parsed.netloc:
             return f"Invalid webhook URL: missing hostname in '{url}'"
 
-        hostname = (parsed.hostname or "").lower()
+        hostname = (parsed.hostname or "").lower().rstrip(".")
+        if not hostname:
+            return "Invalid webhook URL: missing hostname"
         if hostname in ("169.254.169.254", "metadata.google.internal", "instance-data"):
             return f"SSRF Protection: Blocked access to cloud metadata endpoint '{hostname}'"
 
-        # Check for loopback and private IP egress
-        if not self.config.allow_private_endpoints:
-            if hostname in ("localhost", "127.0.0.1", "0.0.0.0", "::1"):
-                return f"SSRF Protection: Loopback host '{hostname}' is not permitted"
-            try:
-                ip = ipaddress.ip_address(hostname)
-                if ip.is_link_local:
-                    return f"SSRF Protection: Link-local IP address '{hostname}' is not permitted"
-                if ip.is_loopback:
-                    return f"SSRF Protection: Loopback IP address '{hostname}' is not permitted"
-                if ip.is_private:
-                    return f"SSRF Protection: Private subnet IP '{hostname}' is not permitted"
-            except ValueError:
-                # Hostname is a domain name, not a raw IP
-                pass
+        if hostname == "localhost" and not self.config.allow_private_endpoints:
+            return f"SSRF Protection: Loopback host '{hostname}' is not permitted"
+        try:
+            address = ipaddress.ip_address(hostname)
+        except ValueError:
+            pass  # DNS names are checked after resolution, before connecting.
+        else:
+            return self._validate_address(address)
 
         return None
+
+    def _validate_address(
+        self, address: ipaddress.IPv4Address | ipaddress.IPv6Address
+    ) -> str | None:
+        """Reject metadata and, unless opted in, every non-public address."""
+        mapped = address.ipv4_mapped if isinstance(address, ipaddress.IPv6Address) else None
+        effective_address = mapped or address
+        if effective_address.is_link_local or effective_address == ipaddress.ip_address(
+            "169.254.169.254"
+        ):
+            return f"SSRF Protection: Link-local address '{address}' is not permitted"
+        if not self.config.allow_private_endpoints and not effective_address.is_global:
+            return f"SSRF Protection: Non-public address '{address}' is not permitted"
+        return None
+
+    async def _resolve_address(self, hostname: str, port: int) -> str:
+        """Resolve once and return an address that can be pinned for the request."""
+        try:
+            address = ipaddress.ip_address(hostname)
+            addresses = [address]
+        except ValueError:
+            records = await asyncio.get_running_loop().getaddrinfo(
+                hostname, port, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP
+            )
+            addresses = [ipaddress.ip_address(record[4][0]) for record in records]
+
+        if not addresses:
+            raise ValueError(f"No addresses found for webhook host '{hostname}'")
+        for address in addresses:
+            error = self._validate_address(address)
+            if error:
+                raise ValueError(error)
+        return str(addresses[0])
 
     async def execute(self, test_case: TestCase) -> TargetOutput:
         url = self.config.webhook_url
@@ -75,8 +105,18 @@ class WebhookTarget(BaseTarget):
 
         start_time = time.perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.post(url, json=payload, headers=headers)
+            parsed = urlparse(url)
+            hostname = (parsed.hostname or "").lower().rstrip(".")
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+            pinned_address = await self._resolve_address(hostname, port)
+            pinned_url = httpx.URL(url).copy_with(host=pinned_address)
+            async with httpx.AsyncClient(
+                timeout=30.0, trust_env=False, follow_redirects=False
+            ) as client:
+                request = client.build_request("POST", pinned_url, json=payload, headers=headers)
+                request.headers["Host"] = parsed.netloc.rsplit("@", 1)[-1]
+                request.extensions["sni_hostname"] = hostname
+                resp = await client.send(request)
                 latency_ms = (time.perf_counter() - start_time) * 1000.0
 
                 try:

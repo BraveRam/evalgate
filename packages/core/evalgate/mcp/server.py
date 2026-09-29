@@ -59,12 +59,15 @@ def create_mcp_server() -> MCPServer:
             target = target.model_copy(update={"model": model_override})
 
         runner = SuiteRunner()
-        res = await runner.run_suite(
-            suite=suite,
-            target_override=target,
-            concurrency=concurrency,
-            save_to_storage=True,
-        )
+        try:
+            res = await runner.run_suite(
+                suite=suite,
+                target_override=target,
+                concurrency=concurrency,
+                save_to_storage=True,
+            )
+        except ValueError as err:
+            return {"error": str(err), "passed": False}
 
         failed_cases: list[dict[str, Any]] = []
         for tc in res.results:
@@ -179,12 +182,15 @@ def create_mcp_server() -> MCPServer:
         except (SuiteLoadError, FileNotFoundError) as err:
             return {"error": f"Failed to load evaluation suite: {err}"}
 
-        comparison = await compare_arena(
-            suite=suite,
-            model_a=model_a,
-            model_b=model_b,
-            concurrency=concurrency,
-        )
+        try:
+            comparison = await compare_arena(
+                suite=suite,
+                model_a=model_a,
+                model_b=model_b,
+                concurrency=concurrency,
+            )
+        except ValueError as err:
+            return {"error": str(err), "passed": False}
 
         return {
             "suite_name": comparison.suite_name,
