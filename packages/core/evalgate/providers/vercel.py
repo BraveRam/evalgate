@@ -1,5 +1,5 @@
 """
-Vercel AI Gateway Provider using LangChain OpenAI-compatible client.
+Vercel AI Gateway and native provider clients with normalized completions.
 """
 
 from __future__ import annotations
@@ -10,9 +10,13 @@ import os
 import time
 from typing import Any
 
+from langchain_anthropic import ChatAnthropic
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import Runnable
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
+from pydantic import SecretStr
 
 from evalgate.core.pricing import calculate_cost, estimate_tokens
 from evalgate.providers.base import BaseProvider, ProviderCompletion
@@ -22,8 +26,7 @@ logger = logging.getLogger(__name__)
 
 class VercelGatewayProvider(BaseProvider):
     """
-    Unified Vercel AI Gateway provider routing to multiple models
-    (OpenAI, Anthropic, Google, Groq, DeepSeek) through a single API key.
+    Unified completion adapter for Vercel Gateway and direct provider clients.
     """
 
     def __init__(
@@ -33,50 +36,76 @@ class VercelGatewayProvider(BaseProvider):
         top_p: float | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
+        provider_override: str | None = None,
     ):
         super().__init__(model=model, temperature=temperature, top_p=top_p)
-        resolved_key = (
-            api_key
-            or os.getenv("VERCEL_AI_GATEWAY_KEY")
-            or os.getenv("AI_GATEWAY_KEY")
-            or os.getenv("OPENAI_API_KEY")
-        )
+        gateway_key = os.getenv("VERCEL_AI_GATEWAY_KEY") or os.getenv("AI_GATEWAY_KEY")
+        prefix, separator, bare_model = self.model.partition("/")
+        if provider_override:
+            route = provider_override
+        elif base_url:
+            route = "openai"
+        elif (api_key and api_key.startswith("vck_")) or (gateway_key and api_key is None):
+            route = "vercel"
+        else:
+            route = prefix.lower() if separator else "openai"
 
-        if not resolved_key:
+        provider_keys = {
+            "vercel": gateway_key,
+            "anthropic": os.getenv("ANTHROPIC_API_KEY"),
+            "google": os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"),
+            "gemini": os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"),
+            "deepseek": os.getenv("DEEPSEEK_API_KEY"),
+        }
+        self.api_key = (
+            api_key or provider_keys.get(route, os.getenv("OPENAI_API_KEY")) or "dummy-key"
+        )
+        if self.api_key == "dummy-key":
             logger.warning(
-                "No VERCEL_AI_GATEWAY_KEY or OPENAI_API_KEY detected in environment. "
-                "Falling back to placeholder key. Live API requests will fail with 401."
+                "No API key configured for provider '%s'; live requests will fail", route
             )
-            resolved_key = "dummy-key"
 
-        self.api_key = resolved_key
-
-        # If using Vercel AI Gateway key (or vck_ prefix), route to Vercel Gateway endpoint
-        is_vercel_gateway = bool(
-            os.getenv("VERCEL_AI_GATEWAY_KEY")
-            or os.getenv("AI_GATEWAY_KEY")
-            or (resolved_key and resolved_key.startswith("vck_"))
+        # Gateway IDs are namespaced; direct APIs expect their own bare model IDs.
+        direct_prefixes = {"openai", "anthropic", "google", "gemini", "deepseek"}
+        client_model = (
+            bare_model
+            if route != "vercel" and separator and prefix.lower() in direct_prefixes
+            else self.model
         )
-        default_base_url = "https://ai-gateway.vercel.sh/v1" if is_vercel_gateway else None
-
-        self.base_url = (
-            base_url
-            or os.getenv("VERCEL_AI_GATEWAY_URL")
-            or os.getenv("AI_GATEWAY_URL")
-            or default_base_url
-        )
-
+        self.base_url = base_url
         client_kwargs: dict[str, Any] = {
-            "model_name": self.model,
-            "api_key": self.api_key,
+            "model": client_model,
             "temperature": self.temperature,
         }
         if self.top_p is not None:
-            client_kwargs["model_kwargs"] = {"top_p": self.top_p}
-        if self.base_url:
-            client_kwargs["base_url"] = self.base_url
+            client_kwargs["top_p"] = self.top_p
 
-        self.client = ChatOpenAI(**client_kwargs)
+        self.client: BaseChatModel
+        if route == "anthropic":
+            if self.base_url:
+                client_kwargs["base_url"] = self.base_url
+            self.client = ChatAnthropic(api_key=SecretStr(self.api_key), **client_kwargs)
+        elif route in ("google", "gemini"):
+            self.client = ChatGoogleGenerativeAI(google_api_key=self.api_key, **client_kwargs)
+        else:
+            if route == "vercel":
+                self.base_url = (
+                    self.base_url
+                    or os.getenv("VERCEL_AI_GATEWAY_URL")
+                    or os.getenv("AI_GATEWAY_URL")
+                    or "https://ai-gateway.vercel.sh/v1"
+                )
+            elif route == "deepseek":
+                self.base_url = self.base_url or "https://api.deepseek.com/v1"
+            else:
+                self.base_url = (
+                    self.base_url
+                    or os.getenv("VERCEL_AI_GATEWAY_URL")
+                    or os.getenv("AI_GATEWAY_URL")
+                )
+            if self.base_url:
+                client_kwargs["base_url"] = self.base_url
+            self.client = ChatOpenAI(api_key=SecretStr(self.api_key), **client_kwargs)
 
     async def complete(
         self,

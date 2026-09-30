@@ -295,6 +295,30 @@ async def test_suite_runner_pass_rate_threshold(tmp_path: Path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("minimum, passed", [(2 / 3, True), (0.6667, False), (0.6666, True)])
+async def test_suite_gate_uses_unrounded_pass_rate(minimum: float, passed: bool):
+    suite = SuiteConfig(
+        name="rounding-boundary",
+        target=TargetConfig(model="mock/simulator", template="Hello"),
+        min_pass_rate=minimum,
+        tests=[
+            TestCase(
+                id=str(i),
+                assertions=[
+                    AssertionConfig(type=AssertionType.CONTAINS, value="Hello" if i < 2 else "NOPE")
+                ],
+            )
+            for i in range(3)
+        ],
+    )
+    result = await SuiteRunner().run_suite(suite, save_to_storage=False)
+    assert result.passed_tests == 2
+    assert result.total_tests == 3
+    assert result.pass_rate == 0.6667
+    assert result.passed is passed
+
+
+@pytest.mark.asyncio
 async def test_arena_model_comparison(tmp_path: Path):
     db_file = tmp_path / "arena_test.db"
     storage = StorageEngine(db_path=db_file)

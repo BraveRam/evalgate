@@ -60,7 +60,24 @@ def evaluate_deterministic_assertion(
 
     # 1. JSON Schema Validation
     if atype == AssertionType.JSON_SCHEMA:
-        schema = expected if isinstance(expected, dict) else None
+        schema = expected if expected is not None else {}
+        if isinstance(schema, str):
+            try:
+                schema = json.loads(schema)
+            except json.JSONDecodeError as err:
+                return AssertionResult(
+                    assertion_type=atype,
+                    passed=False,
+                    score=0.0,
+                    reason=f"Invalid JSON schema: {err}",
+                )
+        if not isinstance(schema, (dict, bool)):
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                reason="JSON schema must be an object or a boolean",
+            )
         try:
             # Clean markdown codeblocks if LLM returned ```json ... ```
             cleaned = completion.strip()
@@ -73,8 +90,7 @@ def evaluate_deterministic_assertion(
             cleaned = cleaned.strip()
 
             parsed_json = json.loads(cleaned)
-            if schema:
-                jsonschema.validate(instance=parsed_json, schema=schema)
+            jsonschema.validate(instance=parsed_json, schema=schema)
             return AssertionResult(
                 assertion_type=atype,
                 passed=True,
@@ -96,6 +112,13 @@ def evaluate_deterministic_assertion(
                 score=0.0,
                 reason=f"JSON schema validation failed: {err.message}",
                 details={"path": list(err.path)},
+            )
+        except jsonschema.SchemaError as err:
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                reason=f"Invalid JSON schema: {err.message}",
             )
 
     # 2. Python AST Syntax Validation
@@ -243,8 +266,10 @@ def evaluate_deterministic_assertion(
         max_limit = float(expected if expected is not None else 1000.0)
         passed = latency_ms <= max_limit
         status_word = "within" if passed else "exceeded"
-        score = (1.0 if passed else 0.0) if max_limit == 0 else round(
-            max(0.0, 1.0 - (latency_ms / max_limit)), 2
+        score = (
+            (1.0 if passed else 0.0)
+            if max_limit == 0
+            else round(max(0.0, 1.0 - (latency_ms / max_limit)), 2)
         )
         return AssertionResult(
             assertion_type=atype,

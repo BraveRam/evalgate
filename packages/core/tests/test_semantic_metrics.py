@@ -3,6 +3,7 @@ Tests for Semantic LLM-as-a-Judge Metrics using Mock Judge.
 """
 
 import json
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -14,6 +15,7 @@ from evalgate.metrics.faithfulness import FaithfulnessMetric
 from evalgate.metrics.hallucination import HallucinationMetric
 from evalgate.metrics.intent import IntentMetric
 from evalgate.metrics.relevancy import RelevancyMetric
+from evalgate.providers.base import ProviderCompletion
 from evalgate.providers.mock import MockProvider
 
 
@@ -52,6 +54,31 @@ async def test_faithfulness_metric_missing_context():
     res = await metric.evaluate(assertion, "Some statement", test_case)
     assert res.passed is False
     assert "no reference context" in res.reason.lower()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("context", "ground_truth", "expected"),
+    [
+        (None, None, "template reference"),
+        ("explicit reference", None, "explicit reference"),
+        (None, "gold reference", "gold reference"),
+    ],
+)
+async def test_faithfulness_template_context_fallback(context, ground_truth, expected):
+    judge = MockProvider()
+    judge.complete = AsyncMock(return_value=ProviderCompletion(text='{"score":1.0}'))
+    metric = FaithfulnessMetric(judge_provider=judge)
+    test_case = TestCase(
+        id="template-context",
+        context=context,
+        ground_truth=ground_truth,
+        vars={"context": "template reference"},
+    )
+    result = await metric.evaluate(AssertionConfig(type="faithfulness"), "Answer", test_case)
+    assert result.passed is True
+    prompt = judge.complete.await_args.kwargs["prompt"]
+    assert f"[Reference Context]:\n{expected}" in prompt
 
 
 @pytest.mark.asyncio
