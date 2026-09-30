@@ -119,7 +119,7 @@ class SuiteRunner:
         total_tests = len(results)
         passed_tests = sum(1 for r in results if r.passed)
         failed_tests = total_tests - passed_tests
-        pass_rate = round(passed_tests / total_tests, 4)
+        pass_rate = passed_tests / total_tests
 
         latencies = [r.latency_ms for r in results]
         avg_lat, p50_lat, p95_lat = calculate_percentiles(latencies)
@@ -137,7 +137,7 @@ class SuiteRunner:
             target_model=target.model,
             target_provider=target.provider or "auto",
             passed=suite_passed,
-            pass_rate=pass_rate,
+            pass_rate=round(pass_rate, 4),
             total_tests=total_tests,
             passed_tests=passed_tests,
             failed_tests=failed_tests,

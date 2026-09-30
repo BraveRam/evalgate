@@ -58,17 +58,26 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["System"])
     async def health_check() -> dict[str, Any]:
+        has_gateway = bool(os.getenv("VERCEL_AI_GATEWAY_KEY") or os.getenv("AI_GATEWAY_KEY"))
         has_key = bool(
-            os.getenv("VERCEL_AI_GATEWAY_KEY")
-            or os.getenv("AI_GATEWAY_KEY")
+            has_gateway
             or os.getenv("OPENAI_API_KEY")
             or os.getenv("ANTHROPIC_API_KEY")
+            or os.getenv("GOOGLE_API_KEY")
+            or os.getenv("GEMINI_API_KEY")
+            or os.getenv("DEEPSEEK_API_KEY")
         )
         return {
             "status": "ok",
             "version": __version__,
             "provider_configured": has_key,
-            "provider_mode": "Gateway Active" if has_key else "Local Mock Mode",
+            "provider_mode": (
+                "Gateway Active"
+                if has_gateway
+                else "Direct Provider Active"
+                if has_key
+                else "Local Mock Mode"
+            ),
             "storage_engine": "SQLite WAL Active",
         }
 

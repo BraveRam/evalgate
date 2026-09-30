@@ -2,6 +2,10 @@
 Tests for Deterministic and Mathematical Evaluators.
 """
 
+import json
+
+import pytest
+
 from evalgate.core.types import AssertionConfig, AssertionType, TestCase
 from evalgate.metrics.deterministic import (
     calculate_levenshtein_similarity,
@@ -44,6 +48,26 @@ def test_json_schema_assertion():
     res_wrong = evaluate_deterministic_assertion(assertion, wrong_schema, test_case)
     assert res_wrong.passed is False
     assert "age" in str(res_wrong.reason)
+
+
+@pytest.mark.parametrize(
+    ("schema", "completion", "expected_passed"),
+    [
+        (json.dumps({"type": "object", "required": ["priority"]}), "{}", False),
+        (json.dumps({"type": "object", "required": ["priority"]}), '{"priority":"HIGH"}', True),
+        (False, "{}", False),
+        ("false", "{}", False),
+        ("not JSON", "{}", False),
+        ({"type": "unknown-type"}, "{}", False),
+        ([], "{}", False),
+        ({}, "{}", True),
+        (None, "{}", True),
+    ],
+)
+def test_json_schema_strings_and_invalid_schemas(schema, completion, expected_passed):
+    assertion = AssertionConfig(type=AssertionType.JSON_SCHEMA, value=schema)
+    result = evaluate_deterministic_assertion(assertion, completion, TestCase(id="schema"))
+    assert result.passed is expected_passed
 
 
 def test_python_ast_assertion():

@@ -3,6 +3,7 @@ Comprehensive Unit and Integration Tests for EvalGate FastAPI Studio Backend.
 """
 
 from pathlib import Path
+from urllib.parse import quote
 
 import pytest
 from fastapi.testclient import TestClient
@@ -65,6 +66,27 @@ def test_models_endpoint():
     model_ids = [m["id"] for m in data]
     assert "openai/gpt-4o" in model_ids
     assert "openai/gpt-4o-mini" in model_ids
+
+
+@pytest.mark.parametrize(
+    "key_name",
+    ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY", "DEEPSEEK_API_KEY"],
+)
+def test_health_recognizes_direct_provider_keys(monkeypatch, key_name):
+    for name in (
+        "VERCEL_AI_GATEWAY_KEY",
+        "AI_GATEWAY_KEY",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GOOGLE_API_KEY",
+        "GEMINI_API_KEY",
+        "DEEPSEEK_API_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv(key_name, "test-only-key")
+    health = client.get("/health").json()
+    assert health["provider_configured"] is True
+    assert health["provider_mode"] == "Direct Provider Active"
 
 
 def test_suites_crud_and_run(sample_suite: Path):
@@ -270,6 +292,85 @@ def test_websocket_error_handling():
         ws.send_json({"suite_name": "nonexistent_suite_xyz"})
         msg = ws.receive_json()
         assert msg["type"] == "error"
+
+
+@pytest.mark.parametrize("name", ["customer support", "Finance QA – 中文"])
+def test_display_names_support_suite_crud_and_runs(tmp_path: Path, monkeypatch, name):
+    monkeypatch.chdir(tmp_path)
+    suite = {
+        "name": name,
+        "target": {"model": "mock/simulator", "template": "Hello"},
+        "tests": [{"id": "one"}],
+    }
+    response = client.post("/api/v1/suites?filename=display_name.yaml", json=suite)
+    assert response.status_code == 201
+    assert client.get("/api/v1/suites").json()[0]["name"] == name
+    url = "/api/v1/suites/" + quote(name, safe="")
+    assert client.get(url).json()["name"] == name
+    run = client.post(url + "/run", json={})
+    assert run.status_code == 200
+    assert run.json()["passed"] is True
+    suite["description"] = "Updated display name suite"
+    assert client.put(url, json=suite).status_code == 200
+    assert client.get(url).json()["description"] == suite["description"]
+    assert client.delete(url).status_code == 200
+    assert not (tmp_path / "evals" / "display_name.yaml").exists()
+
+
+def test_display_names_preserve_path_confinement(tmp_path: Path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    (workspace / "evals").mkdir(parents=True)
+    outside = tmp_path / "outside.yaml"
+    outside.write_text("name: outside suite\ntests: []\n")
+    (workspace / "evals" / "outside.yaml").symlink_to(outside)
+    monkeypatch.chdir(workspace)
+    assert client.get("/api/v1/suites/outside%20suite").status_code == 404
+    for name in ("../outside", "a/b", "a\\b"):
+        response = client.post(
+            "/api/v1/suites?filename=safe.yaml", json={"name": name, "tests": []}
+        )
+        assert response.status_code == 400
+    assert not (workspace / "evals" / "safe.yaml").exists()
+    assert outside.exists()
+
+
+def test_playground_enforces_schema_strings():
+    schema = {
+        "type": "object",
+        "required": ["priority"],
+        "properties": {"priority": {"type": "string"}},
+    }
+    payload = {
+        "target": {"model": "mock/simulator", "template": "Return JSON"},
+        "test_case": {"id": "schema", "vars": {}},
+        "judge_model": "mock/simulator",
+        "assertions": [
+            {"type": "json_schema", "value": '{"type":"object","required":["priority"]}'}
+        ],
+    }
+    invalid = client.post("/api/v1/evaluate/playground", json=payload)
+    assert invalid.status_code == 200
+    assert invalid.json()["passed"] is False
+    payload["target"]["json_schema"] = schema
+    valid = client.post("/api/v1/evaluate/playground", json=payload)
+    assert valid.status_code == 200
+    assert valid.json()["passed"] is True
+
+
+def test_playground_faithfulness_uses_template_context():
+    response = client.post(
+        "/api/v1/evaluate/playground",
+        json={
+            "target": {"model": "mock/simulator", "template": "Context: {{context}}"},
+            "test_case": {"id": "rag", "vars": {"context": "ACME revenue was $45.2M."}},
+            "judge_model": "mock/simulator",
+            "assertions": [{"type": "faithfulness", "threshold": 0.85}],
+        },
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["passed"] is True
+    assert result["assertion_results"][0]["score"] == 0.95
 
 
 def test_run_rejects_empty_suite_and_invalid_overrides(tmp_path: Path, monkeypatch):

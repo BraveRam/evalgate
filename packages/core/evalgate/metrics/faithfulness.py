@@ -20,10 +20,10 @@ class FaithfulnessMetric(BaseSemanticMetric):
         completion: str,
         test_case: TestCase,
     ) -> AssertionResult:
+        # Older playground exports store reference context as a template variable.
+        reference = test_case.context or test_case.ground_truth or test_case.vars.get("context")
         context_str = (
-            "\n---\n".join(test_case.context)
-            if isinstance(test_case.context, list)
-            else str(test_case.context or test_case.ground_truth or "")
+            "\n---\n".join(reference) if isinstance(reference, list) else str(reference or "")
         )
 
         if not context_str.strip():

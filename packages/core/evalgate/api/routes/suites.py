@@ -25,15 +25,15 @@ router = APIRouter(prefix="/suites", tags=["Suites"])
 DEFAULT_EVALS_DIR = Path("evals")
 
 
-def _sanitize_name_or_filename(name: str) -> str:
+def _sanitize_name_or_filename(name: str, *, filename: bool = True) -> str:
     """Validate that a filename or suite name contains no path traversal sequences."""
     if not name or ".." in name or "/" in name or "\\" in name or "\x00" in name:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid name or path traversal attempt: '{name}'",
         )
-    # Check for valid characters
-    if not re.match(r"^[a-zA-Z0-9_\-\.]+$", name):
+    # Display names may contain spaces or Unicode; filenames remain restricted.
+    if filename and not re.match(r"^[a-zA-Z0-9_\-\.]+$", name):
         raise HTTPException(
             status_code=400,
             detail=(
@@ -49,7 +49,7 @@ def _find_suite_path(suite_name: str, base_dir: Path = DEFAULT_EVALS_DIR) -> Pat
     Find a suite YAML file matching suite_name or filename strictly within base_dir.
     Guarantees that path traversal outside base_dir is blocked.
     """
-    _sanitize_name_or_filename(suite_name)
+    _sanitize_name_or_filename(suite_name, filename=False)
     base_dir_resolved = base_dir.resolve()
 
     # 1. Direct filename checks
@@ -187,6 +187,7 @@ async def create_suite(
     """
     Create a new evaluation suite YAML file strictly within the evals directory.
     """
+    _sanitize_name_or_filename(suite.name, filename=False)
     DEFAULT_EVALS_DIR.mkdir(parents=True, exist_ok=True)
     base_dir_resolved = DEFAULT_EVALS_DIR.resolve()
 
@@ -217,6 +218,7 @@ async def update_suite(suite_name: str, suite: SuiteConfig) -> dict[str, Any]:
     """
     Update an existing evaluation suite YAML file.
     """
+    _sanitize_name_or_filename(suite.name, filename=False)
     p = _find_suite_path(suite_name)
     content = yaml.safe_dump(suite.model_dump(mode="json", exclude_none=True), sort_keys=False)
     p.write_text(content, encoding="utf-8")
@@ -307,9 +309,7 @@ async def estimate_suite_cost_endpoint(
 
         context_str = ""
         if tc.context:
-            context_str = (
-                "\n".join(tc.context) if isinstance(tc.context, list) else str(tc.context)
-            )
+            context_str = "\n".join(tc.context) if isinstance(tc.context, list) else str(tc.context)
 
         full_prompt = f"{suite.target.system_prompt or ''}\n{context_str}\n{rendered}"
         total_input_tokens += estimate_tokens(full_prompt)

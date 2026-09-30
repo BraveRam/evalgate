@@ -26,7 +26,7 @@ def get_provider(
     1. If model or provider is 'mock', returns MockProvider.
     2. If provider_override is specified ('vercel', 'openai', 'mock'), uses that.
     3. If VERCEL_AI_GATEWAY_KEY or AI_GATEWAY_KEY is present, routes through VercelGatewayProvider.
-    4. Defaults to VercelGatewayProvider (which also handles direct OpenAI/compatible endpoints).
+    4. Without a gateway, uses the model's native provider and matching API key.
     """
     resolved_model = (target.model if target else model) or "openai/gpt-4o-mini"
     resolved_temp = target.temperature if target else temperature
@@ -65,4 +65,5 @@ def get_provider(
         model=resolved_model,
         temperature=resolved_temp,
         top_p=resolved_top_p,
+        provider_override=normalized_provider or None,
     )

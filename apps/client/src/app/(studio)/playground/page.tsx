@@ -262,6 +262,7 @@ export default function PlaygroundPage() {
         test_case: {
           id: "playground-run",
           vars: varsMap,
+          context: varsMap.context || undefined,
         },
         assertions,
         judge_model: judgeModel,
@@ -316,6 +317,7 @@ export default function PlaygroundPage() {
               id: `${formattedName}-case-1`,
               description: "Playground exported test case",
               vars: varsMap,
+              context: varsMap.context || undefined,
               assertions,
             },
           ],
