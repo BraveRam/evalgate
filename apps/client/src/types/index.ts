@@ -52,6 +52,7 @@ export interface AssertionConfig {
 
 export interface TestCase {
   id: string;
+  repeat?: number | null;
   vars: Record<string, any>;
   assertions?: AssertionConfig[];
   context?: string[] | string | null;
@@ -61,6 +62,8 @@ export interface TestCase {
 
 export interface SuiteConfig {
   name: string;
+  repeat?: number;
+  max_success_rate_drop?: number | null;
   description?: string | null;
   min_pass_rate?: number;
   target: TargetConfig;
@@ -89,6 +92,12 @@ export interface AssertionResult {
 
 export interface TestCaseResult {
   test_id: string;
+  attempts?: TestCaseResult[];
+  attempt_index?: number | null;
+  attempt_count?: number;
+  passed_attempts?: number;
+  success_rate?: number;
+  inconsistent?: boolean;
   passed: boolean;
   completion: string;
   error?: string | null;
@@ -102,6 +111,9 @@ export interface TestCaseResult {
 
 export interface SuiteRunResult {
   run_id: string;
+  total_attempts?: number;
+  passed_attempts?: number;
+  inconsistent_tests?: number;
   suite_name: string;
   target_model: string;
   passed: boolean;
@@ -130,6 +142,8 @@ export interface BaselineComparison {
   run_id: string;
   passed: boolean;
   regressed_test_ids: string[];
+  gated_regressed_test_ids?: string[];
+  max_success_rate_drop?: number | null;
   improved_test_ids: string[];
   missing_test_ids: string[];
   added_test_ids: string[];
@@ -143,6 +157,12 @@ export interface BaselineComparison {
     baseline: TestCaseResult | null;
     current: TestCaseResult | null;
     output_diff: string;
+    baseline_attempts?: number;
+    current_attempts?: number;
+    baseline_success_rate?: number | null;
+    current_success_rate?: number | null;
+    success_rate_delta?: number | null;
+    gates_regression?: boolean;
   }>;
 }
 
@@ -177,6 +197,7 @@ export interface HistoricalTrendPoint {
 }
 
 export interface CostEstimateResponse {
+  total_attempts?: number;
   suite_name: string;
   target_model: string;
   total_tests: number;

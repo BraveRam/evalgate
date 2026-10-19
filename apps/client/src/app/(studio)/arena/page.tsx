@@ -33,6 +33,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AttemptDetails } from "@/components/evaluations/AttemptDetails";
 import { CodeViewer } from "@/components/ui/CodeViewer";
 import { SearchableModelSelect } from "@/components/ui/SearchableModelSelect";
 import { MODEL_MAP } from "@/lib/models-data";
@@ -134,13 +135,13 @@ function calculateVerdict(
   if (aPassRate > bPassRate) {
     qualityWinner = {
       label: `Baseline (${modelAName})`,
-      detail: `${formatPercent(aPassRate)} vs ${formatPercent(bPassRate)} (${runA.passed_tests}/${runA.total_tests} passed)`,
+      detail: `${formatPercent(aPassRate)} vs ${formatPercent(bPassRate)} (${runA.passed_attempts ?? runA.passed_tests}/${runA.total_attempts ?? runA.total_tests} passed)`,
       status: "A",
     };
   } else if (bPassRate > aPassRate) {
     qualityWinner = {
       label: `Candidate (${modelBName})`,
-      detail: `${formatPercent(bPassRate)} vs ${formatPercent(aPassRate)} (${runB.passed_tests}/${runB.total_tests} passed)`,
+      detail: `${formatPercent(bPassRate)} vs ${formatPercent(aPassRate)} (${runB.passed_attempts ?? runB.passed_tests}/${runB.total_attempts ?? runB.total_tests} passed)`,
       status: "B",
     };
   } else if (aPassRate === 0 && bPassRate === 0) {
@@ -152,7 +153,7 @@ function calculateVerdict(
   } else {
     qualityWinner = {
       label: "Tied Quality",
-      detail: `Both achieved ${formatPercent(aPassRate)} pass rate (${runA.passed_tests}/${runA.total_tests})`,
+      detail: `Both achieved ${formatPercent(aPassRate)} pass rate (${runA.passed_attempts ?? runA.passed_tests}/${runA.total_attempts ?? runA.total_tests})`,
       status: "TIE",
     };
   }
@@ -495,7 +496,7 @@ export default function ArenaPage() {
     return casesA
       .map((resA, idx) => {
         const resB = casesB[idx] || resA;
-        const isMismatch = resA.passed !== resB.passed;
+        const isMismatch = (resA.success_rate ?? Number(resA.passed)) !== (resB.success_rate ?? Number(resB.passed));
         const bothPassed = resA.passed && resB.passed;
         const bothFailed = !resA.passed && !resB.passed;
         return { resA, resB, idx, isMismatch, bothPassed, bothFailed };
@@ -1083,6 +1084,7 @@ export default function ArenaPage() {
                                 <span className="text-[10px] font-mono uppercase text-zinc-500 block">
                                   Model Completion Output
                                 </span>
+                                <AttemptDetails result={resA} />
                                 <CodeViewer
                                   code={resA.completion || "No output generated"}
                                   language={
@@ -1156,6 +1158,7 @@ export default function ArenaPage() {
                                 <span className="text-[10px] font-mono uppercase text-zinc-500 block">
                                   Model Completion Output
                                 </span>
+                                <AttemptDetails result={resB} />
                                 <CodeViewer
                                   code={resB.completion || "No output generated"}
                                   language={

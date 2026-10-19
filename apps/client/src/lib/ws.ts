@@ -4,9 +4,11 @@ export interface StreamRunOptions {
   suiteName: string;
   modelOverride?: string;
   concurrency?: number;
+  repeat?: number;
+  maxSuccessRateDrop?: number;
   minPassRate?: number;
   judgeModel?: string;
-  onStarted?: (data: { suite_name: string; target_model: string; total_tests: number }) => void;
+  onStarted?: (data: { suite_name: string; target_model: string; total_tests: number; total_attempts?: number }) => void;
   onTestComplete?: (testResult: TestCaseResult) => void;
   onFinished?: (summary: SuiteRunResult) => void;
   onError?: (error: string) => void;
@@ -22,6 +24,8 @@ export function streamSuiteRun(options: StreamRunOptions): () => void {
       suite_name: options.suiteName,
       model_override: options.modelOverride,
       concurrency: options.concurrency ?? 10,
+      repeat: options.repeat,
+      max_success_rate_drop: options.maxSuccessRateDrop,
       min_pass_rate: options.minPassRate,
       judge_model: options.judgeModel,
     };

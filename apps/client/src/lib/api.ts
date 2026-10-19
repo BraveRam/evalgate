@@ -82,6 +82,8 @@ export const api = {
     params?: {
       model_override?: string;
       concurrency?: number;
+      repeat?: number;
+      max_success_rate_drop?: number;
       min_pass_rate_override?: number;
     }
   ): Promise<SuiteRunResult> => {
@@ -94,7 +96,7 @@ export const api = {
 
   estimateCost: async (
     name: string,
-    params?: { model_override?: string; estimated_output_tokens_per_test?: number }
+    params?: { model_override?: string; estimated_output_tokens_per_test?: number; repeat?: number }
   ): Promise<CostEstimateResponse> => {
     const { data } = await apiClient.post<CostEstimateResponse>(
       `/api/v1/suites/${encodeURIComponent(name)}/estimate-cost`,

@@ -671,7 +671,7 @@ export default function DashboardOverview() {
                   <div>
                     <span className="text-[10px] text-zinc-500 uppercase block">Pass Rate</span>
                     <span className="text-zinc-200 font-medium">
-                      {formatPercent(latestRun.pass_rate)} ({latestRun.passed_tests}/{latestRun.total_tests})
+                      {formatPercent(latestRun.pass_rate)} ({latestRun.passed_attempts ?? latestRun.passed_tests}/{latestRun.total_attempts ?? latestRun.total_tests} attempts)
                     </span>
                   </div>
                   <div>
@@ -744,7 +744,7 @@ export default function DashboardOverview() {
                             {formatPercent(run.pass_rate)}
                           </span>
                           <span className="text-[10px] text-zinc-500 ml-1">
-                            ({run.passed_tests}/{run.total_tests})
+                            ({run.passed_attempts ?? run.passed_tests}/{run.total_attempts ?? run.total_tests} attempts)
                           </span>
                         </td>
                         <td className="py-3 px-4 font-mono text-zinc-400">{formatMs(run.p50_latency_ms)}</td>
