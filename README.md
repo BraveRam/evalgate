@@ -22,6 +22,7 @@ Fast, local-first evaluation engine, prompt regression testing framework, and de
   - [Target Architectures](#target-architectures)
   - [Assertion Engine](#assertion-engine)
 - [CLI Reference](#cli-reference)
+- [Saved Baselines and Regression Diffs](#saved-baselines-and-regression-diffs)
 - [Model Context Protocol (MCP) Server](#model-context-protocol-mcp-server)
 - [CI/CD & Pull Request Quality Gates](#cicd--pull-request-quality-gates)
 - [REST & WebSocket API Reference](#rest--websocket-api-reference)
@@ -319,6 +320,41 @@ Cost estimates use built-in pricing and assume 150 output tokens per test unless
 They are approximate target inference costs and exclude semantic judge calls.
 
 ---
+
+## Saved Baselines and Regression Diffs
+
+Run a suite, then use its successful run ID as the suite's baseline:
+
+```bash
+uv run evalgate run evals/rag_qa.yaml
+uv run evalgate baseline run_YOUR_RUN_ID --output baseline.json
+```
+
+Subsequent saved runs of that suite automatically compare against the local baseline.
+The gate fails when a previously passing test fails, a baseline test is missing, or the
+suite's existing quality gate fails. Test IDs must be unique and stable. Changed outputs,
+improvements, added tests, and cost/P50 latency differences are reported; output changes
+alone do not fail the gate. A suite that meets its `min_pass_rate` may become a baseline
+even when some tests fail.
+
+Commit the exported JSON with your evaluation suite to apply the same gate in CI:
+
+```bash
+uv run evalgate run evals/rag_qa.yaml --baseline baseline.json --no-save --json
+```
+
+This works without the original database and exits with status `1` on regression.
+JSON results include `metadata.baseline_comparison`, with per-test output diffs and
+metric deltas. `--no-save` uses only an explicitly supplied baseline file.
+Baseline artifacts contain the full run, including model outputs.
+
+In Studio, open **Analytics → inspect a run → Regression baseline** to select or replace
+the suite's baseline, download its JSON, remove it, and inspect new failures and output
+changes. The saved snapshot survives deletion of the original historical run.
+
+The API exposes `GET/PUT/DELETE /api/v1/baselines/{suite_name}` (`PUT` accepts
+`{"run_id": "run_..."}`) and `GET /api/v1/runs/{run_id}/baseline-comparison`.
+Fetching an unset baseline returns `null`; comparing without one returns `404`.
 
 ## Model Context Protocol (MCP) Server
 

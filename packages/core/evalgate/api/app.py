@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from evalgate import __version__
 from evalgate.api.routes.arena import router as arena_router
+from evalgate.api.routes.baselines import router as baselines_router
 from evalgate.api.routes.evaluate import router as evaluate_router
 from evalgate.api.routes.models import router as models_router
 from evalgate.api.routes.runs import router as runs_router
@@ -89,6 +90,7 @@ def create_app() -> FastAPI:
     api_v1 = FastAPI(title="EvalGate API v1")
     api_v1.include_router(suites_router)
     api_v1.include_router(runs_router)
+    api_v1.include_router(baselines_router)
     api_v1.include_router(arena_router)
     api_v1.include_router(evaluate_router)
     api_v1.include_router(models_router)

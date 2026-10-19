@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from evalgate.core.baselines import BaselineComparison, compare_to_baseline
 from evalgate.core.storage import StorageEngine
 from evalgate.core.types import SuiteRunResult
 
@@ -60,6 +61,21 @@ async def get_run_trends(
         "data_points": len(metrics),
         "trends": metrics,
     }
+
+
+@router.get("/{run_id}/baseline-comparison")
+async def compare_run_to_baseline(run_id: str) -> BaselineComparison:
+    storage = StorageEngine()
+    run = await storage.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
+    baseline = await storage.get_baseline(run.suite_name)
+    if baseline is None:
+        raise HTTPException(status_code=404, detail="No saved baseline for this suite")
+    try:
+        return compare_to_baseline(run, baseline)
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
 
 
 @router.delete("/{run_id}")

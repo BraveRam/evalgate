@@ -116,6 +116,34 @@ export interface SuiteRunResult {
   total_cost_usd: number;
   timestamp: string;
   results: TestCaseResult[];
+  metadata?: { baseline_comparison?: BaselineComparison; [key: string]: unknown };
+}
+
+export interface BaselineSnapshot {
+  schema_version: 1;
+  run: SuiteRunResult;
+}
+
+export interface BaselineComparison {
+  suite_name: string;
+  baseline_run_id: string;
+  run_id: string;
+  passed: boolean;
+  regressed_test_ids: string[];
+  improved_test_ids: string[];
+  missing_test_ids: string[];
+  added_test_ids: string[];
+  changed_test_ids: string[];
+  pass_rate_delta: number;
+  latency_p50_delta_ms: number;
+  cost_delta_usd: number;
+  cases: Array<{
+    test_id: string;
+    status: "regressed" | "improved" | "changed" | "unchanged" | "added" | "missing";
+    baseline: TestCaseResult | null;
+    current: TestCaseResult | null;
+    output_diff: string;
+  }>;
 }
 
 export interface ArenaComparisonResult {

@@ -130,7 +130,7 @@ uv run evalgate studio --port 8000
 uv run evalgate run evals/support-ticket-classifier.yaml
 
 # 3. Estimate execution cost and token footprint
-uv run evalgate estimate evals/support-ticket-classifier.yaml`,
+uv run evalgate cost evals/support-ticket-classifier.yaml`,
               },
               {
                 label: "Python SDK",
@@ -205,9 +205,9 @@ tests:
             />
             <Card
               href="/docs/analytics"
-              title="Historical Analytics"
+              title="Baselines & Historical Analytics"
               icon={<BarChart3 className="h-4 w-4 text-white" />}
-              description="Timestamped quality trends, p95 latency distributions, and automatic regression detection."
+              description="Save accepted baselines, inspect per-test output diffs, and track quality and latency trends."
             />
             <Card
               href="/docs/ci-cd"
@@ -653,15 +653,70 @@ target:
   analytics: {
     slug: "analytics",
     title: "Historical Analytics & Regression Trends",
-    description: "Track model accuracy, tail latencies, cost burn, and regression anomalies over time.",
+    description: "Save baselines, inspect per-test regressions and output diffs, and track quality, latency, and cost over time.",
     category: "Studio Features",
     toc: [
+      { title: "Saved Baselines", url: "#saved-baselines", depth: 2 },
+      { title: "Regression Gate Rules", url: "#regression-gate", depth: 2 },
       { title: "Timestamped Regression Curves", url: "#regression-curves", depth: 2 },
       { title: "Anomaly Detection", url: "#anomaly-detection", depth: 2 },
       { title: "Multi-Dimensional Filtering", url: "#filters", depth: 2 },
     ],
     content: (
       <div className="space-y-8 text-sm leading-relaxed">
+        <section id="saved-baselines" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            Saved Baselines
+          </h2>
+          <p>
+            A baseline is an accepted run used to check later runs of the same suite.
+            It catches individual test failures even when the overall pass rate stays the same.
+            Each suite has one saved baseline.
+          </p>
+          <Steps>
+            <Step number={1} title="Choose an accepted run">
+              Open <Link href="/analytics" className="text-white underline">Analytics &amp; Trends</Link>,
+              find a successful run, and select <strong>Inspect Run Trace</strong>.
+            </Step>
+            <Step number={2} title="Save the baseline">
+              In <strong>Regression baseline</strong>, select <strong>Use this run as baseline</strong>.
+              Subsequent saved runs of the suite automatically compare against this snapshot.
+            </Step>
+            <Step number={3} title="Inspect the next run">
+              Inspect a candidate run to see the gate result, new failures, missing tests,
+              improvements, and pass-rate, P50 latency, and cost deltas. Expand a test to
+              review assertion details, before/after outputs, and its unified output diff.
+            </Step>
+          </Steps>
+          <p>
+            Select <strong>Export baseline JSON</strong> to download a portable snapshot
+            for <Link href="/docs/ci-cd#baseline-ci" className="text-white underline">CI regression checks</Link>.
+            Select another successful run to replace it, or <strong>Remove baseline</strong>
+            {" "}to stop automatic comparisons. Deleting the original run leaves the snapshot intact.
+          </p>
+        </section>
+
+        <section id="regression-gate" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            Regression Gate Rules
+          </h2>
+          <ul className="list-disc list-inside space-y-2">
+            <li>A previously passing test now failing causes the gate to fail.</li>
+            <li>A missing baseline test causes the gate to fail.</li>
+            <li>The candidate must also pass its existing suite quality gate.</li>
+            <li>Output changes, improvements, added tests, and cost or latency deltas alone do not fail the baseline gate.</li>
+          </ul>
+          <p>
+            Tests are matched by ID, independent of order. Keep IDs unique, non-empty,
+            and stable: renaming an ID counts as a missing test plus an added test.
+            Added tests still affect the suite quality gate. Deltas are candidate minus baseline.
+          </p>
+          <Callout type="info" title="Which runs qualify?">
+            A baseline must be a complete, non-empty run that passed its configured
+            quality gate. It may contain failed tests if its min_pass_rate permits them.
+          </Callout>
+        </section>
+
         <section id="regression-curves" className="space-y-4">
           <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
             Timestamped Regression Curves
@@ -712,12 +767,49 @@ target:
     description: "Automate prompt regression testing and quality gates directly inside GitHub Actions pull request pipelines.",
     category: "DevOps & Reference",
     toc: [
+      { title: "Baseline Checks in CI", url: "#baseline-ci", depth: 2 },
       { title: "GitHub Actions Workflow", url: "#github-actions", depth: 2 },
       { title: "Pytest Test Suite Integration", url: "#pytest", depth: 2 },
       { title: "1-Click ZIP Package Export", url: "#zip-export", depth: 2 },
     ],
     content: (
       <div className="space-y-8 text-sm leading-relaxed">
+        <section id="baseline-ci" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            Baseline Checks in CI
+          </h2>
+          <p>
+            Run a suite and copy its successful run ID. Save it as the local baseline
+            and export a JSON snapshot, replacing the placeholder below with the actual ID:
+          </p>
+          <CodeBlock language="bash" filename="Terminal" code={`uv run evalgate run evals/rag_qa.yaml
+mkdir -p baselines
+uv run evalgate baseline run_YOUR_RUN_ID --output baselines/rag_qa.json`} />
+          <p>
+            Commit the exported JSON alongside the suite. After installing this project
+            and configuring your provider credentials in CI, use:
+          </p>
+          <CodeBlock language="bash" filename="CI command" code={`uv run evalgate run evals/rag_qa.yaml --baseline baselines/rag_qa.json --no-save --json`} />
+          <p>
+            This works in a fresh checkout without the original database. Exit status
+            is <code>0</code> when the gate passes and <code>1</code> when it fails.
+            JSON results include <code>metadata.baseline_comparison</code> with per-test
+            diffs and metric deltas.
+          </p>
+          <p>
+            An explicit <code>--baseline</code> file takes precedence over the local baseline.
+            <code> --no-save</code> skips run persistence and automatic local baseline lookup;
+            supply the file to keep regression checks enabled. The artifact uses
+            <code> schema_version: 1</code> and contains the full run, including model
+            outputs and assertion results. Review its contents before committing it.
+            Unsupported versions, invalid snapshots, and mismatched suite names are rejected.
+          </p>
+          <p>
+            See <Link href="/docs/analytics#regression-gate" className="text-white underline">regression gate rules</Link>
+            {" "}for what fails a run. Export a baseline separately from the CI/CD ZIP package.
+          </p>
+        </section>
+
         <section id="github-actions" className="space-y-4">
           <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
             GitHub Actions Workflow
@@ -838,6 +930,10 @@ async def test_suite_support_ticket_classifier():
               "POST /api/v1/evaluate/playground": { type: "TestCaseResult", description: "Execute a single test case from the workbench" },
               "GET /api/v1/runs": { type: "SuiteRunResult[]", description: "Query historical run traces with limit filter (up to 1000)" },
               "DELETE /api/v1/runs/{id}": { type: "message", description: "Permanently delete an evaluation run trace and test results" },
+              "GET /api/v1/runs/{id}/baseline-comparison": { type: "BaselineComparison", description: "Compare a run with its suite's current saved baseline; 404 if run or baseline is absent, 400 for an invalid comparison" },
+              "GET /api/v1/baselines/{suite_name}": { type: "BaselineSnapshot | null", description: "Get the saved baseline snapshot; returns null when unset" },
+              "PUT /api/v1/baselines/{suite_name}": { type: "BaselineSnapshot", description: 'Set or replace using {"run_id":"run_..."}; 404 for a missing run, 400 for an invalid baseline or suite mismatch' },
+              "DELETE /api/v1/baselines/{suite_name}": { type: "message", description: "Remove the saved baseline; 404 when unset" },
             }}
           />
         </section>
@@ -867,6 +963,12 @@ ws.onmessage = (event) => {
           <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
             CLI Commands
           </h2>
+          <p>
+            Saved runs automatically use their suite&apos;s local baseline when set.
+            Results include <code>metadata.baseline_comparison</code>. The comparison
+            endpoint above uses the current baseline; stored run metadata preserves
+            the comparison from execution time.
+          </p>
           <div className="space-y-2">
             <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300">
               <span className="text-white font-bold">evalgate studio</span> --port 8000 : Starts backend API and Next.js frontend
@@ -875,7 +977,13 @@ ws.onmessage = (event) => {
               <span className="text-white font-bold">evalgate run</span> &lt;path.yaml&gt; : Runs evaluation suite in terminal
             </div>
             <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300">
-              <span className="text-white font-bold">evalgate estimate</span> &lt;path.yaml&gt; : Estimates token burn and dollar cost
+              <span className="text-white font-bold">evalgate cost</span> &lt;path.yaml&gt; : Estimates token burn and dollar cost
+            </div>
+            <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300">
+              <span className="text-white font-bold">evalgate baseline</span> &lt;run_id&gt; --output baseline.json : Saves a successful run as the suite baseline and optionally exports JSON
+            </div>
+            <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300">
+              <span className="text-white font-bold">evalgate run</span> &lt;path.yaml&gt; --baseline baseline.json --no-save --json : Checks a portable baseline without saving results
             </div>
             <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-zinc-300">
               <span className="text-white font-bold">evalgate mcp</span> --transport stdio : Launches the Model Context Protocol server
@@ -955,7 +1063,7 @@ ws.onmessage = (event) => {
             type={{
               "evalgate_run_suite": {
                 type: "Function",
-                description: "Execute an evaluation suite YAML file, enforce quality gates, and return detailed failure diagnostics.",
+                description: "Execute a suite, enforce quality and saved baseline gates, and return failure diagnostics plus baseline_comparison when a baseline exists.",
               },
               "evalgate_estimate_cost": {
                 type: "Function",

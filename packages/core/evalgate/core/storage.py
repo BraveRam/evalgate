@@ -12,6 +12,7 @@ from typing import Any, AsyncGenerator
 
 import aiosqlite
 
+from evalgate.core.baselines import BaselineSnapshot
 from evalgate.core.types import SuiteConfig, SuiteRunResult
 
 DEFAULT_DB_DIR = Path(".evalgate")
@@ -106,6 +107,12 @@ class StorageEngine:
             """)
 
             # Covering indexes
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS baselines (
+                    suite_name TEXT PRIMARY KEY,
+                    raw_json TEXT NOT NULL
+                );
+            """)
             await db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_runs_suite ON runs(suite_name, timestamp DESC);"
             )
@@ -238,6 +245,34 @@ class StorageEngine:
                 if not row:
                     return None
                 return SuiteRunResult.model_validate(json.loads(row[0]))
+
+    async def get_baseline(self, suite_name: str) -> BaselineSnapshot | None:
+        async with self._connect() as db:
+            async with db.execute(
+                "SELECT raw_json FROM baselines WHERE suite_name = ?", (suite_name,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                return BaselineSnapshot.model_validate_json(row[0]) if row else None
+
+    async def set_baseline(self, run_id: str) -> BaselineSnapshot:
+        run = await self.get_run(run_id)
+        if run is None:
+            raise ValueError(f"Run '{run_id}' not found")
+        baseline = BaselineSnapshot(run=run)
+        async with self._connect() as db:
+            await db.execute(
+                "INSERT INTO baselines (suite_name, raw_json) VALUES (?, ?) "
+                "ON CONFLICT(suite_name) DO UPDATE SET raw_json = excluded.raw_json",
+                (run.suite_name, baseline.model_dump_json()),
+            )
+            await db.commit()
+        return baseline
+
+    async def delete_baseline(self, suite_name: str) -> bool:
+        async with self._connect() as db:
+            cursor = await db.execute("DELETE FROM baselines WHERE suite_name = ?", (suite_name,))
+            await db.commit()
+            return cursor.rowcount > 0
 
     async def list_runs(
         self,

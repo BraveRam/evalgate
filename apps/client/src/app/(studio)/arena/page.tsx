@@ -78,7 +78,7 @@ export interface ArenaModelOption {
   badge: string;
 }
 
-export const ARENA_MODELS: ArenaModelOption[] = [
+const ARENA_MODELS: ArenaModelOption[] = [
   { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI", badge: "Fast & Cheap" },
   { id: "openai/gpt-4o", name: "GPT-4o", provider: "OpenAI", badge: "Flagship Reasoning" },
   { id: "anthropic/claude-3-5-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic", badge: "Coding Champion" },

@@ -38,6 +38,7 @@ import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
 import { usePageTitle } from "@/lib/use-page-title";
 import { CodeViewer } from "@/components/ui/CodeViewer";
+import { BaselinePanel } from "@/components/baselines/BaselinePanel";
 import { SuiteRunResult, TestCaseResult } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -1068,6 +1069,7 @@ export default function AnalyticsPage() {
               </DialogHeader>
 
               <div className="space-y-4 pt-3">
+                <BaselinePanel key={selectedRunForDetails.run_id} run={selectedRunForDetails} />
                 {/* Telemetry Summary Bar */}
                 <div className="p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
                   <div>

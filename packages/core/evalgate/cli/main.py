@@ -22,6 +22,7 @@ from evalgate.cli.formatters import (
     render_runs_list,
 )
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
+from evalgate.core.baselines import BaselineSnapshot
 from evalgate.core.cost import estimate_suite_cost
 from evalgate.core.storage import StorageEngine
 from evalgate.core.types import TestCaseResult
@@ -235,6 +236,10 @@ def run(
         bool,
         typer.Option("--json", help="Output raw JSON results (useful for CI/CD scripting)."),
     ] = False,
+    baseline_path: Annotated[
+        Optional[Path],
+        typer.Option("--baseline", help="Exported baseline JSON for regression gating."),
+    ] = None,
 ) -> None:
     """
     Execute an evaluation suite against an LLM target and enforce quality gates.
@@ -259,6 +264,19 @@ def run(
         console.print(f"[bold red]Invalid run configuration:[/] {err}")
         raise typer.Exit(code=1) from err
 
+    baseline_snapshot = None
+    if baseline_path is not None:
+        try:
+            baseline_snapshot = BaselineSnapshot.model_validate_json(baseline_path.read_text())
+            if baseline_snapshot.run.suite_name != suite.name:
+                raise ValueError("Baseline and candidate must belong to the same suite")
+            ids = [test.id for test in suite.tests]
+            if len(set(ids)) != len(ids) or any(not test_id.strip() for test_id in ids):
+                raise ValueError("Baseline comparisons require unique, non-empty test IDs")
+        except (OSError, ValueError) as err:
+            typer.echo(f"Invalid baseline: {err}", err=True)
+            raise typer.Exit(code=1) from err
+
     judge_provider = get_provider(model=judge) if judge else None
 
     if not json_output:
@@ -274,9 +292,10 @@ def run(
                 judge_provider=judge_provider,
                 concurrency=concurrency,
                 save_to_storage=not no_save,
+                baseline=baseline_snapshot,
             )
         )
-        console.print(run_result.model_dump_json(indent=2))
+        typer.echo(run_result.model_dump_json(indent=2))
     else:
         with Progress(
             SpinnerColumn(),
@@ -303,10 +322,19 @@ def run(
                     concurrency=concurrency,
                     save_to_storage=not no_save,
                     on_test_complete=_on_test_done,
+                    baseline=baseline_snapshot,
                 )
             )
 
         render_run_summary(run_result, verbose=verbose)
+        comparison = run_result.metadata.get("baseline_comparison")
+        if comparison:
+            console.print(
+                f"Baseline {comparison['baseline_run_id']}: "
+                f"{len(comparison['regressed_test_ids'])} new failures, "
+                f"{len(comparison['missing_test_ids'])} missing tests, "
+                f"{len(comparison['changed_test_ids'])} changed outputs"
+            )
 
     # Exit code: 0 if passed gate, 1 if failed
     if not run_result.passed:
@@ -358,6 +386,26 @@ def compare(
         )
 
     render_arena_summary(comparison)
+
+
+@app.command()
+def baseline(
+    run_id: Annotated[str, typer.Argument(help="Successful saved run to use as the baseline.")],
+    output: Annotated[
+        Optional[Path], typer.Option("--output", "-o", help="Export portable baseline JSON.")
+    ] = None,
+) -> None:
+    """Mark a successful run as its suite's baseline, optionally exporting it for CI."""
+    try:
+        snapshot = asyncio.run(StorageEngine().set_baseline(run_id))
+        if output is not None:
+            output.write_text(snapshot.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    except (OSError, ValueError) as err:
+        typer.echo(f"Cannot save baseline: {err}", err=True)
+        raise typer.Exit(code=1) from err
+    console.print(f"Baseline set for {snapshot.run.suite_name}: {run_id}")
+    if output is not None:
+        console.print(f"Exported baseline to {output}")
 
 
 @app.command()

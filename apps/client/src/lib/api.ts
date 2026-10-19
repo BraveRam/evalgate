@@ -1,6 +1,8 @@
 import { apiClient } from "@/lib/axios";
 import {
   ArenaComparisonResult,
+  BaselineComparison,
+  BaselineSnapshot,
   CostEstimateResponse,
   HistoricalTrendPoint,
   ModelPricing,
@@ -102,6 +104,31 @@ export const api = {
   },
 
   // Historical Runs
+  getBaseline: async (suiteName: string): Promise<BaselineSnapshot | null> => {
+    const { data } = await apiClient.get<BaselineSnapshot | null>(
+      `/api/v1/baselines/${encodeURIComponent(suiteName)}`
+    );
+    return data;
+  },
+
+  setBaseline: async (suiteName: string, runId: string): Promise<BaselineSnapshot> => {
+    const { data } = await apiClient.put<BaselineSnapshot>(
+      `/api/v1/baselines/${encodeURIComponent(suiteName)}`, { run_id: runId }
+    );
+    return data;
+  },
+
+  deleteBaseline: async (suiteName: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/baselines/${encodeURIComponent(suiteName)}`);
+  },
+
+  compareBaseline: async (runId: string): Promise<BaselineComparison> => {
+    const { data } = await apiClient.get<BaselineComparison>(
+      `/api/v1/runs/${encodeURIComponent(runId)}/baseline-comparison`
+    );
+    return data;
+  },
+
   listRuns: async (suite?: string, limit = 30, offset = 0): Promise<SuiteRunResult[]> => {
     const params: Record<string, any> = { limit, offset };
     if (suite && suite !== "all") params.suite = suite;

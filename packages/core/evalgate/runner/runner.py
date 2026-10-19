@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from evalgate.core.baselines import BaselineSnapshot, compare_to_baseline
 from evalgate.core.graph import run_test_case
 from evalgate.core.storage import StorageEngine
 from evalgate.core.types import (
@@ -69,6 +70,9 @@ def validate_run_inputs(suite: SuiteConfig, concurrency: int) -> None:
     validate_min_pass_rate(suite.min_pass_rate)
     if not suite.tests:
         raise ValueError("Cannot run a suite with zero tests")
+    ids = [case.id for case in suite.tests]
+    if len(set(ids)) != len(ids) or any(not test_id.strip() for test_id in ids):
+        raise ValueError("Runs require unique, non-empty test IDs")
 
 
 class SuiteRunner:
@@ -87,11 +91,17 @@ class SuiteRunner:
         concurrency: int = 10,
         save_to_storage: bool = True,
         on_test_complete: Any | None = None,
+        baseline: BaselineSnapshot | None = None,
     ) -> SuiteRunResult:
         """
         Execute all test cases in a SuiteConfig concurrently with bounded concurrency.
         """
         validate_run_inputs(suite, concurrency)
+        if baseline is None and save_to_storage:
+            baseline = await self.storage.get_baseline(suite.name)
+        if baseline is not None:
+            if baseline.run.suite_name != suite.name:
+                raise ValueError("Baseline and candidate must belong to the same suite")
         target = target_override or suite.target
         semaphore = asyncio.Semaphore(concurrency)
 
@@ -148,6 +158,11 @@ class SuiteRunner:
             total_cost_usd=total_cost,
             results=results,
         )
+
+        if baseline is not None:
+            comparison = compare_to_baseline(run_result, baseline)
+            run_result.metadata["baseline_comparison"] = comparison.model_dump(mode="json")
+            run_result.passed = comparison.passed
 
         if save_to_storage:
             await self.storage.save_run(run_result)

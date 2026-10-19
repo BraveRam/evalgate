@@ -97,6 +97,7 @@ def create_mcp_server() -> MCPServer:
             "total_cost_usd": res.total_cost_usd,
             "run_id": res.run_id,
             "failed_cases": failed_cases,
+            "baseline_comparison": res.metadata.get("baseline_comparison"),
         }
 
     @server.tool()
