@@ -5,11 +5,13 @@ EvalGate CLI - Quality Gates, Prompt Regression Testing & LLM Evaluation Platfor
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.table import Table
 
 from evalgate import __version__
 from evalgate.cli.console import console
@@ -20,6 +22,7 @@ from evalgate.cli.formatters import (
     render_runs_list,
 )
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
+from evalgate.core.cost import estimate_suite_cost
 from evalgate.core.storage import StorageEngine
 from evalgate.core.types import TestCaseResult
 from evalgate.providers.factory import get_provider
@@ -355,6 +358,49 @@ def compare(
         )
 
     render_arena_summary(comparison)
+
+
+@app.command()
+def cost(
+    suite_path: Annotated[Path, typer.Argument(help="Path to evaluation suite YAML file.")],
+    model: Annotated[
+        Optional[str], typer.Option("--model", "-m", help="Override the model used for pricing.")
+    ] = None,
+    output_tokens: Annotated[
+        int,
+        typer.Option("--output-tokens", min=1, help="Estimated output tokens per test."),
+    ] = 150,
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output machine-readable JSON.")
+    ] = False,
+) -> None:
+    """Estimate a suite's target token usage and USD cost without running it."""
+    try:
+        suite = load_suite_from_yaml(suite_path)
+        estimate = estimate_suite_cost(suite, model, output_tokens)
+    except (SuiteLoadError, ValueError) as err:
+        typer.echo(f"Cost estimation failed: {err}", err=True)
+        raise typer.Exit(code=1) from err
+
+    if json_output:
+        typer.echo(json.dumps(estimate, indent=2))
+        return
+
+    table = Table(title=f"Cost estimate: {suite.name}")
+    table.add_column("Metric")
+    table.add_column("Estimate", justify="right")
+    for label, value in [
+        ("Model", estimate["target_model"]),
+        ("Tests", str(estimate["total_tests"])),
+        ("Input tokens", str(estimate["estimated_input_tokens"])),
+        ("Output tokens", str(estimate["estimated_output_tokens"])),
+        ("Total tokens", str(estimate["total_estimated_tokens"])),
+        ("Cost (USD)", f"${estimate['estimated_cost_usd']:.6f}"),
+        ("Cost per test (USD)", f"${estimate['cost_per_test_usd']:.6f}"),
+    ]:
+        table.add_row(label, value)
+    console.print(table)
+    console.print("Approximate target inference cost using built-in pricing; excludes judge calls.")
 
 
 @app.command(name="list")

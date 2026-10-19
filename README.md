@@ -292,7 +292,7 @@ EvalGate includes a terminal CLI powered by Typer and Rich:
 uv run evalgate run evals/rag_qa.yaml
 
 # Override target model and adjust concurrency
-uv run evalgate run evals/support_tickets.yaml --model anthropic/claude-3-5-sonnet --concurrency 8
+uv run evalgate run evals/classifier.yaml --model anthropic/claude-3-5-sonnet --concurrency 8
 
 # Compare two models in head-to-head arena shootout
 uv run evalgate compare evals/hard_reasoning_challenge.yaml \
@@ -300,17 +300,23 @@ uv run evalgate compare evals/hard_reasoning_challenge.yaml \
   --model-b deepseek/deepseek-v4-pro-0813
 
 # Preflight cost and token estimation
-uv run evalgate cost evals/customer_support.yaml
+uv run evalgate cost evals/rag_qa.yaml
 
-# List discovered test suites in workspace
-uv run evalgate list-suites
+# Override pricing model and output-token estimate; emit JSON for scripts
+uv run evalgate cost evals/rag_qa.yaml --model openai/gpt-4o-mini --output-tokens 250 --json
+
+# List historical evaluation runs
+uv run evalgate list
 
 # Launch Model Context Protocol (MCP) server
 uv run evalgate mcp --transport stdio
 
 # Launch FastAPI backend service
-uv run evalgate server --host 127.0.0.1 --port 8000
+uv run evalgate studio --host 127.0.0.1 --port 8000
 ```
+
+Cost estimates use built-in pricing and assume 150 output tokens per test unless overridden.
+They are approximate target inference costs and exclude semantic judge calls.
 
 ---
 

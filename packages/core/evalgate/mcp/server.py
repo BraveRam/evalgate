@@ -7,7 +7,6 @@ historical regression metrics, and prompt evaluation tools to AI coding assistan
 from __future__ import annotations
 
 import glob
-import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -15,9 +14,8 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
-from evalgate.core.pricing import calculate_cost, estimate_tokens
+from evalgate.core.cost import estimate_suite_cost
 from evalgate.core.storage import StorageEngine
-from evalgate.core.template import render_template
 from evalgate.core.types import AssertionConfig, TestCase
 from evalgate.metrics.registry import evaluate_assertion
 from evalgate.providers.factory import get_provider
@@ -123,40 +121,10 @@ def create_mcp_server() -> MCPServer:
         except (SuiteLoadError, FileNotFoundError) as err:
             return {"error": f"Failed to load evaluation suite: {err}"}
 
-        target_model = model or suite.target.model
-        template_str = suite.target.template or ""
-        total_input_tokens = 0
-        total_tests = len(suite.tests)
-
-        for tc in suite.tests:
-            if template_str:
-                rendered = render_template(template_str, tc.vars)
-            else:
-                rendered = json.dumps(tc.vars)
-
-            context_str = ""
-            if tc.context:
-                context_str = (
-                    "\n".join(tc.context) if isinstance(tc.context, list) else str(tc.context)
-                )
-
-            full_prompt = f"{suite.target.system_prompt or ''}\n{context_str}\n{rendered}"
-            total_input_tokens += estimate_tokens(full_prompt)
-
-        total_output_tokens = total_tests * estimated_output_tokens_per_test
-        total_cost_usd = calculate_cost(target_model, total_input_tokens, total_output_tokens)
-        cost_per_test = (total_cost_usd / total_tests) if total_tests > 0 else 0.0
-
-        return {
-            "suite_name": suite.name,
-            "target_model": target_model,
-            "total_tests": total_tests,
-            "estimated_input_tokens": total_input_tokens,
-            "estimated_output_tokens": total_output_tokens,
-            "total_estimated_tokens": total_input_tokens + total_output_tokens,
-            "estimated_cost_usd": round(total_cost_usd, 6),
-            "cost_per_test_usd": round(cost_per_test, 6),
-        }
+        try:
+            return estimate_suite_cost(suite, model, estimated_output_tokens_per_test)
+        except ValueError as err:
+            return {"error": str(err)}
 
     @server.tool()
     async def evalgate_compare_models(

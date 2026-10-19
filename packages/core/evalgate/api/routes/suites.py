@@ -4,7 +4,6 @@ Evaluation Suites API Endpoints with Strict Path Confinement.
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 from typing import Any
@@ -14,8 +13,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
-from evalgate.core.pricing import calculate_cost, estimate_tokens
-from evalgate.core.template import render_template
+from evalgate.core.cost import estimate_suite_cost
 from evalgate.core.types import SuiteConfig, SuiteRunResult
 from evalgate.providers.factory import get_provider
 from evalgate.runner.runner import SuiteRunner, validate_min_pass_rate, validate_run_inputs
@@ -292,39 +290,11 @@ async def estimate_suite_cost_endpoint(
     p = _find_suite_path(suite_name)
     suite = load_suite_from_yaml(p)
 
-    target_model = (
-        req.model_override if req and req.model_override else None
-    ) or suite.target.model
-    output_tokens_per_test = req.estimated_output_tokens_per_test if req else 150
-    template_str = suite.target.template or ""
-
-    total_input_tokens = 0
-    total_tests = len(suite.tests)
-
-    for tc in suite.tests:
-        if template_str:
-            rendered = render_template(template_str, tc.vars)
-        else:
-            rendered = json.dumps(tc.vars)
-
-        context_str = ""
-        if tc.context:
-            context_str = "\n".join(tc.context) if isinstance(tc.context, list) else str(tc.context)
-
-        full_prompt = f"{suite.target.system_prompt or ''}\n{context_str}\n{rendered}"
-        total_input_tokens += estimate_tokens(full_prompt)
-
-    total_output_tokens = total_tests * output_tokens_per_test
-    total_cost_usd = calculate_cost(target_model, total_input_tokens, total_output_tokens)
-    cost_per_test = (total_cost_usd / total_tests) if total_tests > 0 else 0.0
-
-    return {
-        "suite_name": suite.name,
-        "target_model": target_model,
-        "total_tests": total_tests,
-        "estimated_input_tokens": total_input_tokens,
-        "estimated_output_tokens": total_output_tokens,
-        "total_estimated_tokens": total_input_tokens + total_output_tokens,
-        "estimated_cost_usd": round(total_cost_usd, 6),
-        "cost_per_test_usd": round(cost_per_test, 6),
-    }
+    try:
+        return estimate_suite_cost(
+            suite,
+            model=req.model_override if req else None,
+            estimated_output_tokens_per_test=req.estimated_output_tokens_per_test if req else 150,
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err

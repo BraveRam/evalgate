@@ -11,8 +11,76 @@ from typer.testing import CliRunner
 from evalgate import __version__
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
 from evalgate.cli.main import app
+from evalgate.core.pricing import calculate_cost, estimate_tokens
 
 runner = CliRunner()
+
+
+def test_cli_cost_output_and_overrides(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.chdir(tmp_path)
+    suite_file = tmp_path / "cost.yaml"
+    suite_file.write_text(
+        """name: cost-suite
+target:
+  model: openai/gpt-4o-mini
+  template: 'Say {{word}}'
+tests:
+  - id: one
+    vars: {word: hello}
+  - id: two
+    vars: {word: goodbye}
+"""
+    )
+    result = runner.invoke(
+        app,
+        ["cost", str(suite_file), "--model", "openai/gpt-4o", "--output-tokens", "250", "--json"],
+    )
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.stdout)
+    expected_input = estimate_tokens("\n\nSay hello") + estimate_tokens("\n\nSay goodbye")
+    assert data["suite_name"] == "cost-suite"
+    assert data["target_model"] == "openai/gpt-4o"
+    assert data["total_tests"] == 2
+    assert data["estimated_input_tokens"] == expected_input
+    assert data["estimated_output_tokens"] == 500
+    assert data["total_estimated_tokens"] == expected_input + 500
+    assert data["estimated_cost_usd"] == round(
+        calculate_cost("openai/gpt-4o", expected_input, 500), 6
+    )
+    assert not (tmp_path / ".evalgate").exists()
+
+    human_result = runner.invoke(app, ["cost", str(suite_file)])
+    assert human_result.exit_code == 0
+    assert "Input tokens" in human_result.stdout
+    assert "300" in human_result.stdout
+    assert "excludes judge calls" in human_result.stdout
+
+
+@pytest.mark.parametrize(
+    "content, expected_error",
+    [
+        (None, "not found"),
+        ("name: : broken syntax", "Invalid YAML"),
+        ("name: bad\nunknown_field: true", "Schema validation failed"),
+        (
+            "name: missing-var\ntarget:\n  template: '{{missing}}'\ntests:\n  - id: one\n",
+            "Missing required template variable",
+        ),
+    ],
+)
+def test_cli_cost_reports_invalid_suites(tmp_path: Path, content: str | None, expected_error: str):
+    suite_file = tmp_path / "invalid.yaml"
+    if content is not None:
+        suite_file.write_text(content)
+    result = runner.invoke(app, ["cost", str(suite_file), "--json"])
+    assert result.exit_code == 1
+    assert expected_error in result.output
+    assert "Traceback" not in result.output
+
+
+def test_cli_cost_rejects_invalid_token_budget(tmp_path: Path):
+    result = runner.invoke(app, ["cost", str(tmp_path / "suite.yaml"), "--output-tokens", "0"])
+    assert result.exit_code == 2
 
 
 def test_cli_version():
