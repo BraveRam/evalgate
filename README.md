@@ -33,7 +33,7 @@ Fast, local-first evaluation engine, prompt regression testing framework, and de
 
 EvalGate bridges the gap between ad-hoc prompt experimentation and production software engineering standards. It brings deterministic testing, code AST validation, latency/cost budgets, and multi-point LLM-as-a-judge rubrics into a unified, local-first workflow.
 
-Applied AI teams use EvalGate to:
+Use EvalGate to:
 - Define declarative YAML test suites covering prompt templates, tool calls, RAG pipelines, structured JSON schemas, and live webhooks.
 - Run deterministic checks (JSON Schema, Python AST, SQL syntax, Regex, Levenshtein distance) alongside semantic judge evaluations.
 - Benchmark competing models side-by-side in an automated Model Arena with win/loss verdicts, Pareto curves, and completion diffs.
