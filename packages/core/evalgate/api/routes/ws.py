@@ -13,6 +13,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from evalgate.api.routes.suites import _find_suite_path
 from evalgate.cli.loader import load_suite_from_yaml
+from evalgate.core.repetition import attempt_counts
 from evalgate.core.types import TestCaseResult
 from evalgate.providers.factory import get_provider
 from evalgate.runner.runner import SuiteRunner, validate_min_pass_rate, validate_run_inputs
@@ -85,6 +86,11 @@ async def websocket_run_stream(websocket: WebSocket) -> None:
         judge_provider = get_provider(model=judge_model) if judge_model else None
         concurrency = params.get("concurrency", 10)
         validate_run_inputs(suite, concurrency)
+        repeat = params.get("repeat")
+        counts = attempt_counts(suite, repeat)
+        drop = params.get("max_success_rate_drop")
+        if drop is not None:
+            drop = validate_min_pass_rate(drop)
 
         # Notify client of suite start
         await send_queue.put(
@@ -93,6 +99,7 @@ async def websocket_run_stream(websocket: WebSocket) -> None:
                 "suite_name": suite.name,
                 "target_model": target.model,
                 "total_tests": len(suite.tests),
+                "total_attempts": sum(counts),
             }
         )
 
@@ -113,6 +120,8 @@ async def websocket_run_stream(websocket: WebSocket) -> None:
             concurrency=concurrency,
             save_to_storage=True,
             on_test_complete=_on_test_complete,
+            repeat=repeat,
+            max_success_rate_drop=drop,
         )
 
         # Send final summary

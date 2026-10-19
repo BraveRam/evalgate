@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from evalgate.core.pricing import calculate_cost, estimate_tokens
+from evalgate.core.repetition import attempt_counts
 from evalgate.core.template import render_template
 from evalgate.core.types import SuiteConfig
 
@@ -14,6 +15,7 @@ def estimate_suite_cost(
     suite: SuiteConfig,
     model: str | None = None,
     estimated_output_tokens_per_test: int = 150,
+    repeat: int | None = None,
 ) -> dict[str, Any]:
     """Estimate target inference usage without executing models or saving a run."""
     if estimated_output_tokens_per_test < 1:
@@ -21,7 +23,8 @@ def estimate_suite_cost(
 
     target_model = model or suite.target.model
     total_input_tokens = 0
-    for test_case in suite.tests:
+    counts = attempt_counts(suite, repeat)
+    for test_case, count in zip(suite.tests, counts):
         context = test_case.context
         context_str = "\n".join(context) if isinstance(context, list) else (context or "")
         variables = dict(test_case.vars)
@@ -33,15 +36,16 @@ def estimate_suite_cost(
             else json.dumps(test_case.vars)
         )
         system_prompt = render_template(suite.target.system_prompt or "", variables)
-        total_input_tokens += estimate_tokens(f"{system_prompt}\n{context_str}\n{rendered}")
+        total_input_tokens += count * estimate_tokens(f"{system_prompt}\n{context_str}\n{rendered}")
 
     total_tests = len(suite.tests)
-    total_output_tokens = total_tests * estimated_output_tokens_per_test
+    total_output_tokens = sum(counts) * estimated_output_tokens_per_test
     total_cost = calculate_cost(target_model, total_input_tokens, total_output_tokens)
     return {
         "suite_name": suite.name,
         "target_model": target_model,
         "total_tests": total_tests,
+        "total_attempts": sum(counts),
         "estimated_input_tokens": total_input_tokens,
         "estimated_output_tokens": total_output_tokens,
         "total_estimated_tokens": total_input_tokens + total_output_tokens,

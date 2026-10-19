@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class TargetType(str, Enum):
@@ -156,6 +156,7 @@ class TestCase(BaseModel):
         default=None,
         description="Context or scenario description",
     )
+    repeat: int | None = Field(default=None, ge=1, le=100, strict=True)
     vars: dict[str, Any] = Field(
         default_factory=dict,
         description="Variable key-value pairs injected into templates and payloads",
@@ -203,6 +204,8 @@ class SuiteConfig(BaseModel):
         default_factory=list,
         description="List of test cases to execute",
     )
+    repeat: int = Field(default=1, ge=1, le=100, strict=True)
+    max_success_rate_drop: float | None = Field(default=None, ge=0.0, le=1.0)
     min_pass_rate: float = Field(
         default=1.0,
         ge=0.0,
@@ -236,7 +239,7 @@ class AssertionResult(BaseModel):
     )
 
 
-class TestCaseResult(BaseModel):
+class AttemptResult(BaseModel):
     """Result of running a single test case through target execution and assertion gates."""
 
     __test__ = False
@@ -268,6 +271,38 @@ class TestCaseResult(BaseModel):
     )
 
 
+class TestCaseResult(AttemptResult):
+    """One test's summary; attempts are ordered by their scheduled attempt number.
+
+    For repeated tests the displayed completion/assertions come from the first
+    failing attempt (or the first attempt if all pass). Latency is the mean;
+    token and cost counters are totals. Legacy results represent one attempt.
+    """
+
+    attempts: list[AttemptResult] = Field(default_factory=list)
+    attempt_index: int | None = Field(default=None, ge=1)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def attempt_count(self) -> int:
+        return len(self.attempts) or 1
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def passed_attempts(self) -> int:
+        return sum(a.passed for a in self.attempts) if self.attempts else int(self.passed)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def success_rate(self) -> float:
+        return self.passed_attempts / self.attempt_count
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def inconsistent(self) -> bool:
+        return 0 < self.passed_attempts < self.attempt_count
+
+
 class SuiteRunResult(BaseModel):
     """Complete summary of an evaluation suite run."""
 
@@ -291,6 +326,21 @@ class SuiteRunResult(BaseModel):
     results: list[TestCaseResult] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def total_attempts(self) -> int:
+        return sum(r.attempt_count for r in self.results)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def passed_attempts(self) -> int:
+        return sum(r.passed_attempts for r in self.results)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def inconsistent_tests(self) -> int:
+        return sum(r.inconsistent for r in self.results)
+
 
 class ArenaComparisonResult(BaseModel):
     """Side-by-side benchmark comparison between two models or prompts."""
@@ -307,5 +357,5 @@ class ArenaComparisonResult(BaseModel):
     cost_delta_usd: float
     mismatched_test_ids: list[str] = Field(
         default_factory=list,
-        description="Test case IDs where Model A and Model B had differing pass/fail outcomes",
+        description="Test case IDs where Model A and Model B had differing success rates",
     )

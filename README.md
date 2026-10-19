@@ -20,6 +20,7 @@ Fast, local-first evaluation engine, prompt regression testing framework, and de
   - [Target Architectures](#target-architectures)
   - [Assertion Engine](#assertion-engine)
 - [CLI Reference](#cli-reference)
+- [Repeated Evaluations](#repeated-evaluations)
 - [Saved Baselines and Regression Diffs](#saved-baselines-and-regression-diffs)
 - [Model Context Protocol (MCP) Server](#model-context-protocol-mcp-server)
 - [CI/CD & Pull Request Quality Gates](#cicd--pull-request-quality-gates)
@@ -295,6 +296,57 @@ uv run evalgate studio --host 127.0.0.1 --port 8000
 
 Cost estimates use built-in pricing and assume 150 output tokens per test unless overridden.
 They are approximate target inference costs and exclude semantic judge calls.
+
+---
+
+## Repeated Evaluations
+
+Use repeated attempts to measure consistency on selected cases and compare their
+success rates across prompt or model versions. Diverse test cases still determine
+coverage; repetition does not establish statistical significance.
+
+```bash
+# Repeat each test five times (unless a test has its own YAML repeat override)
+uv run evalgate run evals/classifier.yaml --repeat 5
+
+# Include the same attempt counts in the preflight target cost estimate
+uv run evalgate cost evals/classifier.yaml --repeat 5 --json
+
+# Optionally fail baseline comparisons for drops greater than 10 percentage points
+uv run evalgate run evals/classifier.yaml --repeat 5 --max-success-rate-drop 0.1
+```
+
+Suites can set `repeat: 5` and individual tests can set `repeat: 10`.
+Precedence is **per-test YAML → CLI/API/MCP override → suite YAML → 1**.
+Counts must be integers from 1 to 100. All attempts share the run's concurrency
+limit. Repeating a webhook also repeats its HTTP request.
+
+Each test reports `passed_attempts`, `attempt_count`, `success_rate`, and
+`inconsistent` (some attempts passed and some failed). Repeated results include
+an ordered `attempts` array with every output, assertion, error, latency, token
+count and target cost. The summary shows the first failing attempt, or the first
+attempt when all pass; its latency is the mean and its token/cost counters are totals.
+
+The suite pass rate is **passed attempts / total attempts**, so cases repeated
+more often carry more weight. `min_pass_rate` applies to this rate. A test's
+`passed` flag requires every attempt to pass; `passed_tests` therefore counts
+fully passing tests. Suite latency percentiles use individual attempt latencies.
+Legacy runs and exported baselines without attempt data count as one attempt.
+Target cost estimates include all repeats and still exclude semantic judge calls.
+
+Baseline comparisons show success-rate changes and sample counts per test.
+For repeated cases, drops are informational unless `max_success_rate_drop` is
+set in the suite or run request (`0.1` means 10 percentage points; `0` gates any
+drop). A drop exactly equal to the tolerance is allowed. Single-attempt pairs
+retain the existing passing-to-failing gate. Missing tests and failure of the
+suite's own pass-rate requirement always fail the gate. Sample counts may differ;
+reported rate differences are descriptive, not statistical significance claims.
+
+REST run requests and WebSocket start messages accept `repeat` and
+`max_success_rate_drop`; cost requests accept `repeat`. MCP suite-run,
+model-comparison and cost tools also accept `repeat`. Streaming emits one
+`test_complete` event per attempt, with `attempt_index`; `run_started` includes
+both `total_tests` and `total_attempts`.
 
 ---
 

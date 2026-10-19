@@ -91,11 +91,14 @@ class RunSuiteRequest(BaseModel):
     judge_override: str | None = None
     min_pass_rate_override: float | None = Field(default=None, ge=0.0, le=1.0)
     concurrency: int = Field(default=10, ge=1, le=50)
+    repeat: int | None = Field(default=None, ge=1, le=100, strict=True)
+    max_success_rate_drop: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class CostEstimateRequest(BaseModel):
     model_override: str | None = None
     estimated_output_tokens_per_test: int = Field(default=150, ge=1)
+    repeat: int | None = Field(default=None, ge=1, le=100, strict=True)
 
 
 @router.get("")
@@ -275,6 +278,8 @@ async def run_suite_endpoint(
         judge_provider=judge_provider,
         concurrency=concurrency,
         save_to_storage=True,
+        repeat=req.repeat if req else None,
+        max_success_rate_drop=req.max_success_rate_drop if req else None,
     )
     return result
 
@@ -295,6 +300,7 @@ async def estimate_suite_cost_endpoint(
             suite,
             model=req.model_override if req else None,
             estimated_output_tokens_per_test=req.estimated_output_tokens_per_test if req else 150,
+            repeat=req.repeat if req else None,
         )
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err

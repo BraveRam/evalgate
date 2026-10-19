@@ -39,6 +39,12 @@ class CaseDiff(BaseModel):
     baseline: TestCaseResult | None
     current: TestCaseResult | None
     output_diff: str
+    baseline_attempts: int = 0
+    current_attempts: int = 0
+    baseline_success_rate: float | None = None
+    current_success_rate: float | None = None
+    success_rate_delta: float | None = None
+    gates_regression: bool = False
 
 
 class BaselineComparison(BaseModel):
@@ -55,6 +61,18 @@ class BaselineComparison(BaseModel):
     latency_p50_delta_ms: float
     cost_delta_usd: float
     cases: list[CaseDiff]
+    gated_regressed_test_ids: list[str] = []
+    max_success_rate_drop: float | None = None
+
+
+def _output_lines(result: TestCaseResult) -> list[str]:
+    if not result.attempts:
+        return result.completion.splitlines()
+    lines: list[str] = []
+    for index, attempt in enumerate(result.attempts, 1):
+        lines.append(f"--- Attempt {index} ---")
+        lines.extend(attempt.completion.splitlines())
+    return lines
 
 
 def compare_to_baseline(run: SuiteRunResult, baseline: BaselineSnapshot) -> BaselineComparison:
@@ -64,18 +82,37 @@ def compare_to_baseline(run: SuiteRunResult, baseline: BaselineSnapshot) -> Base
     before = {case.test_id: case for case in baseline.run.results}
     after = {case.test_id: case for case in run.results}
     regressed = sorted(
-        key for key in before.keys() & after.keys() if before[key].passed and not after[key].passed
+        key
+        for key in before.keys() & after.keys()
+        if after[key].success_rate < before[key].success_rate
     )
     improved = sorted(
-        key for key in before.keys() & after.keys() if not before[key].passed and after[key].passed
+        key
+        for key in before.keys() & after.keys()
+        if after[key].success_rate > before[key].success_rate
     )
     missing = sorted(before.keys() - after.keys())
     added = sorted(after.keys() - before.keys())
     changed = sorted(
         key
         for key in before.keys() & after.keys()
-        if before[key].completion != after[key].completion
+        if _output_lines(before[key]) != _output_lines(after[key])
     )
+    drop = run.metadata.get("max_success_rate_drop")
+    if drop is not None:
+        if isinstance(drop, bool) or not isinstance(drop, (int, float)) or not 0 <= drop <= 1:
+            raise ValueError("max_success_rate_drop must be between 0 and 1")
+    gated = [
+        key
+        for key in regressed
+        if (
+            (before[key].attempt_count == after[key].attempt_count == 1)
+            or (
+                drop is not None
+                and before[key].success_rate - after[key].success_rate > drop + 1e-12
+            )
+        )
+    ]
     cases: list[CaseDiff] = []
     for key in sorted(before.keys() | after.keys()):
         old, new = before.get(key), after.get(key)
@@ -92,21 +129,35 @@ def compare_to_baseline(run: SuiteRunResult, baseline: BaselineSnapshot) -> Base
             status = "changed" if key in changed else "unchanged"
         diff = "\n".join(
             unified_diff(
-                (old.completion if old else "").splitlines(),
-                (new.completion if new else "").splitlines(),
+                _output_lines(old) if old else [],
+                _output_lines(new) if new else [],
                 fromfile="baseline",
                 tofile="current",
                 lineterm="",
             )
         )
         cases.append(
-            CaseDiff(test_id=key, status=status, baseline=old, current=new, output_diff=diff)
+            CaseDiff(
+                test_id=key,
+                status=status,
+                baseline=old,
+                current=new,
+                output_diff=diff,
+                baseline_attempts=old.attempt_count if old else 0,
+                current_attempts=new.attempt_count if new else 0,
+                baseline_success_rate=old.success_rate if old else None,
+                current_success_rate=new.success_rate if new else None,
+                success_rate_delta=(new.success_rate - old.success_rate) if old and new else None,
+                gates_regression=key in gated or key in missing,
+            )
         )
     return BaselineComparison(
         suite_name=run.suite_name,
         baseline_run_id=baseline.run.run_id,
         run_id=run.run_id,
-        passed=run.passed and not regressed and not missing,
+        passed=run.passed and not gated and not missing,
+        gated_regressed_test_ids=gated,
+        max_success_rate_drop=drop,
         regressed_test_ids=regressed,
         improved_test_ids=improved,
         missing_test_ids=missing,

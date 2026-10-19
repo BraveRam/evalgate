@@ -31,6 +31,7 @@ def render_run_summary(result: SuiteRunResult, verbose: bool = False) -> None:
     table = Table(title="[bold]Test Case Results[/]", expand=True)
     table.add_column("ID", style="bold cyan", no_wrap=True)
     table.add_column("Status", justify="center", no_wrap=True)
+    table.add_column("Attempts", justify="right")
     table.add_column("Latency", justify="right")
     table.add_column("Tokens", justify="right")
     table.add_column("Cost", justify="right")
@@ -62,6 +63,8 @@ def render_run_summary(result: SuiteRunResult, verbose: bool = False) -> None:
         table.add_row(
             tc.test_id,
             status_pill,
+            f"{tc.passed_attempts}/{tc.attempt_count}"
+            + (" inconsistent" if tc.inconsistent else ""),
             f"{tc.latency_ms:.0f}ms",
             str(tc.total_tokens),
             f"${tc.cost_usd:.5f}",
@@ -85,6 +88,14 @@ def render_run_summary(result: SuiteRunResult, verbose: bool = False) -> None:
                 )
             )
 
+            for index, attempt in enumerate(tc.attempts, 1):
+                console.print(
+                    Panel(
+                        attempt.completion,
+                        title=f"Attempt {index}: {'PASS' if attempt.passed else 'FAIL'}",
+                    )
+                )
+
     # Gate Outcome Summary Panel
     gate_badge = (
         "[bold white on green]  PASSED QUALITY GATE  [/]"
@@ -98,7 +109,8 @@ def render_run_summary(result: SuiteRunResult, verbose: bool = False) -> None:
     )
     stats_text = (
         f"{gate_badge}\n\n"
-        f"[bold]Pass Rate:[/] {result.pass_rate * 100:.1f}% {pass_details}\n"
+        f"[bold]Pass Rate:[/] {result.pass_rate * 100:.1f}% "
+        f"({result.passed_attempts}/{result.total_attempts} attempts); tests {pass_details}\n"
         f"[bold]Latency:[/] Avg: [cyan]{result.avg_latency_ms:.0f}ms[/cyan] | "
         f"P50: [cyan]{result.p50_latency_ms:.0f}ms[/cyan] | "
         f"P95: [cyan]{result.p95_latency_ms:.0f}ms[/cyan]\n"
