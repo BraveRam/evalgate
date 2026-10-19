@@ -35,7 +35,7 @@ EvalGate bridges the gap between ad-hoc prompt experimentation and production so
 
 Applied AI teams use EvalGate to:
 - Define declarative YAML test suites covering prompt templates, tool calls, RAG pipelines, structured JSON schemas, and live webhooks.
-- Run microsecond deterministic checks (JSON Schema, Python AST, SQL syntax, Regex, Levenshtein distance) alongside semantic judge evaluations.
+- Run deterministic checks (JSON Schema, Python AST, SQL syntax, Regex, Levenshtein distance) alongside semantic judge evaluations.
 - Benchmark competing models side-by-side in an automated Model Arena with win/loss verdicts, Pareto curves, and completion diffs.
 - Enforce pull request quality gates in CI/CD pipelines to block prompt regressions before deployment.
 - Integrate directly with AI coding agents (Claude Desktop, Cursor, Antigravity, Windsurf) over Model Context Protocol (MCP).
@@ -45,17 +45,18 @@ Applied AI teams use EvalGate to:
 ## Key Features
 
 ### Two-Tier Assertion Framework
-- **Deterministic Microsecond Assertions**: Validate exact strings, substrings, prefixes, suffixes, regex patterns, Levenshtein similarity, Python AST syntax, SQL syntax, and draft-7 JSON Schema without incurring inference costs.
+- **Deterministic Assertions**: Validate exact strings, substrings, prefixes, suffixes, regex patterns, Levenshtein similarity, Python AST syntax, basic SQL structure, and JSON Schema without incurring inference costs.
 - **Semantic LLM-as-a-Judge Rubrics**: Evaluate qualitative dimensions including context faithfulness, hallucination detection, answer relevancy, logical coherence, toxicity/bias, intent fulfillment, and custom plain-English rubrics on normalized score thresholds.
 
 ### Multi-Target Evaluation Modalities
 Support for 5 distinct execution modalities:
 1. `prompt`: String prompt template with variable interpolation (`{{var}}`), system instructions, and sampling parameters.
 2. `tool_call`: Validates function calling arguments and tool invocation schemas.
-3. `rag`: Evaluates grounded context retrieval against faithfulness and hallucination metrics.
-4. `structured_output`: Strict JSON Schema validation with Pydantic and draft-7 conformance.
+3. `rag`: Evaluates responses grounded in supplied context using faithfulness and hallucination metrics.
+4. `structured_output`: Requests schema-constrained model output; add a `json_schema` assertion to validate the response.
 5. `webhook`: Live HTTP POST endpoint integration for black-box testing of deployed microservices.
-6. `mock/simulator`: Built-in zero-cost, offline simulation provider for rapid pipeline plumbing verification in CI/CD.
+
+`mock/simulator` is a zero-cost, offline model provider usable with these target types, rather than a separate target type.
 
 ### Model Arena Shootout
 - Automated A/B head-to-head benchmarking between any two models.
@@ -107,8 +108,7 @@ ANTHROPIC_API_KEY="sk-ant-..."
 GEMINI_API_KEY="..."
 DEEPSEEK_API_KEY="..."
 
-# Local SQLite telemetry path (default: ~/.evalgate/evalgate.db)
-EVALGATE_DB_PATH="evalgate.db"
+# Run history is stored in .evalgate/runs.db relative to the working directory.
 ```
 
 ### 3. Launch Development Studio
@@ -153,7 +153,7 @@ tests:
       ticket_body: "We were double-billed for invoice #4928 last week."
     assertions:
       - type: json_schema
-        schema:
+        value:
           type: object
           properties:
             category: { type: string, enum: ["billing", "technical", "general"] }
@@ -174,7 +174,11 @@ min_pass_rate: 0.9
 target:
   type: rag
   model: anthropic/claude-3-5-sonnet
-  template: "Question: {{query}}"
+  template: |
+    Context:
+    {{context}}
+
+    Question: {{query}}
 
 tests:
   - id: gdpr-retention-rule
@@ -204,7 +208,6 @@ target:
   type: webhook
   webhook_url: "https://api.example.com/v1/assistants/chat"
   headers:
-    Authorization: "Bearer ${PROD_API_TOKEN}"
     Content-Type: "application/json"
 
 tests:
@@ -220,24 +223,28 @@ tests:
 
 ---
 
+Webhook requests send a JSON object containing `id`, `vars`, and `context`.
+Headers are sent literally; `${ENV_VAR}` substitution is not supported.
+The RAG target uses supplied context passages; it does not run a retriever.
+
 ## Assertion Engine
 
 ### Deterministic & Code Assertions
 
 | Assertion Type | Expected Value | Description |
 | :--- | :--- | :--- |
-| `exact` | `string` | Strict string match after whitespace normalization. |
+| `exact` | `string` | Strict string match after trimming leading and trailing whitespace. |
 | `contains` | `string` | Verifies substring inclusion. |
 | `not_contains` | `string` | Negative substring guard for confidential terms or error codes. |
 | `starts_with` | `string` | Prefix matcher (e.g. ensuring SQL starts with `SELECT`). |
 | `ends_with` | `string` | Suffix matcher (e.g. statement termination with `;`). |
 | `regex` | `string (pattern)` | Regular expression pattern validation. |
 | `levenshtein` | `float (0.0 - 1.0)` | Fuzzy string similarity ratio against ground truth. |
-| `json_schema` | `object (Draft-7)` | Strict JSON Schema structural validation. |
-| `python_ast` | `boolean` | Verifies that extracted Python code compiles into a valid AST. |
-| `sql_syntax` | `boolean` | Tokenizes and validates SQL grammar and statement structure. |
+| `json_schema` | `object` | JSON Schema validation using the schema's declared dialect or the jsonschema library default. |
+| `python_ast` | None required | Verifies that extracted Python code compiles into a valid AST. |
+| `sql_syntax` | None required | Checks the leading SQL keyword and balanced parentheses; does not parse SQL grammar. |
 | `max_latency_ms` | `integer` | SLA response time threshold in milliseconds. |
-| `max_tokens` | `integer` | Maximum output token ceiling to prevent runaway generation. |
+| `max_tokens` | `integer` | Maximum total input + output tokens per target response. |
 | `max_cost_usd` | `float` | Maximum inference cost budget per test case. |
 
 ### Semantic LLM-as-a-Judge Rubrics
@@ -412,9 +419,13 @@ jobs:
           VERCEL_AI_GATEWAY_KEY: ${{ secrets.VERCEL_AI_GATEWAY_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          uv run evalgate run evals/rag_qa.yaml --strict
-          uv run evalgate run evals/support_tickets.yaml --strict
+          uv run evalgate run evals/rag_qa.yaml
+          uv run evalgate run evals/classifier.yaml
 ```
+
+Runs exit with status `1` when the suite quality gate fails. Assertions are strict
+by default (`strict: true`); use `--min-pass-rate 1.0` to require every test to pass.
+Live suites require the relevant provider keys; no `--strict` flag is needed.
 
 ### Pytest Harness Integration
 
@@ -422,13 +433,13 @@ EvalGate suites can be executed directly inside standard pytest suites:
 
 ```python
 import pytest
-from evalgate.runner.graph import run_suite_async
-from evalgate.core.template import load_suite_from_yaml
+from evalgate.cli.loader import load_suite_from_yaml
+from evalgate.runner.runner import SuiteRunner
 
 @pytest.mark.asyncio
 async def test_rag_compliance_regression():
     suite = load_suite_from_yaml("evals/rag_qa.yaml")
-    result = await run_suite_async(suite)
+    result = await SuiteRunner().run_suite(suite, save_to_storage=False)
     
     assert result.passed is True, f"Suite failed: pass rate {result.pass_rate} < {suite.min_pass_rate}"
 ```
@@ -441,13 +452,17 @@ The FastAPI backend provides REST endpoints and live WebSocket channels for real
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/v1/run` | Execute an evaluation suite asynchronously. |
+| `POST` | `/api/v1/suites/{suite_name}/run` | Execute a suite and return its completed result. |
 | `POST` | `/api/v1/arena/compare` | Run side-by-side A/B shootout comparison. |
-| `POST` | `/api/v1/estimate-cost` | Calculate preflight token volume and cost projection. |
+| `POST` | `/api/v1/suites/{suite_name}/estimate-cost` | Calculate preflight token volume and cost projection. |
 | `GET` | `/api/v1/suites` | List all discovered YAML test suites. |
 | `GET` | `/api/v1/runs` | Query historical execution telemetry. |
-| `GET` | `/api/v1/analytics/trends` | Fetch aggregated time-series pass rate and latency metrics. |
-| `WS` | `/api/v1/ws/run/{suite_name}` | Real-time WebSocket streaming of individual test case evaluations. |
+| `GET` | `/api/v1/runs/{run_id}/trends` | Fetch aggregated time-series pass rate and latency metrics. |
+| `WS` | `/api/v1/ws/run` | Real-time WebSocket streaming of individual test case evaluations. |
+
+For WebSocket runs, send a JSON message such as
+`{"suite_name": "support-ticket-classifier", "concurrency": 5}` after connecting.
+The server emits `run_started`, `test_complete`, and `run_finished` events.
 
 ---
 
@@ -456,7 +471,7 @@ The FastAPI backend provides REST endpoints and live WebSocket channels for real
 EvalGate maintains comprehensive test coverage across core types, runner graphs, deterministic assertions, semantic judge rubrics, pricing formulas, storage, CLI commands, and MCP tools:
 
 ```bash
-# Run backend pytest suite (92 tests)
+# Run the backend pytest suite
 uv run pytest
 
 # Run type checks
