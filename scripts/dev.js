@@ -6,7 +6,7 @@ console.log("\x1b[36m%s\x1b[0m", "🚀 Starting EvalGate Monorepo (FastAPI Backe
 
 const api = spawn(
   "uv",
-  ["run", "uvicorn", "evalgate.api.app:app", "--host", "127.0.0.1", "--port", "8000", "--reload"],
+  ["run", "python", "-m", "uvicorn", "evalgate.api.app:app", "--host", "127.0.0.1", "--port", "8000", "--reload"],
   {
     stdio: "inherit",
     shell: true,

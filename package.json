@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node scripts/dev.js",
     "dev:client": "pnpm --filter @evalgate/client dev",
-    "dev:api": "uv run uvicorn evalgate.api.app:app --host 127.0.0.1 --port 8000 --reload",
+    "dev:api": "uv run python -m uvicorn evalgate.api.app:app --host 127.0.0.1 --port 8000 --reload",
     "build": "turbo build",
     "test": "turbo test",
     "test:python": "uv run pytest --cov=evalgate",
