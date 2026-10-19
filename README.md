@@ -7,7 +7,6 @@ Fast, local-first evaluation engine, prompt regression testing framework, and de
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi)](https://fastapi.tiangolo.com)
 [![LangChain](https://img.shields.io/badge/LangChain-LangGraph-darkgreen)](https://langchain.com)
 [![Next.js](https://img.shields.io/badge/Next.js-16+-black?logo=next.js)](https://nextjs.org)
-[![Turborepo](https://img.shields.io/badge/Turborepo-Monorepo-ef4444?logo=turborepo)](https://turbo.build)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-purple)](https://modelcontextprotocol.io)
 
 ---
@@ -15,7 +14,6 @@ Fast, local-first evaluation engine, prompt regression testing framework, and de
 ## Table of Contents
 
 - [Overview](#overview)
-- [Architecture & Monorepo Structure](#architecture--monorepo-structure)
 - [Key Features](#key-features)
 - [Quick Start](#quick-start)
 - [Declarative YAML Test Suite Specification](#declarative-yaml-test-suite-specification)
@@ -41,34 +39,6 @@ Applied AI teams use EvalGate to:
 - Benchmark competing models side-by-side in an automated Model Arena with win/loss verdicts, Pareto curves, and completion diffs.
 - Enforce pull request quality gates in CI/CD pipelines to block prompt regressions before deployment.
 - Integrate directly with AI coding agents (Claude Desktop, Cursor, Antigravity, Windsurf) over Model Context Protocol (MCP).
-
----
-
-## Architecture & Monorepo Structure
-
-EvalGate is organized as a unified monorepo managed with Turborepo, pnpm, and uv:
-
-```text
-evalgate/
-├── apps/
-│   └── client/                     # Next.js 16 App Router Studio (Turbopack, Tailwind CSS, TanStack Query)
-│       ├── src/app/                # Studio routes: Dashboard, Workbench, Suites, Arena, Analytics, Docs
-│       ├── src/components/         # UI components, Table of Contents, CodeViewer, ModelSelector
-│       └── src/lib/                # API client, WebSocket stream client, Docs data, Top 50 models
-├── packages/
-│   └── core/                       # Core Python evaluation engine and backend services
-│       ├── evalgate/
-│       │   ├── api/                # FastAPI REST router and WebSocket streaming endpoints
-│       │   ├── cli/                # Typer & Rich terminal CLI runner
-│       │   ├── core/               # Engine types, deterministic matchers, semantic evaluators, pricing
-│       │   ├── mcp/                # FastMCP server with 7 native tools (stdio and sse transports)
-│       │   ├── providers/          # Gateway client (OpenAI, Anthropic, Gemini, DeepSeek, Mock)
-│       │   ├── runner/             # LangGraph asynchronous test matrix execution engine
-│       │   └── storage/            # Local SQLite database, migrations, and telemetry tracking
-│       └── tests/                  # Pytest test suite (92 unit and integration tests)
-├── evals/                          # Declarative YAML evaluation suites and test cases
-└── pyproject.toml                  # Monorepo Python configuration and dependencies
-```
 
 ---
 
@@ -109,7 +79,7 @@ Support for 5 distinct execution modalities:
 - Python 3.11+ and `uv` package manager installed (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - Node.js 20+ and `pnpm` installed (`corepack enable pnpm`)
 
-### 1. Monorepo Setup
+### 1. Install Dependencies
 
 ```bash
 # Clone repository
