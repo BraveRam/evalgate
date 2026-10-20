@@ -55,6 +55,11 @@ const NAV_ITEMS: NavItem[] = [
     icon: Swords,
   },
   {
+    name: "Prompt Arena",
+    href: "/prompt-arena",
+    icon: Swords,
+  },
+  {
     name: "Analytics & Trends",
     href: "/analytics",
     icon: BarChart3,

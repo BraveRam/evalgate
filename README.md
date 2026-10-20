@@ -20,6 +20,7 @@ Fast, local-first evaluation engine, prompt regression testing framework, and de
   - [Target Architectures](#target-architectures)
   - [Assertion Engine](#assertion-engine)
 - [CLI Reference](#cli-reference)
+- [Prompt Arena](#prompt-arena)
 - [Repeated Evaluations](#repeated-evaluations)
 - [Saved Baselines and Regression Diffs](#saved-baselines-and-regression-diffs)
 - [Model Context Protocol (MCP) Server](#model-context-protocol-mcp-server)
@@ -299,6 +300,40 @@ They are approximate target inference costs and exclude semantic judge calls.
 
 ---
 
+## Prompt Arena
+
+Open **Prompt Arena** in Studio to compare two versions of a prompt using one model.
+Choose a model-backed suite, edit A and B (template and system instructions), set
+attempts and concurrency, review the combined target-cost estimate, and start.
+Both variants use the same cases, assertions, context, sampling settings, tools,
+and schema. Per-test YAML repeat overrides remain authoritative. A runs before B
+with the same concurrency limit. Saved suite baselines do not gate experiments;
+the suite's minimum pass rate still applies.
+
+Inspect observed success rates, gate outcomes, P50/P95 latency, tokens, cost,
+side-by-side outputs, and every attempt. Differences describe the observed sample;
+they do not establish statistical significance. Saved comparisons persist in SQLite
+with the original suite, prompt versions, shared model, repeat override, concurrency,
+and complete results. Select a saved record to reopen it after refreshing.
+
+**Apply prompt A/B to suite** changes only template and system instructions.
+The suite's model, tests, other settings, and saved baseline are preserved. A suite changed since
+comparison returns 409; compare again before applying. The confirmation also keeps
+the estimated request settings, and a suite changed after estimating requires a
+fresh estimate before inference. Webhook suites are excluded. Use mock/simulator
+with deterministic assertions to try the workflow without inference fees; semantic
+assertions can still call a live judge. Mock output does not assess model quality.
+Cost estimates exclude semantic judge calls.
+
+The REST API accepts suite_name, model, prompt_a/prompt_b (each containing template
+and system_prompt), optional repeat (1–100), and concurrency (1–50). Estimate first,
+then include its suite_fingerprint in the compare request to reject stale estimates.
+Comparison responses include comparison_id, suite_snapshot, settings, and comparison
+with both complete runs. See Studio **Docs → Prompt Arena** for request examples,
+response fields, pagination, and error handling.
+
+---
+
 ## Repeated Evaluations
 
 Use repeated attempts to measure consistency on selected cases and compare their
@@ -506,6 +541,11 @@ The FastAPI backend provides REST endpoints and live WebSocket channels for real
 | :--- | :--- | :--- |
 | `POST` | `/api/v1/suites/{suite_name}/run` | Execute a suite and return its completed result. |
 | `POST` | `/api/v1/arena/compare` | Run side-by-side A/B shootout comparison. |
+| `POST` | `/api/v1/arena/prompts/estimate` | Estimate both prompt variants without running or saving. |
+| `POST` | `/api/v1/arena/prompts/compare` | Run and persist a prompt comparison on one model. |
+| `GET` | `/api/v1/arena/prompts` | Saved comparison summaries; limit 1–100 (default 20), offset >= 0. |
+| `GET` | `/api/v1/arena/prompts/{id}` | Retrieve prompts, original suite snapshot, and complete results. |
+| `POST` | `/api/v1/arena/prompts/{id}/apply` | Apply stored variant A/B; reject changed suites with 409. |
 | `POST` | `/api/v1/suites/{suite_name}/estimate-cost` | Calculate preflight token volume and cost projection. |
 | `GET` | `/api/v1/suites` | List all discovered YAML test suites. |
 | `GET` | `/api/v1/runs` | Query historical execution telemetry. |

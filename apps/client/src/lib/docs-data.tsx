@@ -197,6 +197,9 @@ tests:
               icon={<ShieldCheck className="h-4 w-4 text-white" />}
               description="Explore deterministic string matching, regex, JSON schema, and LLM-as-a-judge rubrics."
             />
+            <Card href="/docs/prompt-arena" title="Prompt Arena"
+              icon={<Swords className="h-4 w-4 text-white" />}
+              description="Compare two prompt versions on one model, inspect repeated outcomes, and apply a chosen prompt." />
             <Card
               href="/docs/arena"
               title="Model Arena Shootout"
@@ -592,6 +595,89 @@ target:
     ),
   },
 
+  "prompt-arena": {
+    slug: "prompt-arena",
+    title: "Prompt Arena",
+    description: "Compare two prompt versions on one model, inspect repeated outcomes, and apply a chosen prompt safely.",
+    category: "Studio Features",
+    toc: [
+      { title: "Compare prompt versions", url: "#compare-prompts", depth: 2 },
+      { title: "Read results and save a prompt", url: "#prompt-results", depth: 2 },
+      { title: "Prompt Arena API", url: "#prompt-api", depth: 2 },
+    ],
+    content: (
+      <div className="space-y-8 text-sm leading-relaxed">
+        <section id="compare-prompts" className="space-y-4">
+          <h2 className="text-xl font-bold">Compare prompt versions</h2>
+          <p>Open <Link href="/prompt-arena" className="underline">Prompt Arena</Link> from the Studio sidebar.
+            Select a model-backed suite and one shared model. Both editors start with the suite&apos;s
+            template and system instructions. Edit A or B, set attempts per test and concurrency,
+            then choose Compare prompts and review the combined cost estimate before starting.</p>
+          <p>Per-test YAML repeat overrides take precedence over the attempts control.
+            Both variants use identical cases, variables, context, assertions, temperature, top-p,
+            tools, and JSON schema. A runs before B with the same concurrency limit (1–50).
+            Attempts must be 1–100. Templates must contain non-whitespace text; empty system
+            instructions are allowed. Webhook suites are excluded because their endpoints own the prompt.</p>
+          <Callout type="info" title="Try it without inference fees">
+            Choose mock/simulator with deterministic assertions to test without inference fees. Semantic
+            assertions may still call a live judge even with a mock target. Echoed mock completions can exercise string
+            assertions, but do not measure real model quality. Live models require configured provider
+            credentials. Cost estimates include both variants&apos; target calls and exclude semantic judges.
+          </Callout>
+          <p>The confirmation keeps the prompts, model, repeat count, and concurrency captured for
+            the estimate. Editing the form while it loads does not change that run. If the source
+            suite changes after estimating, execution returns 409 and requires a new estimate.</p>
+        </section>
+        <section id="prompt-results" className="space-y-4">
+          <h2 className="text-xl font-bold">Read results and save a prompt</h2>
+          <p>Compare observed pass rates, per-test success rates, gate outcomes, P50/P95 latency,
+            tokens, cost, and side-by-side outputs. Expand a case and Inspect attempts to see every
+            completion, assertion, and error. The higher observed pass rate is descriptive;
+            repeated samples do not establish statistical significance.</p>
+          <p>Suite pass rate is passed attempts / total attempts. Per-case passed still requires
+            every attempt to pass. The suite&apos;s minimum pass rate applies; its saved regression
+            baseline does not gate the experiment. Normal suite runs retain their baseline behavior.</p>
+          <p>Saved comparisons live in SQLite and survive browser refreshes. They retain both prompts,
+            the original suite snapshot, shared model, repeat override, concurrency, and both run results.
+            Each underlying run also appears in Analytics with its comparison ID, variant, and target snapshot.
+            Use Newer/Older to page through saved comparisons, and select a record to reopen it.</p>
+          <p>Choose Apply prompt A to suite or Apply prompt B to suite. This changes only the template
+            and system instructions; the suite&apos;s model, tests, sampling settings, and other configuration
+            stay as they were. You can choose either variant; applying is an explicit decision, not an
+            automatic quality judgment. If any suite configuration changed since the comparison, applying
+            returns 409 rather than overwriting the newer work. Compare again to apply a fresh result.
+            Applying does not replace the saved suite baseline. Deleting a source suite makes applying return 404; saved comparison evidence remains readable.</p>
+        </section>
+        <section id="prompt-api" className="space-y-4">
+          <h2 className="text-xl font-bold">Prompt Arena API</h2>
+          <p>Send this shape to POST /api/v1/arena/prompts/estimate and
+            POST /api/v1/arena/prompts/compare. Replace my-suite and template variables with your suite&apos;s values.</p>
+          <CodeBlock language="json" code={`{
+  "suite_name": "my-suite",
+  "model": "mock/simulator",
+  "prompt_a": {"template": "Answer {{question}}", "system_prompt": ""},
+  "prompt_b": {"template": "Answer carefully: {{question}}", "system_prompt": "Use the supplied context."},
+  "repeat": 5,
+  "concurrency": 10
+}`} />
+          <p>The estimate returns estimate_a, estimate_b, total_attempts, estimated_cost_usd, and
+            suite_fingerprint. Include that fingerprint in the compare request to reject stale estimates.
+            Direct API callers may omit it. Compare returns comparison_id, created_at, suite_snapshot,
+            model, prompt_a, prompt_b, repeat, concurrency, and comparison containing both complete runs.</p>
+          <TypeTable type={{
+            "POST /api/v1/arena/prompts/estimate": { type: "PromptEstimate", description: "Estimate both variants without inference or persistence" },
+            "POST /api/v1/arena/prompts/compare": { type: "PromptArenaResult", description: "Execute and save the comparison and both runs" },
+            "GET /api/v1/arena/prompts": { type: "PromptArenaSummary[]", description: "Paginated saved history: limit 1–100, default 20; offset >= 0" },
+            "GET /api/v1/arena/prompts/{id}": { type: "PromptArenaResult", description: "Reopen complete saved evidence; 404 when absent" },
+            "POST /api/v1/arena/prompts/{id}/apply": { type: "SuiteConfig", description: 'Apply the stored variant using {"variant":"A"} or {"variant":"B"}; 409 if the suite changed' },
+          }} />
+          <p>Invalid request fields return 422; empty suites or unsupported webhook comparisons return 400.
+            These endpoints extend the Studio and REST API. Existing model Arena, CLI, and MCP interfaces are unchanged.</p>
+        </section>
+      </div>
+    ),
+  },
+
   arena: {
     slug: "arena",
     title: "Model Arena Shootout",
@@ -947,6 +1033,11 @@ async def test_suite_support_ticket_classifier():
 
           <TypeTable
             type={{
+              "POST /api/v1/arena/prompts/estimate": { type: "PromptEstimate", description: "Estimate both prompt variants; returns a fingerprint to guard execution" },
+              "POST /api/v1/arena/prompts/compare": { type: "PromptArenaResult", description: "Compare two prompts on one model and persist original suite/settings/results" },
+              "GET /api/v1/arena/prompts": { type: "PromptArenaSummary[]", description: "Saved prompt comparisons, limit 1–100 and offset" },
+              "GET /api/v1/arena/prompts/{id}": { type: "PromptArenaResult", description: "Fetch full saved comparison evidence" },
+              "POST /api/v1/arena/prompts/{id}/apply": { type: "SuiteConfig", description: 'Apply {"variant":"A"} or {"variant":"B"}; 409 for changed suites' },
               "GET /api/v1/suites": { type: "SuiteSummary[]", description: "List all discovered YAML suites in the repository" },
               "POST /api/v1/suites": { type: "SuiteConfig", description: "Create and persist a new YAML test suite" },
               "GET /api/v1/suites/{name}": { type: "SuiteConfig", description: "Retrieve full YAML suite specification by name" },
