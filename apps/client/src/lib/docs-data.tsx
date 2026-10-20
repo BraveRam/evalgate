@@ -630,6 +630,10 @@ target:
           <p>The confirmation keeps the prompts, model, repeat count, and concurrency captured for
             the estimate. Editing the form while it loads does not change that run. If the source
             suite changes after estimating, execution returns 409 and requires a new estimate.</p>
+          <p>Comparisons can take longer than 30 seconds. Studio waits for the comparison and its
+            Next.js API proxy allows up to 30 minutes of inactivity. Keep the page open while it runs.
+            If you deploy behind another proxy, configure its timeout for the expected comparison
+            duration. Saved comparisons remain available in history if the connection is interrupted.</p>
         </section>
         <section id="prompt-results" className="space-y-4">
           <h2 className="text-xl font-bold">Read results and save a prompt</h2>

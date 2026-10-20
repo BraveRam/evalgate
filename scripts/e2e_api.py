@@ -1,5 +1,6 @@
 """Serve mock evaluation fixtures from a disposable workspace for browser tests."""
 
+import asyncio
 import os
 import tempfile
 from pathlib import Path
@@ -7,9 +8,22 @@ from pathlib import Path
 import uvicorn
 import yaml
 from evalgate.api.app import create_app
+from evalgate.providers import factory
+from evalgate.providers.mock import MockProvider
+
+
+class SlowRegressionMockProvider(MockProvider):
+    """Exercise the real proxy with slow inference only in this disposable server."""
+
+    async def complete(self, prompt, **kwargs):
+        if prompt.startswith("slow-proxy-regression"):
+            await asyncio.sleep(16)
+        return await super().complete(prompt, **kwargs)
 
 
 def main() -> None:
+    factory.MockProvider = SlowRegressionMockProvider
+
     suite = {
         "name": "ci-repeated-evaluation",
         "repeat": 3,

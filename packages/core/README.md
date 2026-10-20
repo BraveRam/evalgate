@@ -22,7 +22,9 @@ evalgate studio
 
 The Studio and REST API can compare two prompt templates/system instructions on one
 shared model. The selected model uses automatic provider routing, including a configured
-AI gateway; comparisons ignore the source suite's provider override. The engine keeps
+AI gateway; comparisons ignore the source suite's provider override.
+Studio allows 30 minutes of inactivity through its API proxy; additional deployment
+proxies need timeouts that cover the expected comparison duration. The engine keeps
 the source cases, assertions, context, temperature, top-p, tools, schema, and quality threshold identical. Runs execute A then B using
 the same concurrency limit; per-test repeat settings take precedence over the run
 override. Saved suite baselines do not gate these experiments.

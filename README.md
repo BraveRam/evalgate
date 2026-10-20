@@ -307,6 +307,8 @@ Choose a model-backed suite, edit A and B (template and system instructions), se
 attempts and concurrency, review the combined target-cost estimate, and start.
 The selected model uses automatic provider routing (including a configured AI gateway);
 the source suite's provider override is ignored for the comparison.
+Studio's API proxy allows up to 30 minutes of inactivity while waiting for a comparison.
+If you deploy behind another proxy, configure its timeout to cover your expected run time.
 Both variants use the same cases, assertions, context, sampling settings, tools,
 and schema. Per-test YAML repeat overrides remain authoritative. A runs before B
 with the same concurrency limit. Saved suite baselines do not gate experiments;

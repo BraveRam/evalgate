@@ -20,6 +20,8 @@ See the root README for provider configuration.
 Open **Prompt Arena** in the sidebar, select a model-backed suite and shared model,
 and edit prompt A and B. The selected model uses automatic provider routing, including
 a configured AI gateway, instead of inheriting the suite's provider override.
+The Next.js API proxy allows 30 minutes of inactivity for long comparisons;
+any additional deployment proxy needs a compatible timeout.
 Set repeated attempts, review the combined estimate, and start the comparison. Inspect pass rates, latency, target cost, side-by-side outputs,
 and per-attempt evidence. Saved comparisons include the source suite and settings
 and remain available after refresh.
