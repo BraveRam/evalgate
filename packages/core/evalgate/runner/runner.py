@@ -12,9 +12,11 @@ from typing import Any
 
 from evalgate.core.baselines import BaselineSnapshot, compare_to_baseline
 from evalgate.core.graph import run_test_case
+from evalgate.core.repetition import attempt_counts
 from evalgate.core.storage import StorageEngine
 from evalgate.core.types import (
     ArenaComparisonResult,
+    AttemptResult,
     SuiteConfig,
     SuiteRunResult,
     TargetConfig,
@@ -92,11 +94,19 @@ class SuiteRunner:
         save_to_storage: bool = True,
         on_test_complete: Any | None = None,
         baseline: BaselineSnapshot | None = None,
+        repeat: int | None = None,
+        max_success_rate_drop: float | None = None,
     ) -> SuiteRunResult:
         """
         Execute all test cases in a SuiteConfig concurrently with bounded concurrency.
         """
         validate_run_inputs(suite, concurrency)
+        counts = attempt_counts(suite, repeat)
+        drop = (
+            suite.max_success_rate_drop if max_success_rate_drop is None else max_success_rate_drop
+        )
+        if drop is not None:
+            drop = validate_min_pass_rate(drop)
         if baseline is None and save_to_storage:
             baseline = await self.storage.get_baseline(suite.name)
         if baseline is not None:
@@ -109,7 +119,7 @@ class SuiteRunner:
         if judge_provider is None:
             judge_provider = get_provider(model="openai/gpt-4o-mini")
 
-        async def _run_single(tc: TestCase) -> TestCaseResult:
+        async def _run_single(tc: TestCase, index: int) -> TestCaseResult:
             async with semaphore:
                 res = await run_test_case(
                     test_case=tc,
@@ -117,21 +127,48 @@ class SuiteRunner:
                     default_assertions=suite.default_assertions,
                     judge_provider=judge_provider,
                 )
+                res.attempt_index = index
                 if on_test_complete:
                     on_test_complete(res)
                 return res
 
         # Run all test cases in parallel
-        tasks = [_run_single(tc) for tc in suite.tests]
-        results: list[TestCaseResult] = await asyncio.gather(*tasks)
+        tasks = [
+            _run_single(tc, index + 1)
+            for tc, count in zip(suite.tests, counts)
+            for index in range(count)
+        ]
+        attempts: list[TestCaseResult] = await asyncio.gather(*tasks)
+        results: list[TestCaseResult] = []
+        offset = 0
+        for count in counts:
+            group = attempts[offset : offset + count]
+            offset += count
+            if count == 1:
+                results.append(group[0])
+                continue
+            representative = next((a for a in group if not a.passed), group[0])
+            summary = representative.model_copy(deep=True)
+            summary.attempt_index = None
+            summary.attempts = [
+                AttemptResult.model_validate(
+                    {key: getattr(a, key) for key in AttemptResult.model_fields}
+                )
+                for a in group
+            ]
+            summary.passed = all(a.passed for a in group)
+            summary.latency_ms = sum(a.latency_ms for a in group) / count
+            for field in ("input_tokens", "output_tokens", "total_tokens", "cost_usd"):
+                setattr(summary, field, sum(getattr(a, field) for a in group))
+            results.append(summary)
 
         # Compute Aggregations
         total_tests = len(results)
         passed_tests = sum(1 for r in results if r.passed)
         failed_tests = total_tests - passed_tests
-        pass_rate = passed_tests / total_tests
+        pass_rate = sum(a.passed for a in attempts) / len(attempts)
 
-        latencies = [r.latency_ms for r in results]
+        latencies = [a.latency_ms for a in attempts]
         avg_lat, p50_lat, p95_lat = calculate_percentiles(latencies)
 
         total_tokens = sum(r.total_tokens for r in results)
@@ -157,6 +194,7 @@ class SuiteRunner:
             total_tokens=total_tokens,
             total_cost_usd=total_cost,
             results=results,
+            metadata={"max_success_rate_drop": drop},
         )
 
         if baseline is not None:
@@ -176,6 +214,7 @@ async def compare_arena(
     model_b: str,
     storage: StorageEngine | None = None,
     concurrency: int = 10,
+    repeat: int | None = None,
 ) -> ArenaComparisonResult:
     """
     Run an A/B benchmark shootout comparing Model A vs Model B on the exact same suite.
@@ -187,8 +226,8 @@ async def compare_arena(
 
     # Run both models concurrently
     run_a, run_b = await asyncio.gather(
-        runner.run_suite(suite, target_override=target_a, concurrency=concurrency),
-        runner.run_suite(suite, target_override=target_b, concurrency=concurrency),
+        runner.run_suite(suite, target_override=target_a, concurrency=concurrency, repeat=repeat),
+        runner.run_suite(suite, target_override=target_b, concurrency=concurrency, repeat=repeat),
     )
 
     pass_rate_delta = round(run_b.pass_rate - run_a.pass_rate, 4)
@@ -196,8 +235,8 @@ async def compare_arena(
     cost_delta = round(run_b.total_cost_usd - run_a.total_cost_usd, 6)
 
     # Find mismatched test cases
-    results_a_map = {r.test_id: r.passed for r in run_a.results}
-    results_b_map = {r.test_id: r.passed for r in run_b.results}
+    results_a_map = {r.test_id: r.success_rate for r in run_a.results}
+    results_b_map = {r.test_id: r.success_rate for r in run_b.results}
 
     mismatched = [
         t_id for t_id in results_a_map if results_a_map.get(t_id) != results_b_map.get(t_id)

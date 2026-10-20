@@ -24,6 +24,7 @@ from evalgate.cli.formatters import (
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
 from evalgate.core.baselines import BaselineSnapshot
 from evalgate.core.cost import estimate_suite_cost
+from evalgate.core.repetition import attempt_counts
 from evalgate.core.storage import StorageEngine
 from evalgate.core.types import TestCaseResult
 from evalgate.providers.factory import get_provider
@@ -236,6 +237,24 @@ def run(
         bool,
         typer.Option("--json", help="Output raw JSON results (useful for CI/CD scripting)."),
     ] = False,
+    repeat: Annotated[
+        Optional[int],
+        typer.Option(
+            "--repeat",
+            min=1,
+            max=100,
+            help="Attempts per test; per-test YAML repeat takes precedence.",
+        ),
+    ] = None,
+    max_success_rate_drop: Annotated[
+        Optional[float],
+        typer.Option(
+            "--max-success-rate-drop",
+            min=0.0,
+            max=1.0,
+            help="Tolerated baseline success-rate drop (0.1 = 10 percentage points).",
+        ),
+    ] = None,
     baseline_path: Annotated[
         Optional[Path],
         typer.Option("--baseline", help="Exported baseline JSON for regression gating."),
@@ -260,6 +279,7 @@ def run(
                 update={"min_pass_rate": validate_min_pass_rate(min_pass_rate)}
             )
         validate_run_inputs(suite, concurrency)
+        counts = attempt_counts(suite, repeat)
     except ValueError as err:
         console.print(f"[bold red]Invalid run configuration:[/] {err}")
         raise typer.Exit(code=1) from err
@@ -293,6 +313,8 @@ def run(
                 concurrency=concurrency,
                 save_to_storage=not no_save,
                 baseline=baseline_snapshot,
+                repeat=repeat,
+                max_success_rate_drop=max_success_rate_drop,
             )
         )
         typer.echo(run_result.model_dump_json(indent=2))
@@ -305,9 +327,9 @@ def run(
             TimeElapsedColumn(),
             console=console,
         ) as progress:
-            total_tests = len(suite.tests)
+            total_tests = sum(counts)
             task_id = progress.add_task(
-                f"[bold cyan]Running {total_tests} test cases...[/]",
+                f"[bold cyan]Running {total_tests} attempts...[/]",
                 total=total_tests,
             )
 
@@ -323,6 +345,8 @@ def run(
                     save_to_storage=not no_save,
                     on_test_complete=_on_test_done,
                     baseline=baseline_snapshot,
+                    repeat=repeat,
+                    max_success_rate_drop=max_success_rate_drop,
                 )
             )
 
@@ -331,7 +355,7 @@ def run(
         if comparison:
             console.print(
                 f"Baseline {comparison['baseline_run_id']}: "
-                f"{len(comparison['regressed_test_ids'])} new failures, "
+                f"{len(comparison['regressed_test_ids'])} success-rate drops, "
                 f"{len(comparison['missing_test_ids'])} missing tests, "
                 f"{len(comparison['changed_test_ids'])} changed outputs"
             )
@@ -359,6 +383,7 @@ def compare(
         int,
         typer.Option("--concurrency", "-c", help="Number of concurrent test executions."),
     ] = 10,
+    repeat: Annotated[Optional[int], typer.Option("--repeat", min=1, max=100)] = None,
 ) -> None:
     """
     Run an A/B benchmark shootout comparing two LLMs on the exact same evaluation suite.
@@ -371,6 +396,7 @@ def compare(
 
     try:
         validate_run_inputs(suite, concurrency)
+        attempt_counts(suite, repeat)
     except ValueError as err:
         console.print(f"[bold red]Invalid run configuration:[/] {err}")
         raise typer.Exit(code=1) from err
@@ -382,6 +408,7 @@ def compare(
                 model_a=model_a,
                 model_b=model_b,
                 concurrency=concurrency,
+                repeat=repeat,
             )
         )
 
@@ -421,11 +448,12 @@ def cost(
     json_output: Annotated[
         bool, typer.Option("--json", help="Output machine-readable JSON.")
     ] = False,
+    repeat: Annotated[Optional[int], typer.Option("--repeat", min=1, max=100)] = None,
 ) -> None:
     """Estimate a suite's target token usage and USD cost without running it."""
     try:
         suite = load_suite_from_yaml(suite_path)
-        estimate = estimate_suite_cost(suite, model, output_tokens)
+        estimate = estimate_suite_cost(suite, model, output_tokens, repeat=repeat)
     except (SuiteLoadError, ValueError) as err:
         typer.echo(f"Cost estimation failed: {err}", err=True)
         raise typer.Exit(code=1) from err
@@ -440,6 +468,7 @@ def cost(
     for label, value in [
         ("Model", estimate["target_model"]),
         ("Tests", str(estimate["total_tests"])),
+        ("Attempts", str(estimate["total_attempts"])),
         ("Input tokens", str(estimate["estimated_input_tokens"])),
         ("Output tokens", str(estimate["estimated_output_tokens"])),
         ("Total tokens", str(estimate["total_estimated_tokens"])),

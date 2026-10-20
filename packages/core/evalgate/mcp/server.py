@@ -35,6 +35,8 @@ def create_mcp_server() -> MCPServer:
         suite_path: str,
         model_override: str | None = None,
         concurrency: int = 10,
+        repeat: int | None = None,
+        max_success_rate_drop: float | None = None,
     ) -> dict[str, Any]:
         """
         Execute an evaluation suite YAML file and enforce quality gates.
@@ -42,6 +44,8 @@ def create_mcp_server() -> MCPServer:
         Args:
             suite_path: Path to the evaluation suite YAML file (e.g. 'evals/rag_qa.yaml').
             model_override: Optional model override (e.g. 'openai/gpt-4o-mini').
+            max_success_rate_drop: Optional tolerated rate drop (0.1 = 10 percentage points).
+            repeat: Default attempts per test (1-100); per-test YAML overrides take precedence.
             concurrency: Number of parallel test case executions (default: 10).
 
         Returns:
@@ -62,7 +66,9 @@ def create_mcp_server() -> MCPServer:
                 suite=suite,
                 target_override=target,
                 concurrency=concurrency,
+                repeat=repeat,
                 save_to_storage=True,
+                max_success_rate_drop=max_success_rate_drop,
             )
         except ValueError as err:
             return {"error": str(err), "passed": False}
@@ -96,6 +102,19 @@ def create_mcp_server() -> MCPServer:
             "total_tokens": res.total_tokens,
             "total_cost_usd": res.total_cost_usd,
             "run_id": res.run_id,
+            "total_attempts": res.total_attempts,
+            "passed_attempts": res.passed_attempts,
+            "inconsistent_tests": res.inconsistent_tests,
+            "reliability": [
+                {
+                    "test_id": r.test_id,
+                    "passed_attempts": r.passed_attempts,
+                    "attempt_count": r.attempt_count,
+                    "success_rate": r.success_rate,
+                    "inconsistent": r.inconsistent,
+                }
+                for r in res.results
+            ],
             "failed_cases": failed_cases,
             "baseline_comparison": res.metadata.get("baseline_comparison"),
         }
@@ -105,6 +124,7 @@ def create_mcp_server() -> MCPServer:
         suite_path: str,
         model: str | None = None,
         estimated_output_tokens_per_test: int = 150,
+        repeat: int | None = None,
     ) -> dict[str, Any]:
         """
         Calculate pre-flight estimated token usage and inference cost for an evaluation suite.
@@ -123,7 +143,9 @@ def create_mcp_server() -> MCPServer:
             return {"error": f"Failed to load evaluation suite: {err}"}
 
         try:
-            return estimate_suite_cost(suite, model, estimated_output_tokens_per_test)
+            return estimate_suite_cost(
+                suite, model, estimated_output_tokens_per_test, repeat=repeat
+            )
         except ValueError as err:
             return {"error": str(err)}
 
@@ -133,6 +155,7 @@ def create_mcp_server() -> MCPServer:
         model_a: str,
         model_b: str,
         concurrency: int = 10,
+        repeat: int | None = None,
     ) -> dict[str, Any]:
         """
         Run an A/B benchmark shootout comparing two LLMs on the same evaluation suite.
@@ -141,6 +164,7 @@ def create_mcp_server() -> MCPServer:
             suite_path: Path to the evaluation suite YAML file.
             model_a: First model identifier (e.g. 'openai/gpt-4o-mini').
             model_b: Second model identifier (e.g. 'anthropic/claude-3-5-sonnet').
+            repeat: Default attempts per test (1-100); per-test YAML overrides take precedence.
             concurrency: Number of concurrent tests (default: 10).
 
         Returns:
@@ -157,6 +181,7 @@ def create_mcp_server() -> MCPServer:
                 model_a=model_a,
                 model_b=model_b,
                 concurrency=concurrency,
+                repeat=repeat,
             )
         except ValueError as err:
             return {"error": str(err), "passed": False}
@@ -272,6 +297,9 @@ def create_mcp_server() -> MCPServer:
                 "passed": r.passed,
                 "pass_rate": r.pass_rate,
                 "total_tests": r.total_tests,
+                "total_attempts": r.total_attempts,
+                "passed_attempts": r.passed_attempts,
+                "inconsistent_tests": r.inconsistent_tests,
                 "passed_tests": r.passed_tests,
                 "failed_tests": r.failed_tests,
                 "p50_latency_ms": r.p50_latency_ms,

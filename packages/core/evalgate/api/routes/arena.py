@@ -20,6 +20,7 @@ class ArenaCompareRequest(BaseModel):
     model_a: str = Field(default="openai/gpt-4o-mini")
     model_b: str = Field(default="anthropic/claude-3-5-sonnet")
     concurrency: int = Field(default=10, ge=1, le=50)
+    repeat: int | None = Field(default=None, ge=1, le=100, strict=True)
 
 
 @router.post("/compare")
@@ -39,6 +40,7 @@ async def run_arena_shootout(req: ArenaCompareRequest) -> ArenaComparisonResult:
             model_a=req.model_a,
             model_b=req.model_b,
             concurrency=req.concurrency,
+            repeat=req.repeat,
         )
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
