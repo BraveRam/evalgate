@@ -32,9 +32,14 @@ def prompt_target(suite: SuiteConfig, model: str, prompt: PromptVariant) -> Targ
         raise ValueError("Prompt Arena requires a non-empty model")
     if suite.target.type == TargetType.WEBHOOK:
         raise ValueError("Prompt Arena requires a model-backed suite, not a webhook")
+    # The selected model owns routing; an inherited override can silently run a
+    # different provider (for example mock) while recording the selected model.
     return suite.target.model_copy(
         deep=True,
-        update={"model": model, "template": prompt.template, "system_prompt": prompt.system_prompt}
+        update={
+            "model": model, "provider": None,
+            "template": prompt.template, "system_prompt": prompt.system_prompt,
+        }
     )
 
 

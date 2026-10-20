@@ -90,3 +90,28 @@ test("Prompt Arena refuses a stale estimated suite before making inference calls
   await expect(page.getByRole("alert").filter({ hasText: "Suite changed" })).toBeVisible();
   expect(await (await request.get("/api/v1/runs?suite=" + source.name)).json()).toHaveLength(0);
 });
+
+
+test("Prompt Arena completes through the production proxy after more than 30 seconds", async ({ page, request }) => {
+  test.setTimeout(90_000);
+  await prepare(request, page);
+  await page.getByRole("textbox", { name: "Prompt A template", exact: true }).fill("slow-proxy-regression wrong {{question}}");
+  await page.getByRole("textbox", { name: "Prompt B template", exact: true }).fill("slow-proxy-regression correct {{question}}");
+  await page.getByRole("button", { name: "Compare prompts", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("A: 5 attempts · B: 5 attempts");
+  const completed = page.waitForResponse(response => response.url().endsWith("/arena/prompts/compare"), { timeout: 70_000 });
+  const started = Date.now();
+  await page.getByRole("button", { name: "Start prompt comparison", exact: true }).click();
+  const response = await completed;
+  expect(response.ok()).toBeTruthy();
+  expect(Date.now() - started).toBeGreaterThan(30_000);
+  const result = await response.json();
+  expect(result.comparison.run_a.total_attempts).toBe(5);
+  expect(result.comparison.run_b.total_attempts).toBe(5);
+  const view = page.getByRole("region", { name: "Prompt comparison results", exact: true });
+  await expect(view).toContainText("Prompt B has the higher observed pass rate");
+  await expect(view).toContainText("5/5 attempts passed");
+  const saved = await request.get("/api/v1/arena/prompts/" + result.comparison_id);
+  expect(saved.ok()).toBeTruthy();
+  expect(await saved.json()).toEqual(result);
+});

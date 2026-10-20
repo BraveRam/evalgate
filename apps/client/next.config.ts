@@ -4,6 +4,10 @@ const apiURL = process.env.EVALGATE_API_URL || "http://127.0.0.1:8000";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // Prompt comparisons run A and B sequentially and can exceed the 30s default.
+    proxyTimeout: 30 * 60 * 1000,
+  },
   async rewrites() {
     return [
       {

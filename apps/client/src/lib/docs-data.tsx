@@ -613,6 +613,9 @@ target:
             Select a model-backed suite and one shared model. Both editors start with the suite&apos;s
             template and system instructions. Edit A or B, set attempts per test and concurrency,
             then choose Compare prompts and review the combined cost estimate before starting.</p>
+          <p>The selected model uses automatic provider routing, including a configured AI gateway.
+            The source suite&apos;s provider override is ignored for the comparison, so selecting a
+            live model from a mock suite runs the live model and requires its credentials.</p>
           <p>Per-test YAML repeat overrides take precedence over the attempts control.
             Both variants use identical cases, variables, context, assertions, temperature, top-p,
             tools, and JSON schema. A runs before B with the same concurrency limit (1–50).
@@ -627,6 +630,10 @@ target:
           <p>The confirmation keeps the prompts, model, repeat count, and concurrency captured for
             the estimate. Editing the form while it loads does not change that run. If the source
             suite changes after estimating, execution returns 409 and requires a new estimate.</p>
+          <p>Comparisons can take longer than 30 seconds. Studio waits for the comparison and its
+            Next.js API proxy allows up to 30 minutes of inactivity. Keep the page open while it runs.
+            If you deploy behind another proxy, configure its timeout for the expected comparison
+            duration. Saved comparisons remain available in history if the connection is interrupted.</p>
         </section>
         <section id="prompt-results" className="space-y-4">
           <h2 className="text-xl font-bold">Read results and save a prompt</h2>
