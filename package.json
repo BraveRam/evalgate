@@ -12,7 +12,8 @@
     "lint": "turbo lint",
     "lint:python": "uv run ruff check packages/core/evalgate",
     "typecheck:python": "uv run mypy packages/core/evalgate",
-    "clean": "turbo clean"
+    "clean": "turbo clean",
+    "test:e2e": "pnpm --filter @evalgate/client exec playwright test"
   },
   "devDependencies": {
     "turbo": "^2.4.4"

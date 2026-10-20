@@ -767,6 +767,7 @@ target:
     description: "Automate prompt regression testing and quality gates directly inside GitHub Actions pull request pipelines.",
     category: "DevOps & Reference",
     toc: [
+      { title: "EvalGate Project Checks", url: "#project-checks", depth: 2 },
       { title: "Baseline Checks in CI", url: "#baseline-ci", depth: 2 },
       { title: "GitHub Actions Workflow", url: "#github-actions", depth: 2 },
       { title: "Pytest Test Suite Integration", url: "#pytest", depth: 2 },
@@ -774,6 +775,30 @@ target:
     ],
     content: (
       <div className="space-y-8 text-sm leading-relaxed">
+        <section id="project-checks" className="space-y-4">
+          <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
+            EvalGate Project Checks
+          </h2>
+          <p>
+            This repository runs GitHub Actions checks on every pull request and push to main.
+            Python 3.11 and 3.14 run the full pytest suite, Ruff, and mypy.
+            Studio checks include ESLint, TypeScript, a production build, and Chromium browser tests.
+            The combined CI result must pass before merging.
+          </p>
+          <p>
+            Run <code>pnpm --filter @evalgate/client exec playwright install chromium</code> once,
+            then <code>pnpm test:e2e</code> from the project root.
+            The command builds Studio and starts a mock API in a temporary workspace on ports
+            3100 and 8100. Provider credentials and your saved suites are not used.
+          </p>
+          <p>
+            Browser regressions cover repeat validation, cost confirmation with settings changed
+            during estimation, WebSocket progress, attempt inspection, summary counts, and estimate
+            failures. Failed tests retain screenshots and traces; GitHub Actions stores browser
+            reports as downloadable artifacts for seven days.
+          </p>
+        </section>
+
         <section id="baseline-ci" className="space-y-4">
           <h2 className="text-xl font-bold text-white tracking-tight border-b border-border/60 pb-2">
             Baseline Checks in CI

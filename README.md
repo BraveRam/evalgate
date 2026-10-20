@@ -520,18 +520,29 @@ The server emits `run_started`, `test_complete`, and `run_finished` events.
 
 ## Testing & Quality Assurance
 
+GitHub Actions runs Python tests, Ruff, and mypy on Python 3.11 and 3.14, plus Studio lint, TypeScript, a production build, and Chromium regressions on every pull request and push to main. The combined CI check must pass before merging. Browser tests use mock providers and a temporary workspace; no provider secrets are needed.
+
 EvalGate maintains comprehensive test coverage across core types, runner graphs, deterministic assertions, semantic judge rubrics, pricing formulas, storage, CLI commands, and MCP tools:
 
 ```bash
 # Run the backend pytest suite
 uv run pytest
 
+# Run Python lint
+uv run ruff check packages/core/evalgate scripts/e2e_api.py
+
 # Run type checks
 uv run mypy packages/core/evalgate
+
+# Install the test browser once, then run browser regressions
+pnpm --filter @evalgate/client exec playwright install chromium
+pnpm test:e2e
 
 # Build Next.js Web Studio production bundle
 pnpm --filter @evalgate/client build
 ```
+
+The browser test command builds Studio and starts isolated servers on ports 3100 and 8100. HTML reports and failure traces are saved under `apps/client/playwright-report/` and `apps/client/test-results/`; CI uploads them as artifacts for seven days.
 
 ---
 
