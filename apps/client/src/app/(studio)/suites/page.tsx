@@ -76,6 +76,12 @@ import {
   Zap,
 } from "lucide-react";
 
+type EstimatedRun = {
+  suiteName: string;
+  repeat?: number;
+  maxSuccessRateDrop?: number;
+};
+
 // Safe YAML serializer for source preview
 function jsonToYaml(obj: any, indent = 0): string {
   const spaces = " ".repeat(indent);
@@ -130,7 +136,7 @@ export default function SuitesPage() {
 
   const [repeatInput, setRepeatInput] = useState("");
   const [dropInput, setDropInput] = useState("");
-  const [pendingRunSuite, setPendingRunSuite] = useState<string | null>(null);
+  const [pendingRun, setPendingRun] = useState<EstimatedRun | null>(null);
   const repeat = repeatInput === "" ? undefined : Number(repeatInput);
   const maxSuccessRateDrop = dropInput === "" ? undefined : Number(dropInput) / 100;
   const validRepeat = repeat === undefined || (Number.isInteger(repeat) && repeat >= 1 && repeat <= 100);
@@ -248,9 +254,11 @@ export default function SuitesPage() {
 
   // TanStack Mutation: Cost estimation
   const estimateMutation = useMutation({
-    mutationFn: (suiteName: string) => api.estimateCost(suiteName, { repeat }),
-    onSuccess: (data) => {
+    mutationFn: ({ run }: { run: EstimatedRun; startAfterEstimate?: boolean }) =>
+      api.estimateCost(run.suiteName, { repeat: run.repeat }),
+    onSuccess: (data, { run, startAfterEstimate }) => {
       setCostEstimate(data);
+      setPendingRun(startAfterEstimate ? run : null);
       setIsCostModalOpen(true);
     },
     onError: (err: Error) => {
@@ -298,7 +306,7 @@ export default function SuitesPage() {
   });
 
   // Live WebSocket Streaming Execution
-  const handleStartLiveStream = (suiteName: string) => {
+  const handleStartLiveStream = ({ suiteName, repeat, maxSuccessRateDrop }: EstimatedRun) => {
     setStreamingSuiteName(suiteName);
     setStreamTotalTests(0);
     setStreamCompletedResults([]);
@@ -576,7 +584,7 @@ export default function SuitesPage() {
                     {/* Suite Action Buttons */}
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <Button
-                        onClick={() => { setPendingRunSuite(null); estimateMutation.mutate(selectedSuite.name); }}
+                        onClick={() => estimateMutation.mutate({ run: { suiteName: selectedSuite.name, repeat, maxSuccessRateDrop } })}
                         disabled={estimateMutation.isPending || !validRepeat}
                         variant="outline"
                         size="sm"
@@ -586,7 +594,7 @@ export default function SuitesPage() {
                         {estimateMutation.isPending ? "Estimating..." : "Estimate Cost"}
                       </Button>
                       <Button
-                        onClick={() => { setPendingRunSuite(selectedSuite.name); estimateMutation.mutate(selectedSuite.name); }}
+                        onClick={() => estimateMutation.mutate({ run: { suiteName: selectedSuite.name, repeat, maxSuccessRateDrop }, startAfterEstimate: true })}
                         disabled={estimateMutation.isPending || !validRepeat || !validDrop || isStreamRunning}
                         variant="default"
                         size="sm"
@@ -640,7 +648,7 @@ export default function SuitesPage() {
                           <XCircle className="h-4 w-4 text-zinc-500" />
                         )}
                         <span className="text-white font-medium">
-                          Latest Run: {formatPercent(latestSuiteRun.pass_rate)} ({latestSuiteRun.passed_tests}/{latestSuiteRun.total_tests} passed)
+                          Latest Run: {formatPercent(latestSuiteRun.pass_rate)} ({latestSuiteRun.passed_attempts ?? latestSuiteRun.passed_tests}/{latestSuiteRun.total_attempts ?? latestSuiteRun.total_tests} attempts passed)
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-zinc-400 text-[11px]">
@@ -857,7 +865,7 @@ export default function SuitesPage() {
                     <Card className="border-border bg-card p-8 text-center text-xs text-zinc-500 space-y-2">
                       <p>No historical runs recorded for this suite.</p>
                       <Button
-                        onClick={() => { setPendingRunSuite(selectedSuite.name); estimateMutation.mutate(selectedSuite.name); }}
+                        onClick={() => estimateMutation.mutate({ run: { suiteName: selectedSuite.name, repeat, maxSuccessRateDrop }, startAfterEstimate: true })}
                         disabled={estimateMutation.isPending || !validRepeat || !validDrop || isStreamRunning}
                         variant="default"
                         size="sm"
@@ -884,7 +892,7 @@ export default function SuitesPage() {
                               </Badge>
                             )}
                             <span className="text-white font-medium">
-                              {formatPercent(run.pass_rate)} ({run.passed_tests}/{run.total_tests})
+                              {formatPercent(run.pass_rate)} ({run.passed_attempts ?? run.passed_tests}/{run.total_attempts ?? run.total_tests} attempts)
                             </span>
                           </div>
 
@@ -1179,7 +1187,7 @@ export default function SuitesPage() {
       {/* ========================================================================= */}
       {/* MODAL: Pre-Flight Cost Estimation                                        */}
       {/* ========================================================================= */}
-      <Dialog open={isCostModalOpen} onOpenChange={(open) => { setIsCostModalOpen(open); if (!open) setPendingRunSuite(null); }}>
+      <Dialog open={isCostModalOpen} onOpenChange={(open) => { setIsCostModalOpen(open); if (!open) setPendingRun(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -1190,7 +1198,7 @@ export default function SuitesPage() {
               Projected invocations, token consumption, and dollar spend before execution.
             </DialogDescription>
           </DialogHeader>
-          {pendingRunSuite && <p className="text-xs text-zinc-400">Review the estimated target cost before starting. Semantic judge costs are additional.</p>}
+          {pendingRun && <p className="text-xs text-zinc-400">Review the estimated target cost before starting. Semantic judge costs are additional.</p>}
           {costEstimate && (
             <div className="space-y-3 py-2 font-mono text-xs">
               <div className="p-3.5 rounded-lg border border-border bg-zinc-950 space-y-2.5">
@@ -1221,11 +1229,11 @@ export default function SuitesPage() {
               </div>
             </div>
           )}
-          {pendingRunSuite && costEstimate && <Button onClick={() => {
-            const name = pendingRunSuite;
-            setPendingRunSuite(null);
+          {pendingRun && costEstimate && <Button onClick={() => {
+            const run = pendingRun;
+            setPendingRun(null);
             setIsCostModalOpen(false);
-            handleStartLiveStream(name);
+            handleStartLiveStream(run);
           }}>Start {costEstimate.total_attempts ?? costEstimate.total_tests} attempts</Button>}
         </DialogContent>
       </Dialog>
