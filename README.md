@@ -305,6 +305,8 @@ They are approximate target inference costs and exclude semantic judge calls.
 Open **Prompt Arena** in Studio to compare two versions of a prompt using one model.
 Choose a model-backed suite, edit A and B (template and system instructions), set
 attempts and concurrency, review the combined target-cost estimate, and start.
+The selected model uses automatic provider routing (including a configured AI gateway);
+the source suite's provider override is ignored for the comparison.
 Both variants use the same cases, assertions, context, sampling settings, tools,
 and schema. Per-test YAML repeat overrides remain authoritative. A runs before B
 with the same concurrency limit. Saved suite baselines do not gate experiments;

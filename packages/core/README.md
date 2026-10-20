@@ -21,8 +21,9 @@ evalgate studio
 ## Prompt Arena
 
 The Studio and REST API can compare two prompt templates/system instructions on one
-shared model. The engine keeps the source cases, assertions, context, temperature,
-top-p, tools, schema, and quality threshold identical. Runs execute A then B using
+shared model. The selected model uses automatic provider routing, including a configured
+AI gateway; comparisons ignore the source suite's provider override. The engine keeps
+the source cases, assertions, context, temperature, top-p, tools, schema, and quality threshold identical. Runs execute A then B using
 the same concurrency limit; per-test repeat settings take precedence over the run
 override. Saved suite baselines do not gate these experiments.
 

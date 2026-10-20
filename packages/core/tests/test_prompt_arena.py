@@ -6,13 +6,17 @@ from pathlib import Path
 import pytest
 import yaml
 from fastapi.testclient import TestClient
+from langchain_core.messages import AIMessage
+from langchain_openai import ChatOpenAI
 
 from evalgate.api.app import create_app
 from evalgate.cli.loader import load_suite_from_yaml
-from evalgate.core.prompt_arena import compare_prompts, estimate_prompt_comparison
+from evalgate.core.prompt_arena import compare_prompts, estimate_prompt_comparison, prompt_target
 from evalgate.core.storage import StorageEngine
 from evalgate.core.types import PromptVariant, SuiteConfig
+from evalgate.providers.factory import get_provider
 from evalgate.providers.mock import MockProvider
+from evalgate.providers.vercel import VercelGatewayProvider
 from evalgate.runner.runner import SuiteRunner
 
 
@@ -194,3 +198,69 @@ def test_api_unknown_comparison_and_invalid_variant(api):
     assert client.post(
         "/api/v1/arena/prompts/missing/apply", json={"variant": "C"}
     ).status_code == 422
+
+
+@pytest.mark.parametrize(("original_provider", "model", "client_model"), [
+    ("mock", "openai/gpt-4o-mini", "gpt-4o-mini"),
+    ("ollama", "openai/gpt-4o-mini", "gpt-4o-mini"),
+    ("anthropic", "openai/gpt-4o-mini", "gpt-4o-mini"),
+    ("openai", "mock/simulator", None),
+    ("mock", "ollama/llama3", "llama3"),
+])
+def test_selected_model_controls_provider(monkeypatch, original_provider, model, client_model):
+    for key in ("VERCEL_AI_GATEWAY_KEY", "AI_GATEWAY_KEY"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only-key")
+    suite = source_suite()
+    suite.target.provider = original_provider
+    target = prompt_target(suite, model, A)
+    assert target.provider is None
+    assert suite.target.provider == original_provider
+    provider = get_provider(target=target)
+    if client_model is None:
+        assert isinstance(provider, MockProvider)
+    else:
+        assert isinstance(provider, VercelGatewayProvider)
+        assert isinstance(provider.client, ChatOpenAI)
+        assert provider.client.model_name == client_model
+        assert provider.model == ("llama3" if model.startswith("ollama/") else model)
+
+
+def test_api_mock_suite_selected_openai_uses_openai_and_persists_evidence(api, monkeypatch):
+    client, path = api
+    suite = yaml.safe_load(path.read_text())
+    suite["target"]["provider"] = "mock"
+    path.write_text(yaml.safe_dump(suite))
+    for key in ("VERCEL_AI_GATEWAY_KEY", "AI_GATEWAY_KEY"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only-key")
+    calls = []
+
+    async def fake_invoke(self, messages, **kwargs):
+        calls.append(self.model_name)
+        return AIMessage(content="correct from selected OpenAI client", usage_metadata={
+            "input_tokens": 10, "output_tokens": 6, "total_tokens": 16,
+        })
+
+    # Stub only the SDK network boundary; execute the real provider factory and adapter.
+    monkeypatch.setattr(ChatOpenAI, "ainvoke", fake_invoke)
+    body = request_data()
+    body["model"] = "openai/gpt-4o-mini"
+    estimate = client.post("/api/v1/arena/prompts/estimate", json=body)
+    assert estimate.status_code == 200
+    assert estimate.json()["estimated_cost_usd"] > 0
+    assert calls == []
+    response = client.post("/api/v1/arena/prompts/compare", json=body)
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert calls == ["gpt-4o-mini"] * 14
+    for name in ("run_a", "run_b"):
+        run = result["comparison"][name]
+        assert run["target_model"] == body["model"]
+        assert run["target_provider"] == "auto"
+        assert run["metadata"]["prompt_arena"]["target"]["provider"] is None
+        assert run["passed"]
+        assert run["total_cost_usd"] > 0
+    assert result["suite_snapshot"]["target"]["provider"] == "mock"
+    assert client.get(f"/api/v1/arena/prompts/{result['comparison_id']}").json() == result
+    assert yaml.safe_load(path.read_text()) == suite

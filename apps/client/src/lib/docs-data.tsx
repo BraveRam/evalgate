@@ -613,6 +613,9 @@ target:
             Select a model-backed suite and one shared model. Both editors start with the suite&apos;s
             template and system instructions. Edit A or B, set attempts per test and concurrency,
             then choose Compare prompts and review the combined cost estimate before starting.</p>
+          <p>The selected model uses automatic provider routing, including a configured AI gateway.
+            The source suite&apos;s provider override is ignored for the comparison, so selecting a
+            live model from a mock suite runs the live model and requires its credentials.</p>
           <p>Per-test YAML repeat overrides take precedence over the attempts control.
             Both variants use identical cases, variables, context, assertions, temperature, top-p,
             tools, and JSON schema. A runs before B with the same concurrency limit (1–50).
