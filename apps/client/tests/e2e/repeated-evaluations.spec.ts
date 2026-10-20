@@ -35,6 +35,9 @@ test("confirmed estimate preserves settings and shows attempt evidence", async (
   await expect(estimate).toContainText("2 test cases · 6 attempts");
   await estimate.getByRole("button", { name: "Start 6 attempts", exact: true }).click();
   await expect(page.getByText("6 / 6 attempts completed", { exact: true })).toBeVisible();
+  // Attempt progress can reach 100% before persistence and the terminal event.
+  await expect.poll(() => events.filter(event => event.type === "run_finished").length).toBe(1);
+  await expect(page.getByText("Execution Complete", { exact: true })).toBeVisible();
 
   expect(events.find(event => event.type === "run_started")?.total_attempts).toBe(6);
   const completed = events.filter(event => event.type === "test_complete");
@@ -61,7 +64,7 @@ test("confirmed estimate preserves settings and shows attempt evidence", async (
   await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
   await expect(page.getByText("Latest Run: 66.7% (4/6 attempts passed)", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: /^History/ }).click();
-  await expect(page.getByText("66.7% (4/6 attempts)", { exact: true })).toBeVisible();
+  await expect(page.getByText("66.7% (4/6 attempts)", { exact: true }).first()).toBeVisible();
 });
 
 test("invalid settings block execution and estimate-only has no start button", async ({ page }) => {
