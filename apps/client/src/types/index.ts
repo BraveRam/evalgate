@@ -207,3 +207,48 @@ export interface CostEstimateResponse {
   estimated_cost_usd: number;
   cost_per_test_usd: number;
 }
+
+
+export interface PromptVariant {
+  template: string;
+  system_prompt: string;
+}
+
+export interface PromptArenaRequest {
+  suite_name: string;
+  model: string;
+  prompt_a: PromptVariant;
+  prompt_b: PromptVariant;
+  repeat?: number;
+  concurrency: number;
+  suite_fingerprint?: string;
+}
+
+export interface PromptArenaResult {
+  comparison_id: string;
+  created_at: string;
+  suite_snapshot: SuiteConfig;
+  model: string;
+  prompt_a: PromptVariant;
+  prompt_b: PromptVariant;
+  repeat: number | null;
+  concurrency: number;
+  comparison: ArenaComparisonResult;
+}
+
+export interface PromptArenaSummary {
+  comparison_id: string;
+  suite_name: string;
+  model: string;
+  created_at: string;
+  pass_rate_a: number;
+  pass_rate_b: number;
+}
+
+export interface PromptEstimate {
+  suite_fingerprint: string;
+  estimate_a: CostEstimateResponse;
+  estimate_b: CostEstimateResponse;
+  estimated_cost_usd: number;
+  total_attempts: number;
+}

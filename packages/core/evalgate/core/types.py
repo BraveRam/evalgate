@@ -359,3 +359,30 @@ class ArenaComparisonResult(BaseModel):
         default_factory=list,
         description="Test case IDs where Model A and Model B had differing success rates",
     )
+
+
+class PromptVariant(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    template: str = Field(min_length=1, pattern=r"\S")
+    system_prompt: str = ""
+
+
+class PromptArenaResult(BaseModel):
+    comparison_id: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    suite_snapshot: SuiteConfig
+    model: str
+    prompt_a: PromptVariant
+    prompt_b: PromptVariant
+    repeat: int | None = None
+    concurrency: int
+    comparison: ArenaComparisonResult
+
+
+class PromptArenaSummary(BaseModel):
+    comparison_id: str
+    suite_name: str
+    model: str
+    created_at: datetime
+    pass_rate_a: float
+    pass_rate_b: float

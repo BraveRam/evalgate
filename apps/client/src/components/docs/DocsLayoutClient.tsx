@@ -78,6 +78,11 @@ const DOCS_NAV_SECTIONS: NavSection[] = [
         icon: Swords,
       },
       {
+        name: "Prompt Arena",
+        href: "/docs/prompt-arena",
+        icon: Swords,
+      },
+      {
         name: "Historical Analytics",
         href: "/docs/analytics",
         icon: BarChart3,

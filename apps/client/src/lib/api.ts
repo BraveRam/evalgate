@@ -1,6 +1,10 @@
 import { apiClient } from "@/lib/axios";
 import {
   ArenaComparisonResult,
+  PromptArenaRequest,
+  PromptArenaResult,
+  PromptArenaSummary,
+  PromptEstimate,
   BaselineComparison,
   BaselineSnapshot,
   CostEstimateResponse,
@@ -172,6 +176,27 @@ export const api = {
       "/api/v1/arena/compare",
       params
     );
+    return data;
+  },
+
+  estimatePrompts: async (params: PromptArenaRequest): Promise<PromptEstimate> => {
+    const { data } = await apiClient.post<PromptEstimate>("/api/v1/arena/prompts/estimate", params);
+    return data;
+  },
+  comparePrompts: async (params: PromptArenaRequest): Promise<PromptArenaResult> => {
+    const { data } = await apiClient.post<PromptArenaResult>("/api/v1/arena/prompts/compare", params, { timeout: 0 });
+    return data;
+  },
+  listPromptComparisons: async (offset = 0): Promise<PromptArenaSummary[]> => {
+    const { data } = await apiClient.get<PromptArenaSummary[]>("/api/v1/arena/prompts", { params: { limit: 20, offset } });
+    return data;
+  },
+  getPromptComparison: async (id: string): Promise<PromptArenaResult> => {
+    const { data } = await apiClient.get<PromptArenaResult>(`/api/v1/arena/prompts/${encodeURIComponent(id)}`);
+    return data;
+  },
+  applyPrompt: async (id: string, variant: "A" | "B"): Promise<SuiteConfig> => {
+    const { data } = await apiClient.post<SuiteConfig>(`/api/v1/arena/prompts/${encodeURIComponent(id)}/apply`, { variant });
     return data;
   },
 

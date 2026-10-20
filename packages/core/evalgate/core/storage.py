@@ -13,7 +13,12 @@ from typing import Any, AsyncGenerator
 import aiosqlite
 
 from evalgate.core.baselines import BaselineSnapshot
-from evalgate.core.types import SuiteConfig, SuiteRunResult
+from evalgate.core.types import (
+    PromptArenaResult,
+    PromptArenaSummary,
+    SuiteConfig,
+    SuiteRunResult,
+)
 
 DEFAULT_DB_DIR = Path(".evalgate")
 DEFAULT_DB_PATH = DEFAULT_DB_DIR / "runs.db"
@@ -105,6 +110,22 @@ class StorageEngine:
                     FOREIGN KEY(run_id) REFERENCES runs(run_id) ON DELETE CASCADE
                 );
             """)
+
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS prompt_comparisons (
+                    comparison_id TEXT PRIMARY KEY,
+                    suite_name TEXT NOT NULL,
+                    model TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    pass_rate_a REAL NOT NULL,
+                    pass_rate_b REAL NOT NULL,
+                    raw_json TEXT NOT NULL
+                );
+            """)
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_prompt_comparisons_date "
+                "ON prompt_comparisons(created_at DESC);"
+            )
 
             # Covering indexes
             await db.execute("""
@@ -346,3 +367,43 @@ class StorageEngine:
                     }
                     for r in rows
                 ]
+
+
+    async def save_prompt_comparison(self, result: PromptArenaResult) -> None:
+        async with self._connect() as db:
+            await db.execute(
+                "INSERT INTO prompt_comparisons "
+                "(comparison_id, suite_name, model, created_at, "
+                "pass_rate_a, pass_rate_b, raw_json) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    result.comparison_id, result.suite_snapshot.name, result.model,
+                    result.created_at.isoformat(), result.comparison.run_a.pass_rate,
+                    result.comparison.run_b.pass_rate, result.model_dump_json(),
+                ),
+            )
+            await db.commit()
+
+    async def get_prompt_comparison(self, comparison_id: str) -> PromptArenaResult | None:
+        async with self._connect() as db:
+            async with db.execute(
+                "SELECT raw_json FROM prompt_comparisons WHERE comparison_id = ?", (comparison_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+        return PromptArenaResult.model_validate_json(row[0]) if row else None
+
+    async def list_prompt_comparisons(
+        self, limit: int = 20, offset: int = 0
+    ) -> list[PromptArenaSummary]:
+        async with self._connect() as db:
+            async with db.execute(
+                "SELECT comparison_id, suite_name, model, created_at, pass_rate_a, pass_rate_b "
+                "FROM prompt_comparisons ORDER BY created_at DESC LIMIT ? OFFSET ?", (limit, offset)
+            ) as cursor:
+                rows = await cursor.fetchall()
+        return [
+            PromptArenaSummary(
+                comparison_id=r[0], suite_name=r[1], model=r[2], created_at=r[3],
+                pass_rate_a=r[4], pass_rate_b=r[5],
+            ) for r in rows
+        ]

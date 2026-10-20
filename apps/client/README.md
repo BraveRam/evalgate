@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EvalGate Studio
 
-## Getting Started
+The local web client for suites, prompt experiments, model comparisons, run history, and documentation.
 
-First, run the development server:
+## Run locally
+
+From the repository root, install dependencies with `uv sync --locked` and
+`pnpm install --frozen-lockfile`, then start the backend and client in separate terminals:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm dev:api
+pnpm dev:client
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Studio runs at http://localhost:3000. The backend runs at http://127.0.0.1:8000.
+See the root README for provider configuration.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Prompt Arena
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open **Prompt Arena** in the sidebar, select a model-backed suite and shared model,
+and edit prompt A and B. Set repeated attempts, review the combined estimate, and
+start the comparison. Inspect pass rates, latency, target cost, side-by-side outputs,
+and per-attempt evidence. Saved comparisons include the source suite and settings
+and remain available after refresh.
 
-## Learn More
+Apply A or B to change only template and system instructions in the source suite.
+Changed suites are rejected rather than overwritten. Model selection during the
+experiment does not change the suite's saved model. Detailed instructions and API
+examples are at http://localhost:3000/docs/prompt-arena.
 
-To learn more about Next.js, take a look at the following resources:
+The Studio documentation source is `src/lib/docs-data.tsx`; documentation navigation
+is in `src/components/docs/DocsLayoutClient.tsx`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Check changes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+From the repository root:
 
-## Deploy on Vercel
+```bash
+pnpm --filter @evalgate/client lint
+pnpm --filter @evalgate/client build
+pnpm --filter @evalgate/client exec tsc --noEmit
+pnpm --filter @evalgate/client exec playwright install chromium
+pnpm test:e2e
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Browser tests build production Studio and start a disposable mock backend on ports
+3100 and 8100. They exercise repeated suites, Prompt Arena, and documentation routes
+without paid model calls. Generated reports and traces are ignored by Git and ESLint.

@@ -16,6 +16,7 @@ from evalgate.api.routes.arena import router as arena_router
 from evalgate.api.routes.baselines import router as baselines_router
 from evalgate.api.routes.evaluate import router as evaluate_router
 from evalgate.api.routes.models import router as models_router
+from evalgate.api.routes.prompt_arena import router as prompt_arena_router
 from evalgate.api.routes.runs import router as runs_router
 from evalgate.api.routes.suites import router as suites_router
 from evalgate.api.routes.ws import router as ws_router
@@ -92,6 +93,7 @@ def create_app() -> FastAPI:
     api_v1.include_router(runs_router)
     api_v1.include_router(baselines_router)
     api_v1.include_router(arena_router)
+    api_v1.include_router(prompt_arena_router)
     api_v1.include_router(evaluate_router)
     api_v1.include_router(models_router)
     api_v1.include_router(ws_router)

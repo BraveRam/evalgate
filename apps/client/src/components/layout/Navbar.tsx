@@ -13,6 +13,7 @@ const ROUTE_NAMES: Record<string, string> = {
   "/playground": "Prompt Playground",
   "/suites": "Suites & Test Matrix",
   "/arena": "Arena Shootout",
+  "/prompt-arena": "Prompt Arena",
   "/analytics": "Analytics & Trends",
   "/export": "CI/CD Exporter",
 };
