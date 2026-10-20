@@ -58,3 +58,7 @@ yarn-error.log*
 .vscode/
 *.swp
 *.swo
+
+# Browser test artifacts
+playwright-report/
+test-results/
