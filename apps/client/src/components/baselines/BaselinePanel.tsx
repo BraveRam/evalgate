@@ -79,11 +79,17 @@ export function BaselinePanel({ run }: { run: SuiteRunResult }) {
       {baseline && !isBaseline && comparison && <div className="space-y-3">
         <p className={comparison.passed ? "text-emerald-400" : "text-red-400"} role="status">
           {comparison.passed ? "Regression gate passed" : "Regression gate failed"}
-          {` · ${comparison.regressed_test_ids.length} new failures · ${comparison.missing_test_ids.length} missing tests`}
+          {` · ${comparison.regressed_test_ids.length} success-rate drops · ${comparison.missing_test_ids.length} missing tests`}
         </p>
         <p className="text-xs text-zinc-400">
           {comparison.improved_test_ids.length} improved · {comparison.changed_test_ids.length} changed outputs
           {` · ${comparison.added_test_ids.length} added tests`}
+        </p>
+        <p className="text-xs text-zinc-400">
+          {comparison.max_success_rate_drop == null
+            ? "Repeated success-rate drops are informational. Single-attempt regressions and missing tests still fail the gate."
+            : `Repeated tests fail the baseline gate for drops greater than ${(comparison.max_success_rate_drop * 100).toFixed(1)} percentage points.`}
+          {` · ${comparison.gated_regressed_test_ids?.length ?? comparison.regressed_test_ids.length} gated regressions`}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono text-zinc-300">
           <span>Pass rate: {comparison.pass_rate_delta >= 0 ? "+" : ""}{(comparison.pass_rate_delta * 100).toFixed(1)} pp</span>
@@ -93,6 +99,10 @@ export function BaselinePanel({ run }: { run: SuiteRunResult }) {
         {comparison.cases.filter((item) => item.status !== "unchanged").map((item) => (
           <details key={item.test_id} className="rounded border border-zinc-800 p-2">
             <summary className="cursor-pointer text-zinc-200">{item.test_id} — {item.status}</summary>
+            {item.baseline_success_rate != null && item.current_success_rate != null && <p className="mt-2 text-xs text-zinc-400">
+              Baseline: {(item.baseline_success_rate * 100).toFixed(1)}% ({item.baseline_attempts} attempts) → Current: {(item.current_success_rate * 100).toFixed(1)}% ({item.current_attempts} attempts)
+              {` · ${((item.success_rate_delta ?? 0) * 100).toFixed(1)} pp · ${item.gates_regression ? "Gate failure" : "Informational"}`}
+            </p>}
             <div className="grid sm:grid-cols-2 gap-3 mt-2">
               <div><p className="text-zinc-500 mb-1">Baseline output</p><pre className="whitespace-pre-wrap break-words text-xs">{item.baseline?.completion ?? "Test absent"}</pre></div>
               <div><p className="text-zinc-500 mb-1">Current output</p><pre className="whitespace-pre-wrap break-words text-xs">{item.current?.completion ?? "Test absent"}</pre></div>

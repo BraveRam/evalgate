@@ -38,6 +38,7 @@ import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
 import { usePageTitle } from "@/lib/use-page-title";
 import { CodeViewer } from "@/components/ui/CodeViewer";
+import { AttemptDetails } from "@/components/evaluations/AttemptDetails";
 import { BaselinePanel } from "@/components/baselines/BaselinePanel";
 import { SuiteRunResult, TestCaseResult } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -167,6 +168,8 @@ function exportRunsToCSV(runsToExport: SuiteRunResult[]) {
     "Pass Rate (%)",
     "Passed Tests",
     "Total Tests",
+    "Passed Attempts",
+    "Total Attempts",
     "P50 Latency (ms)",
     "P95 Latency (ms)",
     "Total Tokens",
@@ -182,6 +185,8 @@ function exportRunsToCSV(runsToExport: SuiteRunResult[]) {
     (r.pass_rate * 100).toFixed(1),
     r.passed_tests,
     r.total_tests,
+    r.passed_attempts ?? r.passed_tests,
+    r.total_attempts ?? r.total_tests,
     Math.round(r.p50_latency_ms),
     Math.round(r.p95_latency_ms),
     r.total_tokens,
@@ -322,8 +327,8 @@ export default function AnalyticsPage() {
   const passedRunsCount = filteredRuns.filter((r) => r.passed).length;
   const overallGatePassRate = totalRunsCount > 0 ? passedRunsCount / totalRunsCount : null;
 
-  const totalEvaluatedTests = filteredRuns.reduce((acc, r) => acc + (r.total_tests || 0), 0);
-  const totalPassedTests = filteredRuns.reduce((acc, r) => acc + (r.passed_tests || 0), 0);
+  const totalEvaluatedTests = filteredRuns.reduce((acc, r) => acc + (r.total_attempts ?? r.total_tests ?? 0), 0);
+  const totalPassedTests = filteredRuns.reduce((acc, r) => acc + (r.passed_attempts ?? r.passed_tests ?? 0), 0);
   const testLevelAccuracy =
     totalEvaluatedTests > 0 ? totalPassedTests / totalEvaluatedTests : null;
 
@@ -377,7 +382,7 @@ export default function AnalyticsPage() {
         list.push({
           type: "REGRESSION",
           title: `Failing Quality Gate in ${suiteName}`,
-          description: `Latest run achieved ${formatPercent(sRuns[0].pass_rate)} pass rate (${sRuns[0].passed_tests}/${sRuns[0].total_tests} passed).`,
+          description: `Latest run achieved ${formatPercent(sRuns[0].pass_rate)} pass rate (${sRuns[0].passed_attempts ?? sRuns[0].passed_tests}/${sRuns[0].total_attempts ?? sRuns[0].total_tests} attempts passed).`,
           runId: sRuns[0].run_id,
           suiteName,
           timestamp: sRuns[0].timestamp,
@@ -438,8 +443,8 @@ export default function AnalyticsPage() {
         passed: r.passed,
         rawPassRate: r.pass_rate,
         passRate: Math.round((r.pass_rate || 0) * 100),
-        passedTests: r.passed_tests || 0,
-        totalTests: r.total_tests || 0,
+        passedTests: r.passed_attempts ?? r.passed_tests ?? 0,
+        totalTests: r.total_attempts ?? r.total_tests ?? 0,
         p50Latency: hideOutliers && p50 > 10000 ? 10000 : p50,
         p95Latency: hideOutliers && p95 > 10000 ? 10000 : p95,
         isOutlier: p50 > 10000 || p95 > 10000,
@@ -669,7 +674,7 @@ export default function AnalyticsPage() {
                 {testLevelAccuracy !== null ? formatPercent(testLevelAccuracy) : "—"}
               </div>
               <p className="text-[11px] text-zinc-500">
-                {totalPassedTests} of {totalEvaluatedTests} individual tests passed
+                {totalPassedTests} of {totalEvaluatedTests} attempts passed
               </p>
             </CardContent>
           </Card>
@@ -751,13 +756,13 @@ export default function AnalyticsPage() {
                         orientation="right"
                         stroke="#71717a"
                         fontSize={10}
-                        unit=" tests"
+                        unit=" attempts"
                       />
                       <RechartsTooltip content={<CustomAnalyticsTooltip />} />
                       <Bar
                         yAxisId="right"
                         dataKey="totalTests"
-                        name="Tests in Run"
+                        name="Attempts in Run"
                         fill="#3f3f46"
                         radius={[2, 2, 0, 0]}
                         maxBarSize={16}
@@ -986,7 +991,7 @@ export default function AnalyticsPage() {
                             {formatPercent(r.pass_rate)}
                           </span>
                           <span className="text-[10px] text-zinc-500 ml-1">
-                            ({r.passed_tests}/{r.total_tests})
+                            ({r.passed_attempts ?? r.passed_tests}/{r.total_attempts ?? r.total_tests} attempts)
                           </span>
                         </td>
                         <td className="py-3 px-3 font-mono text-zinc-400">
@@ -1075,7 +1080,7 @@ export default function AnalyticsPage() {
                   <div>
                     <span className="text-[10px] text-zinc-500 uppercase block">Pass Rate</span>
                     <span className="text-white font-semibold">
-                      {formatPercent(selectedRunForDetails.pass_rate)} ({selectedRunForDetails.passed_tests}/{selectedRunForDetails.total_tests})
+                      {formatPercent(selectedRunForDetails.pass_rate)} ({selectedRunForDetails.passed_attempts ?? selectedRunForDetails.passed_tests}/{selectedRunForDetails.total_attempts ?? selectedRunForDetails.total_tests} attempts)
                     </span>
                   </div>
                   <div>
@@ -1128,6 +1133,7 @@ export default function AnalyticsPage() {
                           </div>
                         </div>
 
+                        <AttemptDetails result={tc} />
                         {/* Assertion results */}
                         {tc.assertion_results && tc.assertion_results.length > 0 && (
                           <div className="space-y-1 pt-1 border-t border-border/40">

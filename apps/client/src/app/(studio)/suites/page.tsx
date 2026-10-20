@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
+import { AttemptDetails } from "@/components/evaluations/AttemptDetails";
 import { usePageTitle } from "@/lib/use-page-title";
 import { CodeViewer } from "@/components/ui/CodeViewer";
 import { SearchableModelSelect } from "@/components/ui/SearchableModelSelect";
@@ -74,6 +75,12 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+
+type EstimatedRun = {
+  suiteName: string;
+  repeat?: number;
+  maxSuccessRateDrop?: number;
+};
 
 // Safe YAML serializer for source preview
 function jsonToYaml(obj: any, indent = 0): string {
@@ -126,6 +133,14 @@ export default function SuitesPage() {
   const [newSuiteTemplate, setNewSuiteTemplate] = useState("Context: {{context}}\n\nQuestion: {{question}}\n\nAnswer:");
   const [isCopiedYaml, setIsCopiedYaml] = useState(false);
   const [isCopiedPath, setIsCopiedPath] = useState(false);
+
+  const [repeatInput, setRepeatInput] = useState("");
+  const [dropInput, setDropInput] = useState("");
+  const [pendingRun, setPendingRun] = useState<EstimatedRun | null>(null);
+  const repeat = repeatInput === "" ? undefined : Number(repeatInput);
+  const maxSuccessRateDrop = dropInput === "" ? undefined : Number(dropInput) / 100;
+  const validRepeat = repeat === undefined || (Number.isInteger(repeat) && repeat >= 1 && repeat <= 100);
+  const validDrop = maxSuccessRateDrop === undefined || (Number.isFinite(maxSuccessRateDrop) && maxSuccessRateDrop >= 0 && maxSuccessRateDrop <= 1);
 
   // Live Stream Runner Modal state
   const [isStreamingModalOpen, setIsStreamingModalOpen] = useState(false);
@@ -239,9 +254,11 @@ export default function SuitesPage() {
 
   // TanStack Mutation: Cost estimation
   const estimateMutation = useMutation({
-    mutationFn: (suiteName: string) => api.estimateCost(suiteName),
-    onSuccess: (data) => {
+    mutationFn: ({ run }: { run: EstimatedRun; startAfterEstimate?: boolean }) =>
+      api.estimateCost(run.suiteName, { repeat: run.repeat }),
+    onSuccess: (data, { run, startAfterEstimate }) => {
       setCostEstimate(data);
+      setPendingRun(startAfterEstimate ? run : null);
       setIsCostModalOpen(true);
     },
     onError: (err: Error) => {
@@ -289,7 +306,7 @@ export default function SuitesPage() {
   });
 
   // Live WebSocket Streaming Execution
-  const handleStartLiveStream = (suiteName: string) => {
+  const handleStartLiveStream = ({ suiteName, repeat, maxSuccessRateDrop }: EstimatedRun) => {
     setStreamingSuiteName(suiteName);
     setStreamTotalTests(0);
     setStreamCompletedResults([]);
@@ -301,8 +318,10 @@ export default function SuitesPage() {
     streamSuiteRun({
       suiteName,
       concurrency: 10,
+      repeat,
+      maxSuccessRateDrop,
       onStarted: (data) => {
-        setStreamTotalTests(data.total_tests);
+        setStreamTotalTests(data.total_attempts ?? data.total_tests);
       },
       onTestComplete: (tc) => {
         setStreamCompletedResults((prev) => [...prev, tc]);
@@ -512,6 +531,25 @@ export default function SuitesPage() {
             </Card>
           ) : (
             <div className="space-y-5">
+              <Card className="border-border bg-card p-4 space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-1 text-xs text-zinc-300">
+                    <span>Attempts per test</span>
+                    <Input aria-label="Attempts per test" type="number" min={1} max={100} step={1}
+                      placeholder={`Suite default (${selectedSuite.repeat ?? 1})`}
+                      value={repeatInput} onChange={(event) => setRepeatInput(event.target.value)} />
+                  </label>
+                  <label className="space-y-1 text-xs text-zinc-300">
+                    <span>Tolerated baseline drop (percentage points)</span>
+                    <Input aria-label="Tolerated baseline drop" type="number" min={0} max={100} step="any"
+                      placeholder={selectedSuite.max_success_rate_drop == null ? "Report only" : `Suite default (${selectedSuite.max_success_rate_drop * 100})`}
+                      value={dropInput} onChange={(event) => setDropInput(event.target.value)} />
+                  </label>
+                </div>
+                <p className="text-xs text-zinc-500">Per-test YAML repeat overrides take precedence. Mixed outcomes are marked inconsistent. Repeated baseline drops are informational unless a tolerance is configured; the suite pass-rate requirement always applies.</p>
+                {(!validRepeat || !validDrop) && <p role="alert" className="text-xs text-red-300">Use a whole number from 1 to 100 attempts and a drop from 0 to 100 percentage points.</p>}
+                {estimateMutation.error && <p role="alert" className="text-xs text-red-300">{estimateMutation.error.message}</p>}
+              </Card>
               {/* 1. Header & Health Summary Banner */}
               <Card className="border-border bg-card">
                 <CardHeader className="p-5 pb-3">
@@ -546,8 +584,8 @@ export default function SuitesPage() {
                     {/* Suite Action Buttons */}
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <Button
-                        onClick={() => estimateMutation.mutate(selectedSuite.name)}
-                        disabled={estimateMutation.isPending}
+                        onClick={() => estimateMutation.mutate({ run: { suiteName: selectedSuite.name, repeat, maxSuccessRateDrop } })}
+                        disabled={estimateMutation.isPending || !validRepeat}
                         variant="outline"
                         size="sm"
                         className="text-xs gap-1.5 h-8 text-zinc-300 hover:text-white whitespace-nowrap shrink-0"
@@ -556,7 +594,8 @@ export default function SuitesPage() {
                         {estimateMutation.isPending ? "Estimating..." : "Estimate Cost"}
                       </Button>
                       <Button
-                        onClick={() => handleStartLiveStream(selectedSuite.name)}
+                        onClick={() => estimateMutation.mutate({ run: { suiteName: selectedSuite.name, repeat, maxSuccessRateDrop }, startAfterEstimate: true })}
+                        disabled={estimateMutation.isPending || !validRepeat || !validDrop || isStreamRunning}
                         variant="default"
                         size="sm"
                         className="text-xs gap-1.5 h-8 whitespace-nowrap shrink-0"
@@ -609,7 +648,7 @@ export default function SuitesPage() {
                           <XCircle className="h-4 w-4 text-zinc-500" />
                         )}
                         <span className="text-white font-medium">
-                          Latest Run: {formatPercent(latestSuiteRun.pass_rate)} ({latestSuiteRun.passed_tests}/{latestSuiteRun.total_tests} passed)
+                          Latest Run: {formatPercent(latestSuiteRun.pass_rate)} ({latestSuiteRun.passed_attempts ?? latestSuiteRun.passed_tests}/{latestSuiteRun.total_attempts ?? latestSuiteRun.total_tests} attempts passed)
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-zinc-400 text-[11px]">
@@ -826,7 +865,8 @@ export default function SuitesPage() {
                     <Card className="border-border bg-card p-8 text-center text-xs text-zinc-500 space-y-2">
                       <p>No historical runs recorded for this suite.</p>
                       <Button
-                        onClick={() => handleStartLiveStream(selectedSuite.name)}
+                        onClick={() => estimateMutation.mutate({ run: { suiteName: selectedSuite.name, repeat, maxSuccessRateDrop }, startAfterEstimate: true })}
+                        disabled={estimateMutation.isPending || !validRepeat || !validDrop || isStreamRunning}
                         variant="default"
                         size="sm"
                         className="text-xs"
@@ -852,7 +892,7 @@ export default function SuitesPage() {
                               </Badge>
                             )}
                             <span className="text-white font-medium">
-                              {formatPercent(run.pass_rate)} ({run.passed_tests}/{run.total_tests})
+                              {formatPercent(run.pass_rate)} ({run.passed_attempts ?? run.passed_tests}/{run.total_attempts ?? run.total_tests} attempts)
                             </span>
                           </div>
 
@@ -1046,10 +1086,10 @@ export default function SuitesPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs font-mono">
                 <span className="text-zinc-400">
-                  {isStreamRunning ? "Running tests concurrently..." : finalRunResult ? "Execution Complete" : "Connecting..."}
+                  {isStreamRunning ? "Running attempts concurrently..." : finalRunResult ? "Execution Complete" : "Connecting..."}
                 </span>
                 <span className="text-white font-medium">
-                  {streamCompletedResults.length} / {streamTotalTests || "?"} completed
+                  {streamCompletedResults.length} / {streamTotalTests || "?"} attempts completed
                 </span>
               </div>
               <Progress
@@ -1105,6 +1145,10 @@ export default function SuitesPage() {
               </div>
             )}
 
+            {finalRunResult && <div className="space-y-3">
+              <p className="text-xs text-zinc-400">{finalRunResult.passed_attempts ?? finalRunResult.passed_tests}/{finalRunResult.total_attempts ?? finalRunResult.total_tests} attempts passed · {finalRunResult.inconsistent_tests ?? 0} inconsistent tests</p>
+              {finalRunResult.results.map((result) => <AttemptDetails key={result.test_id} result={result} />)}
+            </div>}
             {/* Live Streaming Test Results */}
             <div className="space-y-1.5">
               <h4 className="text-[11px] font-medium text-zinc-500 uppercase">Test Case Stream</h4>
@@ -1121,7 +1165,7 @@ export default function SuitesPage() {
                         ) : (
                           <XCircle className="h-3.5 w-3.5 text-zinc-500" />
                         )}
-                        <span className="font-medium text-white">Test: {tc.test_id}</span>
+                        <span className="font-medium text-white">Test: {tc.test_id} · Attempt {tc.attempt_index ?? 1}</span>
                       </div>
                       <div className="flex items-center gap-2 text-[10px] text-zinc-400">
                         <span>{formatMs(tc.latency_ms)}</span>
@@ -1143,7 +1187,7 @@ export default function SuitesPage() {
       {/* ========================================================================= */}
       {/* MODAL: Pre-Flight Cost Estimation                                        */}
       {/* ========================================================================= */}
-      <Dialog open={isCostModalOpen} onOpenChange={setIsCostModalOpen}>
+      <Dialog open={isCostModalOpen} onOpenChange={(open) => { setIsCostModalOpen(open); if (!open) setPendingRun(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -1154,6 +1198,7 @@ export default function SuitesPage() {
               Projected invocations, token consumption, and dollar spend before execution.
             </DialogDescription>
           </DialogHeader>
+          {pendingRun && <p className="text-xs text-zinc-400">Review the estimated target cost before starting. Semantic judge costs are additional.</p>}
           {costEstimate && (
             <div className="space-y-3 py-2 font-mono text-xs">
               <div className="p-3.5 rounded-lg border border-border bg-zinc-950 space-y-2.5">
@@ -1167,7 +1212,7 @@ export default function SuitesPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-500">Test Cases:</span>
-                  <span className="font-medium text-zinc-200">{costEstimate.total_tests} test cases</span>
+                  <span className="font-medium text-zinc-200">{costEstimate.total_tests} test cases · {costEstimate.total_attempts ?? costEstimate.total_tests} attempts</span>
                 </div>
                 <div className="flex justify-between border-t border-border pt-1.5">
                   <span className="text-zinc-500">Estimated Input Tokens:</span>
@@ -1184,6 +1229,12 @@ export default function SuitesPage() {
               </div>
             </div>
           )}
+          {pendingRun && costEstimate && <Button onClick={() => {
+            const run = pendingRun;
+            setPendingRun(null);
+            setIsCostModalOpen(false);
+            handleStartLiveStream(run);
+          }}>Start {costEstimate.total_attempts ?? costEstimate.total_tests} attempts</Button>}
         </DialogContent>
       </Dialog>
     </div>
