@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
+import yaml
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
@@ -24,6 +25,7 @@ from evalgate.cli.formatters import (
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
 from evalgate.core.baselines import BaselineSnapshot
 from evalgate.core.cost import estimate_suite_cost
+from evalgate.core.fuzzer import FuzzCategory, generate_fuzz_cases
 from evalgate.core.repetition import attempt_counts
 from evalgate.core.storage import StorageEngine
 from evalgate.core.types import TestCaseResult
@@ -480,6 +482,128 @@ def cost(
     console.print("Approximate target inference cost using built-in pricing; excludes judge calls.")
 
 
+@app.command()
+def fuzz(
+    suite_path: Annotated[
+        Path,
+        typer.Argument(help="Path to the evaluation suite YAML file."),
+    ],
+    categories: Annotated[
+        Optional[str],
+        typer.Option(
+            "--categories",
+            "-c",
+            help="Comma-separated fuzz categories (empty,injection,escaping,boundary,unicode).",
+        ),
+    ] = None,
+    max_cases: Annotated[
+        int,
+        typer.Option("--max-cases", "-n", min=1, max=50, help="Maximum edge cases to generate."),
+    ] = 5,
+    run_cases: Annotated[
+        bool,
+        typer.Option("--run", help="Dry-run generated edge cases against the target immediately."),
+    ] = False,
+    save: Annotated[
+        bool,
+        typer.Option("--save", help="Append generated edge cases to the suite YAML file."),
+    ] = False,
+    model: Annotated[
+        Optional[str],
+        typer.Option("--model", "-m", help="Override target model when dry-running."),
+    ] = None,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Emit JSON output instead of formatted terminal tables."),
+    ] = False,
+) -> None:
+    """
+    Deterministically synthesize edge-case and adversarial test cases for a suite.
+    """
+    try:
+        suite = load_suite_from_yaml(suite_path)
+        parsed_categories: list[FuzzCategory] | None = None
+        if categories:
+            parsed_categories = [
+                FuzzCategory(item.strip().lower())
+                for item in categories.split(",")
+                if item.strip()
+            ]
+        generated = generate_fuzz_cases(
+            suite=suite,
+            categories=parsed_categories,
+            max_cases=max_cases,
+        )
+    except (SuiteLoadError, ValueError) as err:
+        typer.echo(f"Fuzz generation failed: {err}", err=True)
+        raise typer.Exit(code=1) from err
+
+    dry_run_result = None
+    if run_cases and generated:
+        target = suite.target
+        if model:
+            target = target.model_copy(update={"model": model})
+        fuzz_suite = suite.model_copy(
+            update={"tests": [item.test_case for item in generated], "repeat": 1}
+        )
+        runner = SuiteRunner()
+        dry_run_result = asyncio.run(
+            runner.run_suite(
+                suite=fuzz_suite,
+                target_override=target,
+                concurrency=min(10, len(generated)),
+                save_to_storage=False,
+            )
+        )
+
+    if save and generated:
+        updated_suite = suite.model_copy(
+            update={"tests": [*suite.tests, *(item.test_case for item in generated)]}
+        )
+        content = yaml.safe_dump(
+            updated_suite.model_dump(mode="json", exclude_none=True),
+            sort_keys=False,
+        )
+        suite_path.write_text(content, encoding="utf-8")
+
+    if json_output:
+        payload = {
+            "suite_name": suite.name,
+            "generated_cases": [item.model_dump(mode="json") for item in generated],
+            "saved_count": len(generated) if save else 0,
+            "dry_run_result": dry_run_result.model_dump(mode="json") if dry_run_result else None,
+        }
+        typer.echo(json.dumps(payload, indent=2))
+        return
+
+    table = Table(title=f"Synthesized Edge Cases: {suite.name} ({len(generated)} cases)")
+    table.add_column("Test ID", style="cyan")
+    table.add_column("Category", style="magenta")
+    table.add_column("Variable", style="green")
+    table.add_column("Assertions", style="yellow")
+    table.add_column("Description")
+
+    for item in generated:
+        assertions_summary = ", ".join(a.type.value for a in item.test_case.assertions)
+        table.add_row(
+            item.test_case.id,
+            item.category.value,
+            item.target_variable or "context",
+            assertions_summary,
+            item.description,
+        )
+    console.print(table)
+
+    if dry_run_result is not None:
+        render_run_summary(dry_run_result, verbose=False)
+
+    if save:
+        console.print(
+            f"[bold green]Saved {len(generated)} generated edge cases to {suite_path}[/]"
+        )
+
+
+
 @app.command(name="list")
 def list_runs(
     suite: Annotated[
@@ -569,3 +693,7 @@ def studio(
         f"  • OpenAPI Spec: [cyan]http://{host}:{port}/openapi.json[/]"
     )
     uvicorn.run("evalgate.api.app:app", host=host, port=port, reload=reload)
+
+
+if __name__ == "__main__":
+    app()

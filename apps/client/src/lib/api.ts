@@ -8,6 +8,8 @@ import {
   BaselineComparison,
   BaselineSnapshot,
   CostEstimateResponse,
+  FuzzCategory,
+  FuzzSuiteResponse,
   HistoricalTrendPoint,
   ModelPricing,
   SuiteConfig,
@@ -104,6 +106,23 @@ export const api = {
   ): Promise<CostEstimateResponse> => {
     const { data } = await apiClient.post<CostEstimateResponse>(
       `/api/v1/suites/${encodeURIComponent(name)}/estimate-cost`,
+      params || {}
+    );
+    return data;
+  },
+
+  fuzzSuite: async (
+    name: string,
+    params?: {
+      categories?: FuzzCategory[];
+      max_cases?: number;
+      run_immediately?: boolean;
+      save_to_suite?: boolean;
+      model_override?: string;
+    }
+  ): Promise<FuzzSuiteResponse> => {
+    const { data } = await apiClient.post<FuzzSuiteResponse>(
+      `/api/v1/suites/${encodeURIComponent(name)}/fuzz`,
       params || {}
     );
     return data;

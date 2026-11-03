@@ -39,6 +39,9 @@ import { SearchableModelSelect } from "@/components/ui/SearchableModelSelect";
 import { streamSuiteRun } from "@/lib/ws";
 import {
   CostEstimateResponse,
+  FuzzCategory,
+  FuzzGeneratedCase,
+  FuzzSuiteResponse,
   SuiteConfig,
   SuiteRunResult,
   SuiteSummary,
@@ -155,6 +158,19 @@ export default function SuitesPage() {
   const [costEstimate, setCostEstimate] = useState<CostEstimateResponse | null>(null);
   const [isCostModalOpen, setIsCostModalOpen] = useState(false);
 
+  // Suite Fuzzing / Edge-Case Generator Modal state
+  const [isFuzzModalOpen, setIsFuzzModalOpen] = useState(false);
+  const [fuzzCategories, setFuzzCategories] = useState<FuzzCategory[]>([
+    "empty",
+    "injection",
+    "escaping",
+    "boundary",
+    "unicode",
+  ]);
+  const [fuzzMaxCases, setFuzzMaxCases] = useState<number>(5);
+  const [fuzzResponse, setFuzzResponse] = useState<FuzzSuiteResponse | null>(null);
+  const [selectedFuzzIds, setSelectedFuzzIds] = useState<Record<string, boolean>>({});
+
   // Expanded Test Case row in matrix
   const [expandedCaseId, setExpandedCaseId] = useState<string | null>(null);
 
@@ -265,6 +281,63 @@ export default function SuitesPage() {
       console.error("Cost estimation error:", err);
     },
   });
+
+  // TanStack Mutation: Deterministic Suite Fuzzing
+  const fuzzMutation = useMutation({
+    mutationFn: ({
+      suiteName,
+      runImmediately,
+    }: {
+      suiteName: string;
+      runImmediately: boolean;
+    }) =>
+      api.fuzzSuite(suiteName, {
+        categories: fuzzCategories,
+        max_cases: fuzzMaxCases,
+        run_immediately: runImmediately,
+        save_to_suite: false,
+      }),
+    onSuccess: (data) => {
+      setFuzzResponse(data);
+      const nextSelected: Record<string, boolean> = {};
+      for (const item of data.generated_cases) {
+        nextSelected[item.test_case.id] = true;
+      }
+      setSelectedFuzzIds(nextSelected);
+    },
+  });
+
+  const saveFuzzCasesMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedSuite || !fuzzResponse) return null;
+      const toAdd = fuzzResponse.generated_cases
+        .filter((g) => selectedFuzzIds[g.test_case.id])
+        .map((g) => g.test_case);
+      if (toAdd.length === 0) return null;
+      const updatedSuite: SuiteConfig = {
+        ...selectedSuite,
+        tests: [...(selectedSuite.tests || []), ...toAdd],
+      };
+      return api.updateSuite(selectedSuite.name, updatedSuite);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suites"] });
+      queryClient.invalidateQueries({ queryKey: ["suite", activeSuiteName] });
+      setIsFuzzModalOpen(false);
+      setFuzzResponse(null);
+      setActiveTab("cases");
+    },
+  });
+
+  const toggleFuzzCategory = (category: FuzzCategory) => {
+    setFuzzCategories((prev) =>
+      prev.includes(category)
+        ? prev.length > 1
+          ? prev.filter((c) => c !== category)
+          : prev
+        : [...prev, category]
+    );
+  };
 
   // Create Suite Mutation
   const createSuiteMutation = useMutation({
@@ -583,6 +656,18 @@ export default function SuitesPage() {
 
                     {/* Suite Action Buttons */}
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <Button
+                        onClick={() => {
+                          setFuzzResponse(null);
+                          setIsFuzzModalOpen(true);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs gap-1.5 h-8 text-zinc-300 hover:text-white whitespace-nowrap shrink-0"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
+                        Generate Edge Cases
+                      </Button>
                       <Button
                         onClick={() => estimateMutation.mutate({ run: { suiteName: selectedSuite.name, repeat, maxSuccessRateDrop } })}
                         disabled={estimateMutation.isPending || !validRepeat}
@@ -1235,6 +1320,276 @@ export default function SuitesPage() {
             setIsCostModalOpen(false);
             handleStartLiveStream(run);
           }}>Start {costEstimate.total_attempts ?? costEstimate.total_tests} attempts</Button>}
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* MODAL: Deterministic Suite Fuzzer & Edge-Case Generator                  */}
+      {/* ========================================================================= */}
+      <Dialog open={isFuzzModalOpen} onOpenChange={setIsFuzzModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-white">
+              <Sparkles className="h-4 w-4 text-zinc-300" aria-hidden="true" />
+              Generate Edge Cases: <span className="font-mono text-zinc-300">{selectedSuite?.name}</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-zinc-400">
+              Deterministically mutate template variables and preserve structural assertions without requiring an LLM API key.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <div className="space-y-2">
+              <span className="text-[11px] font-medium text-zinc-300 block">
+                Perturbation Strategies
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    { id: "empty", label: "Empty / Whitespace" },
+                    { id: "injection", label: "Prompt Injection" },
+                    { id: "escaping", label: "Quote & Delimiter Escaping" },
+                    { id: "boundary", label: "Boundary Length (25x)" },
+                    { id: "unicode", label: "Unicode & RTL" },
+                  ] as const
+                ).map((cat) => {
+                  const active = fuzzCategories.includes(cat.id);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => toggleFuzzCategory(cat.id)}
+                      className={`px-2.5 py-1 rounded border text-[11px] font-mono transition-colors ${
+                        active
+                          ? "border-white bg-zinc-800 text-white"
+                          : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+              <div>
+                <label
+                  htmlFor="fuzz-max-cases"
+                  className="text-[11px] font-medium text-zinc-300 block mb-1"
+                >
+                  Max Edge Cases (1–50)
+                </label>
+                <span id="fuzz-max-cases-hint" className="text-[10px] text-zinc-500 block mb-1">
+                  Number of candidate cases to synthesize across selected strategies.
+                </span>
+                <Input
+                  id="fuzz-max-cases"
+                  aria-describedby="fuzz-max-cases-hint"
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={fuzzMaxCases}
+                  onChange={(e) =>
+                    setFuzzMaxCases(Math.max(1, Math.min(50, Number(e.target.value) || 1)))
+                  }
+                  className="h-8 font-mono text-xs bg-zinc-950 border-border"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!selectedSuite || fuzzMutation.isPending}
+                  onClick={() =>
+                    selectedSuite &&
+                    fuzzMutation.mutate({
+                      suiteName: selectedSuite.name,
+                      runImmediately: false,
+                    })
+                  }
+                  className="text-xs h-8 flex-1"
+                >
+                  {fuzzMutation.isPending ? "Generating..." : "Synthesize Cases"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  disabled={!selectedSuite || fuzzMutation.isPending}
+                  onClick={() =>
+                    selectedSuite &&
+                    fuzzMutation.mutate({
+                      suiteName: selectedSuite.name,
+                      runImmediately: true,
+                    })
+                  }
+                  className="text-xs h-8 flex-1 gap-1.5"
+                >
+                  <Play className="h-3 w-3" aria-hidden="true" />
+                  {fuzzMutation.isPending ? "Running..." : "Synthesize & Dry-Run"}
+                </Button>
+              </div>
+            </div>
+
+            {fuzzMutation.error && (
+              <div
+                role="alert"
+                className="p-3 rounded-md border border-red-900/60 bg-red-950/30 text-red-200 text-xs"
+              >
+                {fuzzMutation.error instanceof Error
+                  ? fuzzMutation.error.message
+                  : "Failed to synthesize edge cases."}
+              </div>
+            )}
+
+            {fuzzResponse && (
+              <div className="space-y-3 pt-2 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-zinc-400">
+                    CANDIDATE EDGE CASES ({fuzzResponse.generated_cases.length})
+                  </span>
+                  {fuzzResponse.dry_run_result && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] font-mono border-zinc-700 bg-zinc-900 text-zinc-200"
+                    >
+                      Dry-Run Pass Rate: {formatPercent(fuzzResponse.dry_run_result.pass_rate)} (
+                      {fuzzResponse.dry_run_result.passed_tests}/
+                      {fuzzResponse.dry_run_result.total_tests})
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {fuzzResponse.generated_cases.map((item: FuzzGeneratedCase) => {
+                    const tc = item.test_case;
+                    const checked = !!selectedFuzzIds[tc.id];
+                    const dryRunCase = fuzzResponse.dry_run_result?.results?.find(
+                      (r) => r.test_id === tc.id
+                    );
+                    const checkboxId = `fuzz-select-${tc.id}`;
+
+                    return (
+                      <div
+                        key={tc.id}
+                        className="p-3 rounded-lg border border-border bg-zinc-950 space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              id={checkboxId}
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) =>
+                                setSelectedFuzzIds((prev) => ({
+                                  ...prev,
+                                  [tc.id]: e.target.checked,
+                                }))
+                              }
+                              className="h-3.5 w-3.5 accent-white rounded cursor-pointer"
+                            />
+                            <label
+                              htmlFor={checkboxId}
+                              className="font-mono text-xs font-semibold text-white cursor-pointer"
+                            >
+                              {tc.id}
+                            </label>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-mono border-zinc-700 bg-zinc-900 text-zinc-300"
+                            >
+                              {item.category}
+                            </Badge>
+                            {item.target_variable && (
+                              <span className="text-[10px] font-mono text-zinc-400">
+                                {`{{${item.target_variable}}}`}
+                              </span>
+                            )}
+                          </div>
+
+                          {dryRunCase && (
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] font-mono ${
+                                dryRunCase.passed
+                                  ? "border-zinc-700 bg-zinc-900 text-zinc-200"
+                                  : "border-red-900/70 bg-red-950/40 text-red-300"
+                              }`}
+                            >
+                              {dryRunCase.passed ? "DRY-RUN PASSED" : "DRY-RUN FAILED"}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <p className="text-[11px] text-zinc-400">{item.description}</p>
+
+                        <div className="p-2 rounded bg-black border border-border/60 font-mono text-[11px] text-zinc-300 break-all">
+                          {Object.entries(tc.vars || {}).map(([k, v]) => (
+                            <div key={k}>
+                              <span className="text-zinc-500">{k}: </span>
+                              <span>
+                                {typeof v === "string" && v.length > 140
+                                  ? `${v.slice(0, 140)}...`
+                                  : String(v)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex flex-wrap gap-1">
+                          {(tc.assertions || []).map((a, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className="text-[10px] font-mono border-zinc-800 bg-zinc-900/60 text-zinc-400"
+                            >
+                              {a.type}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFuzzModalOpen(false)}
+              className="text-xs"
+            >
+              Close
+            </Button>
+            {fuzzResponse && (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                disabled={
+                  saveFuzzCasesMutation.isPending ||
+                  Object.values(selectedFuzzIds).filter(Boolean).length === 0
+                }
+                onClick={() => saveFuzzCasesMutation.mutate()}
+                className="text-xs gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                {saveFuzzCasesMutation.isPending
+                  ? "Saving..."
+                  : `Add Selected to Suite (${
+                      Object.values(selectedFuzzIds).filter(Boolean).length
+                    })`}
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

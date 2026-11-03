@@ -52,12 +52,14 @@ export interface AssertionConfig {
 
 export interface TestCase {
   id: string;
+  name?: string | null;
   repeat?: number | null;
   vars: Record<string, any>;
   assertions?: AssertionConfig[];
   context?: string[] | string | null;
   ground_truth?: string | null;
   description?: string | null;
+  metadata?: Record<string, any>;
 }
 
 export interface SuiteConfig {
@@ -252,3 +254,22 @@ export interface PromptEstimate {
   estimated_cost_usd: number;
   total_attempts: number;
 }
+
+export type FuzzCategory = "empty" | "injection" | "escaping" | "boundary" | "unicode";
+
+export interface FuzzGeneratedCase {
+  test_case: TestCase;
+  category: FuzzCategory;
+  source_test_id: string;
+  target_variable?: string | null;
+  description: string;
+}
+
+export interface FuzzSuiteResponse {
+  suite_name: string;
+  generated_cases: FuzzGeneratedCase[];
+  dry_run_result?: SuiteRunResult | null;
+  saved_count: number;
+  suite?: SuiteConfig | null;
+}
+
