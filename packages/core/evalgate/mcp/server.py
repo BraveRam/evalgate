@@ -11,10 +11,12 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import yaml
 from mcp.server.mcpserver import MCPServer
 
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
 from evalgate.core.cost import estimate_suite_cost
+from evalgate.core.fuzzer import FuzzCategory, generate_fuzz_cases
 from evalgate.core.storage import StorageEngine
 from evalgate.core.types import AssertionConfig, TestCase
 from evalgate.metrics.registry import evaluate_assertion
@@ -383,6 +385,93 @@ def create_mcp_server() -> MCPServer:
                 )
 
         return suites
+
+    @server.tool()
+    async def evalgate_fuzz_suite(
+        suite_path: str,
+        categories: list[str] | None = None,
+        max_cases: int = 5,
+        run_immediately: bool = False,
+        save_to_suite: bool = False,
+        model_override: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Deterministically synthesize edge-case and adversarial test cases for a suite.
+
+        Args:
+            suite_path: Path to the evaluation suite YAML file (e.g. 'evals/classifier.yaml').
+            categories: Optional list of perturbation categories
+                ('empty', 'injection', 'escaping', 'boundary', 'unicode').
+            max_cases: Maximum number of edge cases to generate (1-50, default: 5).
+            run_immediately: If True, dry-runs the generated cases against the target model.
+            save_to_suite: If True, appends the generated cases to the suite YAML file.
+            model_override: Optional model override when dry-running.
+
+        Returns:
+            Dictionary with generated edge cases, optional dry-run results, and saved count.
+        """
+        p = Path(suite_path)
+        try:
+            suite = load_suite_from_yaml(p)
+        except (SuiteLoadError, FileNotFoundError) as err:
+            return {"error": f"Failed to load evaluation suite: {err}"}
+
+        try:
+            parsed_categories = (
+                [FuzzCategory(c.strip().lower()) for c in categories if c.strip()]
+                if categories
+                else None
+            )
+            generated = generate_fuzz_cases(
+                suite=suite,
+                categories=parsed_categories,
+                max_cases=max_cases,
+            )
+        except ValueError as err:
+            return {"error": str(err)}
+
+        dry_run_summary: dict[str, Any] | None = None
+        if run_immediately and generated:
+            target = suite.target
+            if model_override:
+                target = target.model_copy(update={"model": model_override})
+            fuzz_suite = suite.model_copy(
+                update={"tests": [item.test_case for item in generated], "repeat": 1}
+            )
+            runner = SuiteRunner()
+            res = await runner.run_suite(
+                suite=fuzz_suite,
+                target_override=target,
+                concurrency=min(10, len(generated)),
+                save_to_storage=False,
+            )
+            dry_run_summary = {
+                "passed": res.passed,
+                "pass_rate": res.pass_rate,
+                "total_tests": res.total_tests,
+                "passed_tests": res.passed_tests,
+                "failed_tests": res.failed_tests,
+                "results": [r.model_dump(mode="json") for r in res.results],
+            }
+
+        saved_count = 0
+        if save_to_suite and generated:
+            updated_suite = suite.model_copy(
+                update={"tests": [*suite.tests, *(item.test_case for item in generated)]}
+            )
+            content = yaml.safe_dump(
+                updated_suite.model_dump(mode="json", exclude_none=True),
+                sort_keys=False,
+            )
+            p.write_text(content, encoding="utf-8")
+            saved_count = len(generated)
+
+        return {
+            "suite_name": suite.name,
+            "generated_cases": [item.model_dump(mode="json") for item in generated],
+            "dry_run_result": dry_run_summary,
+            "saved_count": saved_count,
+        }
 
     return server
 

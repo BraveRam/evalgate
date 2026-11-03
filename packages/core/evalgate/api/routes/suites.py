@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
 from evalgate.core.cost import estimate_suite_cost
+from evalgate.core.fuzzer import FuzzCategory, FuzzGeneratedCase, generate_fuzz_cases
 from evalgate.core.types import SuiteConfig, SuiteRunResult
 from evalgate.providers.factory import get_provider
 from evalgate.runner.runner import SuiteRunner, validate_min_pass_rate, validate_run_inputs
@@ -99,6 +100,22 @@ class CostEstimateRequest(BaseModel):
     model_override: str | None = None
     estimated_output_tokens_per_test: int = Field(default=150, ge=1)
     repeat: int | None = Field(default=None, ge=1, le=100, strict=True)
+
+
+class FuzzSuiteRequest(BaseModel):
+    categories: list[FuzzCategory] | None = None
+    max_cases: int = Field(default=5, ge=1, le=50, strict=True)
+    run_immediately: bool = False
+    save_to_suite: bool = False
+    model_override: str | None = None
+
+
+class FuzzSuiteResponse(BaseModel):
+    suite_name: str
+    generated_cases: list[FuzzGeneratedCase]
+    dry_run_result: SuiteRunResult | None = None
+    saved_count: int = 0
+    suite: SuiteConfig | None = None
 
 
 @router.get("")
@@ -304,3 +321,68 @@ async def estimate_suite_cost_endpoint(
         )
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
+
+
+@router.post("/{suite_name}/fuzz")
+async def fuzz_suite_endpoint(
+    suite_name: str,
+    req: FuzzSuiteRequest | None = None,
+) -> FuzzSuiteResponse:
+    """
+    Deterministically synthesize edge-case and adversarial test cases for a suite.
+    Optionally dry-runs the generated cases and/or appends them to the suite YAML.
+    """
+    p = _find_suite_path(suite_name)
+    try:
+        suite = load_suite_from_yaml(p)
+    except SuiteLoadError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
+
+    categories = req.categories if req else None
+    max_cases = req.max_cases if req else 5
+
+    try:
+        generated = generate_fuzz_cases(
+            suite=suite,
+            categories=categories,
+            max_cases=max_cases,
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
+
+    dry_run_result: SuiteRunResult | None = None
+    if req and req.run_immediately and generated:
+        target = suite.target
+        if req.model_override:
+            target = target.model_copy(update={"model": req.model_override})
+        fuzz_only_suite = suite.model_copy(
+            update={"tests": [item.test_case for item in generated], "repeat": 1}
+        )
+        runner = SuiteRunner()
+        dry_run_result = await runner.run_suite(
+            suite=fuzz_only_suite,
+            target_override=target,
+            concurrency=min(10, len(generated)),
+            save_to_storage=False,
+        )
+
+    saved_count = 0
+    updated_suite: SuiteConfig | None = None
+    if req and req.save_to_suite and generated:
+        updated_tests = [*suite.tests, *(item.test_case for item in generated)]
+        updated_suite = suite.model_copy(update={"tests": updated_tests})
+        content = yaml.safe_dump(
+            updated_suite.model_dump(mode="json", exclude_none=True),
+            sort_keys=False,
+        )
+        p.write_text(content, encoding="utf-8")
+        saved_count = len(generated)
+
+    return FuzzSuiteResponse(
+        suite_name=suite.name,
+        generated_cases=generated,
+        dry_run_result=dry_run_result,
+        saved_count=saved_count,
+        suite=updated_suite,
+    )
+

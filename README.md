@@ -285,6 +285,9 @@ uv run evalgate cost evals/rag_qa.yaml
 # Override pricing model and output-token estimate; emit JSON for scripts
 uv run evalgate cost evals/rag_qa.yaml --model openai/gpt-4o-mini --output-tokens 250 --json
 
+# Deterministically synthesize edge-case & adversarial test cases for a suite
+uv run evalgate fuzz evals/classifier.yaml --categories empty,injection,escaping --max-cases 5
+
 # List historical evaluation runs
 uv run evalgate list
 
@@ -439,6 +442,7 @@ EvalGate exposes its entire evaluation engine over the Model Context Protocol (M
 | `evalgate_list_runs` | Retrieves recent evaluation run history and telemetry records from SQLite. |
 | `evalgate_get_historical_trends` | Calculates pass rate and P50/P95 latency trends over time. |
 | `evalgate_list_suites` | Lists all discovered YAML test suites in the active workspace. |
+| `evalgate_fuzz_suite` | Deterministically synthesizes edge-case and adversarial test cases for a suite. |
 
 ### Configuration Examples
 
@@ -551,6 +555,7 @@ The FastAPI backend provides REST endpoints and live WebSocket channels for real
 | `GET` | `/api/v1/arena/prompts/{id}` | Retrieve prompts, original suite snapshot, and complete results. |
 | `POST` | `/api/v1/arena/prompts/{id}/apply` | Apply stored variant A/B; reject changed suites with 409. |
 | `POST` | `/api/v1/suites/{suite_name}/estimate-cost` | Calculate preflight token volume and cost projection. |
+| `POST` | `/api/v1/suites/{suite_name}/fuzz` | Deterministically synthesize edge-case and adversarial test cases. |
 | `GET` | `/api/v1/suites` | List all discovered YAML test suites. |
 | `GET` | `/api/v1/runs` | Query historical execution telemetry. |
 | `GET` | `/api/v1/runs/{run_id}/trends` | Fetch aggregated time-series pass rate and latency metrics. |
