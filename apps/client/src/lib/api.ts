@@ -12,6 +12,8 @@ import {
   FuzzSuiteResponse,
   HistoricalTrendPoint,
   ModelPricing,
+  SaveTracePayload,
+  SaveTraceResponse,
   SuiteConfig,
   SuiteRunResult,
   SuiteSummary,
@@ -124,6 +126,17 @@ export const api = {
     const { data } = await apiClient.post<FuzzSuiteResponse>(
       `/api/v1/suites/${encodeURIComponent(name)}/fuzz`,
       params || {}
+    );
+    return data;
+  },
+
+  saveTraceToSuite: async (
+    name: string,
+    payload: SaveTracePayload
+  ): Promise<SaveTraceResponse> => {
+    const { data } = await apiClient.post<SaveTraceResponse>(
+      `/api/v1/suites/${encodeURIComponent(name)}/save-trace`,
+      payload
     );
     return data;
   },

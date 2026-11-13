@@ -126,6 +126,9 @@ async def finalize_result_node(state: EvalState) -> dict[str, Any]:
         total_tokens=output.total_tokens,
         cost_usd=output.cost_usd,
         assertion_results=assertion_results,
+        vars=dict(test_case.vars),
+        context=test_case.context,
+        ground_truth=test_case.ground_truth,
         error=output.error,
     )
 

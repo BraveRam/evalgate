@@ -14,7 +14,12 @@ from typing import Any
 import yaml
 from mcp.server.mcpserver import MCPServer
 
-from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
+from evalgate.cli.loader import (
+    SuiteLoadError,
+    append_test_case_to_jsonl,
+    load_suite_from_yaml,
+    strip_trace_metadata,
+)
 from evalgate.core.cost import estimate_suite_cost
 from evalgate.core.fuzzer import FuzzCategory, generate_fuzz_cases
 from evalgate.core.storage import StorageEngine
@@ -471,6 +476,57 @@ def create_mcp_server() -> MCPServer:
             "generated_cases": [item.model_dump(mode="json") for item in generated],
             "dry_run_result": dry_run_summary,
             "saved_count": saved_count,
+        }
+
+    @server.tool()
+    async def evalgate_save_trace_to_dataset(
+        suite_path: str,
+        test_id: str,
+        vars: dict[str, Any] | None = None,
+        context: str | list[str] | None = None,
+        ground_truth: str | dict[str, Any] | list[Any] | None = None,
+        assertions: list[dict[str, Any]] | None = None,
+        description: str | None = None,
+        target_dataset: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Save an execution trace as a regression test case in a suite's `.jsonl` dataset
+        (or sibling `<suite>.regressions.jsonl`) without mutating the suite YAML.
+        """
+        p = Path(suite_path)
+        if not p.exists():
+            return {"error": f"Suite file '{suite_path}' not found."}
+
+        cleaned_id = test_id.strip()
+        if not cleaned_id:
+            return {"error": "test_id must not be empty."}
+
+        try:
+            parsed_assertions = [AssertionConfig.model_validate(a) for a in (assertions or [])]
+            tc = TestCase(
+                id=cleaned_id,
+                description=description,
+                vars=vars or {},
+                context=context,
+                ground_truth=ground_truth,
+                assertions=parsed_assertions,
+                metadata=strip_trace_metadata(metadata),
+            )
+            target_path = append_test_case_to_jsonl(
+                p,
+                tc,
+                target_dataset=target_dataset,
+                allowed_root=Path.cwd().resolve(),
+            )
+        except (SuiteLoadError, ValueError) as err:
+            return {"error": str(err)}
+
+        return {
+            "saved": True,
+            "test_id": tc.id,
+            "dataset_path": str(target_path),
+            "test_case": tc.model_dump(mode="json", exclude_none=True),
         }
 
     return server

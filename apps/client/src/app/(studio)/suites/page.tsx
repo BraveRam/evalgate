@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { formatCost, formatMs, formatPercent } from "@/lib/utils";
 import { AttemptDetails } from "@/components/evaluations/AttemptDetails";
+import { SaveAsTestModal } from "@/components/evaluations/SaveAsTestModal";
 import { usePageTitle } from "@/lib/use-page-title";
 import { CodeViewer } from "@/components/ui/CodeViewer";
 import { SearchableModelSelect } from "@/components/ui/SearchableModelSelect";
@@ -151,6 +152,7 @@ export default function SuitesPage() {
   const [streamTotalTests, setStreamTotalTests] = useState(0);
   const [streamCompletedResults, setStreamCompletedResults] = useState<TestCaseResult[]>([]);
   const [finalRunResult, setFinalRunResult] = useState<SuiteRunResult | null>(null);
+  const [traceToSave, setTraceToSave] = useState<TestCaseResult | null>(null);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [isStreamRunning, setIsStreamRunning] = useState(false);
 
@@ -628,10 +630,15 @@ export default function SuitesPage() {
                 <CardHeader className="p-5 pb-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <CardTitle className="text-base font-semibold text-white">
                           {selectedSuite.name}
                         </CardTitle>
+                        {selectedSuite.dataset && (
+                          <Badge variant="outline" className="text-[10px] border-zinc-700 text-zinc-300 font-mono">
+                            Dataset: {Array.isArray(selectedSuite.dataset) ? selectedSuite.dataset.join(", ") : selectedSuite.dataset}
+                          </Badge>
+                        )}
                         <Badge
                           variant="outline"
                           className={`font-mono text-[10px] ${
@@ -1256,6 +1263,15 @@ export default function SuitesPage() {
                         <span>{formatMs(tc.latency_ms)}</span>
                         <span>•</span>
                         <span>{formatCost(tc.cost_usd)}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-[10px] ml-1"
+                          onClick={() => setTraceToSave(tc)}
+                        >
+                          Save as Test Case
+                        </Button>
                       </div>
                     </div>
                     <div className="text-[10px] text-zinc-400 truncate pl-5">
@@ -1268,6 +1284,21 @@ export default function SuitesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SaveAsTestModal
+        open={!!traceToSave && !!(finalRunResult?.suite_name || selectedSuite?.name)}
+        onOpenChange={(open) => {
+          if (!open) setTraceToSave(null);
+        }}
+        suiteName={finalRunResult?.suite_name || selectedSuite?.name || ""}
+        trace={traceToSave}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ["suites"] });
+          if (selectedSuite?.name) {
+            queryClient.invalidateQueries({ queryKey: ["suite", selectedSuite.name] });
+          }
+        }}
+      />
 
       {/* ========================================================================= */}
       {/* MODAL: Pre-Flight Cost Estimation                                        */}

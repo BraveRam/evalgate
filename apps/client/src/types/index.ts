@@ -71,6 +71,7 @@ export interface SuiteConfig {
   target: TargetConfig;
   default_assertions?: AssertionConfig[];
   tests: TestCase[];
+  dataset?: string | string[] | null;
 }
 
 export interface SuiteSummary {
@@ -82,6 +83,7 @@ export interface SuiteSummary {
   target_model: string;
   min_pass_rate: number;
   test_count: number;
+  dataset?: string | string[] | null;
 }
 
 export interface AssertionResult {
@@ -109,6 +111,29 @@ export interface TestCaseResult {
   total_tokens: number;
   cost_usd: number;
   assertion_results: AssertionResult[];
+  vars?: Record<string, any> | null;
+  context?: string[] | string | null;
+  ground_truth?: any;
+}
+
+export interface SaveTracePayload {
+  id: string;
+  name?: string | null;
+  description?: string | null;
+  vars: Record<string, any>;
+  context?: string[] | string | null;
+  ground_truth?: any;
+  assertions?: AssertionConfig[];
+  metadata?: Record<string, any>;
+  target_dataset?: string | null;
+}
+
+export interface SaveTraceResponse {
+  message: string;
+  suite_name: string;
+  test_id: string;
+  dataset_path: string;
+  test_case: TestCase;
 }
 
 export interface SuiteRunResult {
