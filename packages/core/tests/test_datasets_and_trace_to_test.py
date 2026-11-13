@@ -261,3 +261,19 @@ async def test_mcp_save_trace_to_dataset(tmp_path: Path, monkeypatch: pytest.Mon
     assert payload["test_case"]["metadata"] == {"source": "mcp"}
     reloaded = load_suite_from_yaml(suite_file)
     assert [t.id for t in reloaded.tests] == ["base", "mcp-reg-1"]
+
+    # Path traversal outside suite directory must be rejected even if inside repo cwd
+    trav_result = await server.call_tool(
+        "evalgate_save_trace_to_dataset",
+        {
+            "suite_path": str(suite_file),
+            "test_id": "mcp-reg-escape",
+            "vars": {"question": "Escape"},
+            "target_dataset": "../outside.jsonl",
+        },
+    )
+    trav_payload = trav_result.structured_content or {}
+    if "result" in trav_payload:
+        trav_payload = trav_payload["result"]
+    assert "error" in trav_payload
+    assert "escapes" in trav_payload["error"]

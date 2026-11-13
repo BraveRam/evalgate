@@ -203,8 +203,9 @@ def resolve_trace_target_path(
                 break
         candidate = linked_jsonl or suite_path.with_suffix(".regressions.jsonl").resolve()
 
-    if not candidate.is_relative_to(root):
-        raise ValueError("Target dataset path escapes allowed workspace root")
+    suite_dir = suite_path.parent.resolve()
+    if not candidate.is_relative_to(suite_dir) or not candidate.is_relative_to(root):
+        raise ValueError("Target dataset path escapes allowed suite/workspace root")
     if candidate.suffix.lower() != ".jsonl":
         raise ValueError("Trace-to-Test only supports appending to .jsonl files")
 
@@ -272,8 +273,9 @@ def append_test_case_to_jsonl(
     )
     needs_leading_newline = False
     if target_path.exists() and target_path.stat().st_size > 0:
-        existing_bytes = target_path.read_bytes()
-        needs_leading_newline = not existing_bytes.endswith(b"\n")
+        with target_path.open("rb") as fb:
+            fb.seek(-1, 2)
+            needs_leading_newline = fb.read(1) != b"\n"
 
     with target_path.open("a", encoding="utf-8") as handle:
         if needs_leading_newline:

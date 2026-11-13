@@ -61,15 +61,7 @@ function SaveAsTestForm({
   const [varsJson, setVarsJson] = useState(() => JSON.stringify(trace.vars ?? {}, null, 2));
   const [contextText, setContextText] = useState(() => getInitialContextText(trace));
   const [groundTruthText, setGroundTruthText] = useState(() => getInitialGroundTruthText(trace));
-  const [assertionsJson, setAssertionsJson] = useState(() => {
-    const failedAssertions: AssertionConfig[] = (trace.assertion_results ?? [])
-      .filter((ar) => !ar.passed)
-      .map((ar) => ({
-        type: ar.assertion_type as AssertionConfig["type"],
-        strict: ar.strict ?? true,
-      }));
-    return JSON.stringify(failedAssertions, null, 2);
-  });
+  const [assertionsJson, setAssertionsJson] = useState("[]");
   const [targetDataset, setTargetDataset] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -102,6 +94,28 @@ function SaveAsTestForm({
         setErrorMsg("Assertions must be a JSON array.");
         return;
       }
+      const valueRequired = new Set([
+        "contains",
+        "not_contains",
+        "starts_with",
+        "ends_with",
+        "regex",
+        "json_schema",
+      ]);
+      for (const item of candidate) {
+        if (item && typeof item === "object") {
+          const t = String((item as { type?: unknown }).type ?? "");
+          const val = (item as { value?: unknown }).value;
+          if (valueRequired.has(t) && (val === undefined || val === null || val === "")) {
+            setErrorMsg(`Assertion "${t}" requires a non-empty "value".`);
+            return;
+          }
+          if ((t === "dynamic" || t === "dynamic_rubric") && !(item as { rubric?: unknown }).rubric) {
+            setErrorMsg(`Assertion "${t}" requires a "rubric".`);
+            return;
+          }
+        }
+      }
       parsedAssertions = candidate as AssertionConfig[];
     } catch {
       setErrorMsg("Assertions must be valid JSON.");
@@ -125,8 +139,21 @@ function SaveAsTestForm({
       }
     }
 
+    let groundTruth: unknown = null;
     const trimmedGt = groundTruthText.trim();
-    const groundTruth = trimmedGt ? trimmedGt : null;
+    if (trimmedGt) {
+      if (trimmedGt.startsWith("{") || trimmedGt.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(trimmedGt);
+          groundTruth =
+            parsed !== null && typeof parsed === "object" ? parsed : trimmedGt;
+        } catch {
+          groundTruth = trimmedGt;
+        }
+      } else {
+        groundTruth = trimmedGt;
+      }
+    }
 
     setErrorMsg(null);
     setIsSaving(true);
