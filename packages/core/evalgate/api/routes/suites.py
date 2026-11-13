@@ -12,10 +12,15 @@ import yaml
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from evalgate.cli.loader import SuiteLoadError, load_suite_from_yaml
+from evalgate.cli.loader import (
+    SuiteLoadError,
+    append_test_case_to_jsonl,
+    load_suite_from_yaml,
+    strip_trace_metadata,
+)
 from evalgate.core.cost import estimate_suite_cost
 from evalgate.core.fuzzer import FuzzCategory, FuzzGeneratedCase, generate_fuzz_cases
-from evalgate.core.types import SuiteConfig, SuiteRunResult
+from evalgate.core.types import AssertionConfig, SuiteConfig, SuiteRunResult, TestCase
 from evalgate.providers.factory import get_provider
 from evalgate.runner.runner import SuiteRunner, validate_min_pass_rate, validate_run_inputs
 
@@ -118,6 +123,31 @@ class FuzzSuiteResponse(BaseModel):
     suite: SuiteConfig | None = None
 
 
+class SaveTraceRequest(BaseModel):
+    id: str = Field(min_length=1, description="Unique test case ID for the saved regression case")
+    name: str | None = None
+    description: str | None = None
+    vars: dict[str, Any] = Field(default_factory=dict)
+    context: str | list[str] | None = None
+    ground_truth: str | dict[str, Any] | list[Any] | None = None
+    assertions: list[AssertionConfig] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    target_dataset: str | None = Field(
+        default=None,
+        description=(
+            "Optional relative .jsonl path; defaults to linked .jsonl or <suite>.regressions.jsonl"
+        ),
+    )
+
+
+class SaveTraceResponse(BaseModel):
+    message: str
+    suite_name: str
+    test_id: str
+    dataset_path: str
+    test_case: TestCase
+
+
 @router.get("")
 async def list_suites(dir_path: str = "evals") -> list[dict[str, Any]]:
     """
@@ -166,6 +196,7 @@ async def list_suites(dir_path: str = "evals") -> list[dict[str, Any]]:
                         "target_model": suite.target.model,
                         "min_pass_rate": suite.min_pass_rate,
                         "test_count": len(suite.tests),
+                        "dataset": suite.dataset,
                     }
                 )
             except (PermissionError, OSError, SuiteLoadError) as err:
@@ -384,5 +415,59 @@ async def fuzz_suite_endpoint(
         dry_run_result=dry_run_result,
         saved_count=saved_count,
         suite=updated_suite,
+    )
+
+
+@router.post("/{suite_name}/save-trace", status_code=201)
+async def save_trace_endpoint(
+    suite_name: str,
+    req: SaveTraceRequest,
+) -> SaveTraceResponse:
+    """
+    Save an execution trace as a regression TestCase by appending to a `.jsonl` dataset
+    within the evals root (never mutating hand-written suite YAML).
+    """
+    p = _find_suite_path(suite_name)
+    cleaned_id = req.id.strip()
+    if not cleaned_id:
+        raise HTTPException(status_code=400, detail="Test case ID must not be empty")
+
+    test_case = TestCase(
+        id=cleaned_id,
+        name=req.name,
+        description=req.description,
+        vars=req.vars,
+        context=req.context,
+        ground_truth=req.ground_truth,
+        assertions=req.assertions,
+        metadata=strip_trace_metadata(req.metadata),
+    )
+
+    try:
+        target_path = append_test_case_to_jsonl(
+            p,
+            test_case,
+            target_dataset=req.target_dataset,
+            allowed_root=DEFAULT_EVALS_DIR.resolve(),
+        )
+    except SuiteLoadError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
+    except ValueError as err:
+        msg = str(err)
+        status = 409 if "already exists" in msg else 400
+        raise HTTPException(status_code=status, detail=msg) from err
+
+    cwd = Path.cwd().resolve()
+    rel_path = (
+        str(target_path.relative_to(cwd))
+        if target_path.is_relative_to(cwd)
+        else str(target_path)
+    )
+    return SaveTraceResponse(
+        message=f"Saved test case '{test_case.id}' to {rel_path}",
+        suite_name=suite_name,
+        test_id=test_case.id,
+        dataset_path=rel_path,
+        test_case=test_case,
     )
 

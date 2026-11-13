@@ -204,6 +204,13 @@ class SuiteConfig(BaseModel):
         default_factory=list,
         description="List of test cases to execute",
     )
+    dataset: str | list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional path or list of paths to external JSONL/CSV dataset files "
+            "(resolved relative to suite YAML)"
+        ),
+    )
     repeat: int = Field(default=1, ge=1, le=100, strict=True)
     max_success_rate_drop: float | None = Field(default=None, ge=0.0, le=1.0)
     min_pass_rate: float = Field(
@@ -265,6 +272,18 @@ class AttemptResult(BaseModel):
     total_tokens: int = Field(default=0, ge=0)
     cost_usd: float = Field(default=0.0, ge=0.0)
     assertion_results: list[AssertionResult] = Field(default_factory=list)
+    vars: dict[str, Any] | None = Field(
+        default=None,
+        description="Input variables used for this test case execution",
+    )
+    context: str | list[str] | None = Field(
+        default=None,
+        description="Context chunks used for this test case execution",
+    )
+    ground_truth: str | dict[str, Any] | list[Any] | None = Field(
+        default=None,
+        description="Expected ground truth for this test case",
+    )
     error: str | None = Field(
         default=None,
         description="Error message if target execution crashed or timed out",

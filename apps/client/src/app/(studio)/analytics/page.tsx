@@ -39,6 +39,7 @@ import { formatCost, formatMs, formatPercent } from "@/lib/utils";
 import { usePageTitle } from "@/lib/use-page-title";
 import { CodeViewer } from "@/components/ui/CodeViewer";
 import { AttemptDetails } from "@/components/evaluations/AttemptDetails";
+import { SaveAsTestModal } from "@/components/evaluations/SaveAsTestModal";
 import { BaselinePanel } from "@/components/baselines/BaselinePanel";
 import { SuiteRunResult, TestCaseResult } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -226,6 +227,7 @@ export default function AnalyticsPage() {
 
   // Inspection Modal
   const [selectedRunForDetails, setSelectedRunForDetails] = useState<SuiteRunResult | null>(null);
+  const [traceToSave, setTraceToSave] = useState<TestCaseResult | null>(null);
 
   // TanStack Query: Fetch suites
   const { data: suites = [] } = useQuery({
@@ -1130,6 +1132,15 @@ export default function AnalyticsPage() {
                             <span>{tc.total_tokens} toks</span>
                             <span>•</span>
                             <span>{formatCost(tc.cost_usd)}</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-6 px-2 text-[10px] ml-1"
+                              onClick={() => setTraceToSave(tc)}
+                            >
+                              Save as Test Case
+                            </Button>
                           </div>
                         </div>
 
@@ -1184,6 +1195,18 @@ export default function AnalyticsPage() {
             </DialogContent>
           )}
         </Dialog>
+
+        <SaveAsTestModal
+          open={!!traceToSave && !!selectedRunForDetails}
+          onOpenChange={(open) => {
+            if (!open) setTraceToSave(null);
+          }}
+          suiteName={selectedRunForDetails?.suite_name ?? ""}
+          trace={traceToSave}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ["suites"] });
+          }}
+        />
 
         {/* 8. Shadcn Delete Confirmation Dialog */}
         <Dialog
