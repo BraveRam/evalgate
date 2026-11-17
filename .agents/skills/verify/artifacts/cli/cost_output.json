@@ -1,0 +1,11 @@
+{
+  "suite_name": "support-ticket-classifier",
+  "target_model": "openai/gpt-4o-mini",
+  "total_tests": 1,
+  "total_attempts": 1,
+  "estimated_input_tokens": 27,
+  "estimated_output_tokens": 150,
+  "total_estimated_tokens": 177,
+  "estimated_cost_usd": 9.4e-05,
+  "cost_per_test_usd": 9.4e-05
+}
