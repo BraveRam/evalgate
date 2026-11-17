@@ -43,6 +43,7 @@ yarn-error.log*
 
 # Local Databases & Run Data
 .evalgate/
+.evalgate-verify/
 *.db
 *.sqlite
 *.sqlite3
