@@ -352,3 +352,27 @@ async def test_arena_model_comparison(tmp_path: Path):
     assert arena_result.run_a.total_tests == 1
     assert arena_result.run_b.total_tests == 1
     assert isinstance(arena_result.pass_rate_delta, float)
+
+
+@pytest.mark.asyncio
+async def test_pipeline_fails_closed_when_cost_untracked(monkeypatch):
+    from evalgate.targets.base import BaseTarget, TargetOutput
+
+    class UntrackedTarget(BaseTarget):
+        async def execute(self, test_case: TestCase) -> TargetOutput:
+            return TargetOutput(
+                completion="done",
+                cost_usd=0.0,
+                cost_tracked=False,
+            )
+
+    monkeypatch.setattr("evalgate.core.graph.get_target_executor", lambda cfg: UntrackedTarget(cfg))
+    test_case = TestCase(
+        id="c1",
+        assertions=[AssertionConfig(type=AssertionType.MAX_COST_USD, value=0.01, strict=True)],
+    )
+    result = await run_test_case(
+        test_case=test_case, target_config=TargetConfig(type=TargetType.PROMPT)
+    )
+    assert result.passed is False
+    assert "not reported" in (result.assertion_results[0].reason or "")

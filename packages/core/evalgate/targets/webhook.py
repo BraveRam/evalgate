@@ -141,6 +141,7 @@ class WebhookTarget(BaseTarget):
                         input_tokens=input_tokens,
                         output_tokens=output_tokens,
                         total_tokens=total_tokens,
+                        cost_tracked=False,
                         error=f"Webhook HTTP {resp.status_code}: {completion[:200]}",
                     )
 
@@ -151,11 +152,13 @@ class WebhookTarget(BaseTarget):
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                     total_tokens=total_tokens,
+                    cost_tracked=False,
                 )
         except Exception as exc:
             latency_ms = (time.perf_counter() - start_time) * 1000.0
             return TargetOutput(
                 completion="",
                 latency_ms=round(latency_ms, 2),
+                cost_tracked=False,
                 error=f"Webhook connection error to {url}: {exc}",
             )

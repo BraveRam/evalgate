@@ -11,6 +11,7 @@ from evalgate.metrics.deterministic import (
     calculate_levenshtein_similarity,
     evaluate_deterministic_assertion,
 )
+from evalgate.metrics.registry import evaluate_assertion
 
 
 def test_levenshtein_similarity():
@@ -60,8 +61,7 @@ def test_json_schema_assertion():
         ("not JSON", "{}", False),
         ({"type": "unknown-type"}, "{}", False),
         ([], "{}", False),
-        ({}, "{}", True),
-        (None, "{}", True),
+        ({}, "{}", False),
     ],
 )
 def test_json_schema_strings_and_invalid_schemas(schema, completion, expected_passed):
@@ -204,3 +204,161 @@ def test_explicit_zero_budget_limits():
         assert passed.passed is True
         assert passed.threshold == 0
     assert failed.score == 0.0
+
+
+@pytest.mark.parametrize(
+    "assertion_type",
+    [
+        AssertionType.CONTAINS,
+        AssertionType.NOT_CONTAINS,
+        AssertionType.STARTS_WITH,
+        AssertionType.ENDS_WITH,
+        AssertionType.REGEX,
+    ],
+)
+def test_matchers_fail_closed_when_value_is_missing(assertion_type):
+    assertion = AssertionConfig.model_construct(
+        type=assertion_type,
+        value=None,
+        strict=True,
+    )
+    result = evaluate_deterministic_assertion(assertion, "anything at all", TestCase(id="t"))
+    assert result.passed is False
+    assert "requires a non-empty" in (result.reason or "")
+
+
+def test_exact_without_value_or_ground_truth_fails_on_empty_completion():
+    assertion = AssertionConfig(type=AssertionType.EXACT)
+    result = evaluate_deterministic_assertion(assertion, "", TestCase(id="t"))
+    assert result.passed is False
+
+
+@pytest.mark.asyncio
+async def test_malformed_numeric_value_becomes_failed_assertion():
+    assertion = AssertionConfig(type=AssertionType.MAX_LATENCY_MS, value="oops")
+    result = await evaluate_assertion(
+        assertion=assertion,
+        completion="anything",
+        test_case=TestCase(id="t"),
+        latency_ms=1.0,
+    )
+    assert result.passed is False
+    assert result.details.get("infra_error") is True
+    assert "oops" in (result.reason or "")
+
+
+@pytest.mark.asyncio
+async def test_malformed_token_budget_becomes_failed_assertion():
+    assertion = AssertionConfig(type=AssertionType.MAX_TOKENS, value="many")
+    result = await evaluate_assertion(
+        assertion=assertion,
+        completion="anything",
+        test_case=TestCase(id="t"),
+        total_tokens=5,
+    )
+    assert result.passed is False
+    assert result.details.get("infra_error") is True
+
+
+def test_max_cost_usd_fails_closed_when_cost_is_untracked():
+    assertion = AssertionConfig(type=AssertionType.MAX_COST_USD, value=0.01)
+    result = evaluate_deterministic_assertion(
+        assertion,
+        "anything",
+        TestCase(id="t"),
+        cost_usd=0.0,
+        cost_tracked=False,
+    )
+    assert result.passed is False
+    assert "not reported" in (result.reason or "")
+
+
+def test_string_matchers_with_zero_value_do_not_falsely_match_arbitrary_string():
+    contains_zero = AssertionConfig(type=AssertionType.CONTAINS, value=0)
+    result = evaluate_deterministic_assertion(
+        contains_zero, "completely different", TestCase(id="t")
+    )
+    assert result.passed is False
+
+    match_zero = evaluate_deterministic_assertion(contains_zero, "exit code: 0", TestCase(id="t"))
+    assert match_zero.passed is True
+
+
+def test_levenshtein_without_value_or_ground_truth_fails_on_empty_completion():
+    assertion = AssertionConfig(type=AssertionType.LEVENSHTEIN)
+    result = evaluate_deterministic_assertion(assertion, "", TestCase(id="t"))
+    assert result.passed is False
+    assert result.score == 0.0
+
+
+def test_json_schema_fails_closed_when_schema_is_missing():
+    assertion = AssertionConfig(type=AssertionType.JSON_SCHEMA, value=None)
+    result = evaluate_deterministic_assertion(assertion, "{}", TestCase(id="t"))
+    assert result.passed is False
+    assert "requires a non-empty" in (result.reason or "")
+
+    empty_dict_assertion = AssertionConfig(type=AssertionType.JSON_SCHEMA, value={})
+    result_empty = evaluate_deterministic_assertion(empty_dict_assertion, "{}", TestCase(id="t"))
+    assert result_empty.passed is False
+    assert "requires a non-empty" in (result_empty.reason or "")
+
+    empty_str_schema = AssertionConfig(type=AssertionType.JSON_SCHEMA, value="{}")
+    result_empty_str = evaluate_deterministic_assertion(empty_str_schema, "{}", TestCase(id="t"))
+    assert result_empty_str.passed is False
+    assert "requires a non-empty" in (result_empty_str.reason or "")
+
+
+def test_strip_codeblock_handles_uppercase_language_fences():
+    schema = {"type": "object", "properties": {"a": {"type": "number"}}, "required": ["a"]}
+    assertion = AssertionConfig(type=AssertionType.JSON_SCHEMA, value=schema)
+    completion = "```JSON\n{\"a\": 1}\n```"
+    result = evaluate_deterministic_assertion(assertion, completion, TestCase(id="t"))
+    assert result.passed is True
+
+
+def test_levenshtein_and_exact_do_not_shadow_ground_truth_when_value_is_empty_string():
+    assertion = AssertionConfig(type=AssertionType.LEVENSHTEIN, value="")
+    test_case = TestCase(id="t", ground_truth="expected answer")
+    # Empty completion should not pass against ground_truth
+    result = evaluate_deterministic_assertion(assertion, "", test_case)
+    assert result.passed is False
+    assert result.score == 0.0
+
+    # Matching completion against ground_truth should pass
+    result_pass = evaluate_deterministic_assertion(assertion, "expected answer", test_case)
+    assert result_pass.passed is True
+    assert result_pass.score == 1.0
+
+
+def test_target_output_with_cost_usd_is_treated_as_tracked():
+    from evalgate.targets.base import TargetOutput
+
+    assertion = AssertionConfig(type=AssertionType.MAX_COST_USD, value=0.05)
+    output = TargetOutput(completion="test", cost_usd=0.005)
+    result = evaluate_deterministic_assertion(assertion, output=output)
+    assert result.passed is True
+    assert result.threshold == 0.05
+
+
+def test_evaluate_deterministic_assertion_with_target_output():
+    from evalgate.targets.base import TargetOutput
+
+    assertion = AssertionConfig(type=AssertionType.MAX_LATENCY_MS, value=50.0)
+    output = TargetOutput(completion="hello", latency_ms=25.0)
+    result = evaluate_deterministic_assertion(assertion, output=output)
+    assert result.passed is True
+    assert result.threshold == 50.0
+
+
+def test_string_matchers_fail_closed_on_empty_or_whitespace_value():
+    for atype in [
+        AssertionType.CONTAINS,
+        AssertionType.NOT_CONTAINS,
+        AssertionType.STARTS_WITH,
+        AssertionType.ENDS_WITH,
+        AssertionType.REGEX,
+    ]:
+        assertion = AssertionConfig(type=atype, value="   ")
+        result = evaluate_deterministic_assertion(assertion, "some text", TestCase(id="t"))
+        assert result.passed is False
+        assert "requires a non-empty string value" in (result.reason or "")

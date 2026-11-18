@@ -141,3 +141,30 @@ def test_suite_run_result_validation():
     assert run.pass_rate == 1.0
     assert len(run.results) == 1
     assert run.results[0].assertion_results[0].passed is True
+
+
+@pytest.mark.parametrize(
+    "assertion_type",
+    [
+        AssertionType.CONTAINS,
+        AssertionType.NOT_CONTAINS,
+        AssertionType.STARTS_WITH,
+        AssertionType.ENDS_WITH,
+        AssertionType.REGEX,
+        AssertionType.JSON_SCHEMA,
+    ],
+)
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_value_requiring_assertions_allowed_at_config_time(assertion_type, value):
+    cfg = AssertionConfig(type=assertion_type, value=value)
+    assert cfg.value == value
+
+
+def test_exact_and_levenshtein_may_rely_on_ground_truth():
+    assert AssertionConfig(type=AssertionType.EXACT).value is None
+    assert AssertionConfig(type=AssertionType.LEVENSHTEIN).value is None
+
+
+def test_boolean_json_schema_value_is_still_allowed():
+    assertion = AssertionConfig(type=AssertionType.JSON_SCHEMA, value=False)
+    assert assertion.value is False

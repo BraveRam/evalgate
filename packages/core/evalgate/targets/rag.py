@@ -54,6 +54,7 @@ class RAGTarget(BaseTarget):
                 output_tokens=res.output_tokens,
                 total_tokens=res.total_tokens,
                 cost_usd=res.cost_usd,
+                cost_tracked=res.cost_tracked,
             )
         except Exception as exc:
             return TargetOutput(
