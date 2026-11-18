@@ -53,6 +53,9 @@ yarn-error.log*
 .env.local
 .env.*.local
 
+# Agent configuration & local skills
+.agents/
+
 # IDE & OS
 .DS_Store
 .idea/
