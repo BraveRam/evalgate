@@ -17,7 +17,7 @@ from evalgate.targets.base import TargetOutput
 def strip_codeblock(text: str, lang: str | None = None) -> str:
     """Strip markdown codeblock formatting if present."""
     cleaned = text.strip()
-    if lang and cleaned.startswith(f"```{lang}"):
+    if lang and cleaned.lower().startswith(f"```{lang.lower()}"):
         cleaned = cleaned[len(lang) + 3 :]
     elif cleaned.startswith("```"):
         cleaned = cleaned[3:]
@@ -107,6 +107,13 @@ def evaluate_deterministic_assertion(
                 passed=False,
                 score=0.0,
                 reason="JSON schema must be an object or a boolean",
+            )
+        if isinstance(schema, dict) and not schema:
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                reason="Assertion 'json_schema' requires a non-empty schema object or string",
             )
         try:
             cleaned = strip_codeblock(completion, "json")
@@ -239,7 +246,10 @@ def evaluate_deterministic_assertion(
                 score=0.0,
                 reason="Exact match requires an expected value or test case ground_truth",
             )
-        target_str = str(expected if expected is not None else ground_truth)
+        effective = expected
+        if isinstance(effective, str) and not effective.strip() and ground_truth is not None:
+            effective = ground_truth
+        target_str = str(effective if effective is not None else ground_truth)
         passed = completion.strip() == target_str.strip()
         return AssertionResult(
             assertion_type=atype,
@@ -260,7 +270,10 @@ def evaluate_deterministic_assertion(
                     "Levenshtein similarity requires an expected value or test case ground_truth"
                 ),
             )
-        ref = str(expected if expected is not None else ground_truth)
+        effective = expected
+        if isinstance(effective, str) and not effective.strip() and ground_truth is not None:
+            effective = ground_truth
+        ref = str(effective if effective is not None else ground_truth)
         similarity = calculate_levenshtein_similarity(completion.strip(), ref.strip())
         threshold = assertion.threshold if assertion.threshold is not None else 0.85
         passed = similarity >= threshold

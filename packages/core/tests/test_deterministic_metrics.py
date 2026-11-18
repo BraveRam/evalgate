@@ -61,7 +61,7 @@ def test_json_schema_assertion():
         ("not JSON", "{}", False),
         ({"type": "unknown-type"}, "{}", False),
         ([], "{}", False),
-        ({}, "{}", True),
+        ({}, "{}", False),
     ],
 )
 def test_json_schema_strings_and_invalid_schemas(schema, completion, expected_passed):
@@ -296,6 +296,48 @@ def test_json_schema_fails_closed_when_schema_is_missing():
     result = evaluate_deterministic_assertion(assertion, "{}", TestCase(id="t"))
     assert result.passed is False
     assert "requires a non-empty" in (result.reason or "")
+
+    empty_dict_assertion = AssertionConfig(type=AssertionType.JSON_SCHEMA, value={})
+    result_empty = evaluate_deterministic_assertion(empty_dict_assertion, "{}", TestCase(id="t"))
+    assert result_empty.passed is False
+    assert "requires a non-empty" in (result_empty.reason or "")
+
+    empty_str_schema = AssertionConfig(type=AssertionType.JSON_SCHEMA, value="{}")
+    result_empty_str = evaluate_deterministic_assertion(empty_str_schema, "{}", TestCase(id="t"))
+    assert result_empty_str.passed is False
+    assert "requires a non-empty" in (result_empty_str.reason or "")
+
+
+def test_strip_codeblock_handles_uppercase_language_fences():
+    schema = {"type": "object", "properties": {"a": {"type": "number"}}, "required": ["a"]}
+    assertion = AssertionConfig(type=AssertionType.JSON_SCHEMA, value=schema)
+    completion = "```JSON\n{\"a\": 1}\n```"
+    result = evaluate_deterministic_assertion(assertion, completion, TestCase(id="t"))
+    assert result.passed is True
+
+
+def test_levenshtein_and_exact_do_not_shadow_ground_truth_when_value_is_empty_string():
+    assertion = AssertionConfig(type=AssertionType.LEVENSHTEIN, value="")
+    test_case = TestCase(id="t", ground_truth="expected answer")
+    # Empty completion should not pass against ground_truth
+    result = evaluate_deterministic_assertion(assertion, "", test_case)
+    assert result.passed is False
+    assert result.score == 0.0
+
+    # Matching completion against ground_truth should pass
+    result_pass = evaluate_deterministic_assertion(assertion, "expected answer", test_case)
+    assert result_pass.passed is True
+    assert result_pass.score == 1.0
+
+
+def test_target_output_with_cost_usd_is_treated_as_tracked():
+    from evalgate.targets.base import TargetOutput
+
+    assertion = AssertionConfig(type=AssertionType.MAX_COST_USD, value=0.05)
+    output = TargetOutput(completion="test", cost_usd=0.005)
+    result = evaluate_deterministic_assertion(assertion, output=output)
+    assert result.passed is True
+    assert result.threshold == 0.05
 
 
 def test_evaluate_deterministic_assertion_with_target_output():
