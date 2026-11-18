@@ -16,6 +16,7 @@ from evalgate.metrics.intent import IntentMetric
 from evalgate.metrics.relevancy import RelevancyMetric
 from evalgate.providers.base import BaseProvider
 from evalgate.providers.factory import get_provider
+from evalgate.targets.base import TargetOutput
 
 # Mapping of semantic assertion types to their evaluator classes
 SEMANTIC_METRIC_MAP: dict[AssertionType, type[BaseSemanticMetric]] = {
@@ -32,17 +33,26 @@ SEMANTIC_METRIC_MAP: dict[AssertionType, type[BaseSemanticMetric]] = {
 
 async def evaluate_assertion(
     assertion: AssertionConfig,
-    completion: str,
-    test_case: TestCase,
+    completion: str = "",
+    test_case: TestCase | None = None,
     default_judge_provider: BaseProvider | None = None,
     latency_ms: float = 0.0,
     total_tokens: int = 0,
     cost_usd: float = 0.0,
     cost_tracked: bool = True,
+    output: TargetOutput | None = None,
 ) -> AssertionResult:
     """
     Dispatcher evaluating either a deterministic assertion or a semantic LLM-as-a-judge metric.
     """
+    if output is not None:
+        completion = output.completion
+        latency_ms = output.latency_ms
+        total_tokens = output.total_tokens
+        cost_usd = output.cost_usd
+        cost_tracked = output.cost_tracked
+
+    test_case = test_case or TestCase(id="default")
     atype = assertion.type
 
     # 1. Deterministic / Mathematical Evaluator
@@ -55,6 +65,7 @@ async def evaluate_assertion(
             total_tokens=total_tokens,
             cost_usd=cost_usd,
             cost_tracked=cost_tracked,
+            output=output,
         )
 
     # 2. Semantic LLM-as-a-Judge Evaluator

@@ -292,7 +292,31 @@ def test_levenshtein_without_value_or_ground_truth_fails_on_empty_completion():
 
 
 def test_json_schema_fails_closed_when_schema_is_missing():
-    assertion = AssertionConfig.model_construct(type=AssertionType.JSON_SCHEMA, value=None)
+    assertion = AssertionConfig(type=AssertionType.JSON_SCHEMA, value=None)
     result = evaluate_deterministic_assertion(assertion, "{}", TestCase(id="t"))
     assert result.passed is False
     assert "requires a non-empty" in (result.reason or "")
+
+
+def test_evaluate_deterministic_assertion_with_target_output():
+    from evalgate.targets.base import TargetOutput
+
+    assertion = AssertionConfig(type=AssertionType.MAX_LATENCY_MS, value=50.0)
+    output = TargetOutput(completion="hello", latency_ms=25.0)
+    result = evaluate_deterministic_assertion(assertion, output=output)
+    assert result.passed is True
+    assert result.threshold == 50.0
+
+
+def test_string_matchers_fail_closed_on_empty_or_whitespace_value():
+    for atype in [
+        AssertionType.CONTAINS,
+        AssertionType.NOT_CONTAINS,
+        AssertionType.STARTS_WITH,
+        AssertionType.ENDS_WITH,
+        AssertionType.REGEX,
+    ]:
+        assertion = AssertionConfig(type=atype, value="   ")
+        result = evaluate_deterministic_assertion(assertion, "some text", TestCase(id="t"))
+        assert result.passed is False
+        assert "requires a non-empty string value" in (result.reason or "")

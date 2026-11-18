@@ -155,9 +155,9 @@ def test_suite_run_result_validation():
     ],
 )
 @pytest.mark.parametrize("value", [None, "", "   "])
-def test_value_requiring_assertions_reject_missing_or_blank_value(assertion_type, value):
-    with pytest.raises(ValidationError):
-        AssertionConfig(type=assertion_type, value=value)
+def test_value_requiring_assertions_allowed_at_config_time(assertion_type, value):
+    cfg = AssertionConfig(type=assertion_type, value=value)
+    assert cfg.value == value
 
 
 def test_exact_and_levenshtein_may_rely_on_ground_truth():

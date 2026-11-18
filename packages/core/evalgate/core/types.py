@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class TargetType(str, Enum):
@@ -136,23 +136,6 @@ class AssertionConfig(BaseModel):
         default=None,
         description="Custom model to use for judging (defaults to default evaluator model)",
     )
-
-    @model_validator(mode="after")
-    def validate_assertion_value(self) -> "AssertionConfig":
-        value_requiring = {
-            AssertionType.CONTAINS,
-            AssertionType.NOT_CONTAINS,
-            AssertionType.STARTS_WITH,
-            AssertionType.ENDS_WITH,
-            AssertionType.REGEX,
-            AssertionType.JSON_SCHEMA,
-        }
-        if self.type in value_requiring:
-            if self.value is None or (isinstance(self.value, str) and not self.value.strip()):
-                raise ValueError(
-                    f"Assertion type '{self.type.value}' requires a non-empty value"
-                )
-        return self
 
 
 class TestCase(BaseModel):

@@ -26,6 +26,7 @@ class ProviderCompletion(BaseModel):
     latency_ms: float = Field(default=0.0, ge=0.0)
     model: str = Field(default="")
     cost_usd: float = Field(default=0.0, ge=0.0)
+    cost_tracked: bool = Field(default=True)
 
 
 class BaseProvider(ABC):
