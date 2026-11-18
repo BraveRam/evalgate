@@ -51,6 +51,7 @@ def evaluate_deterministic_assertion(
     latency_ms: float = 0.0,
     total_tokens: int = 0,
     cost_usd: float = 0.0,
+    cost_tracked: bool = True,
 ) -> AssertionResult:
     """
     Evaluate a deterministic mathematical or syntactic assertion against an LLM completion.
@@ -178,6 +179,21 @@ def evaluate_deterministic_assertion(
         )
 
     # 4. String Matchers: Contains / Not Contains / Starts / Ends / Regex
+    if atype in (
+        AssertionType.CONTAINS,
+        AssertionType.NOT_CONTAINS,
+        AssertionType.STARTS_WITH,
+        AssertionType.ENDS_WITH,
+        AssertionType.REGEX,
+    ):
+        if expected is None or (isinstance(expected, str) and not expected.strip()):
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                reason=f"Assertion '{atype.value}' requires a non-empty string value",
+            )
+
     if atype == AssertionType.CONTAINS:
         target_str = str(expected or "")
         passed = target_str in completion
@@ -189,7 +205,14 @@ def evaluate_deterministic_assertion(
         )
 
     if atype in (AssertionType.EXACT, AssertionType.EXACT_MATCH):
-        target_str = str(expected or test_case.ground_truth or "")
+        if expected is None and test_case.ground_truth is None:
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                reason="Exact match requires an expected value or test case ground_truth",
+            )
+        target_str = str(expected if expected is not None else test_case.ground_truth)
         passed = completion.strip() == target_str.strip()
         return AssertionResult(
             assertion_type=atype,
@@ -263,7 +286,16 @@ def evaluate_deterministic_assertion(
 
     # 6. Performance & Budget SLOs
     if atype == AssertionType.MAX_LATENCY_MS:
-        max_limit = float(expected if expected is not None else 1000.0)
+        try:
+            max_limit = float(expected if expected is not None else 1000.0)
+        except (ValueError, TypeError) as err:
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                reason=f"Malformed numeric value '{expected}' for {atype.value}: {err}",
+                details={"infra_error": True},
+            )
         passed = latency_ms <= max_limit
         status_word = "within" if passed else "exceeded"
         score = (
@@ -280,7 +312,16 @@ def evaluate_deterministic_assertion(
         )
 
     if atype == AssertionType.MAX_TOKENS:
-        max_limit = int(expected if expected is not None else 1000)
+        try:
+            max_limit = int(expected if expected is not None else 1000)
+        except (ValueError, TypeError) as err:
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                reason=f"Malformed numeric value '{expected}' for {atype.value}: {err}",
+                details={"infra_error": True},
+            )
         passed = total_tokens <= max_limit
         status_word = "within" if passed else "exceeded"
         return AssertionResult(
@@ -292,7 +333,29 @@ def evaluate_deterministic_assertion(
         )
 
     if atype == AssertionType.MAX_COST_USD:
-        max_limit = float(expected if expected is not None else 0.01)
+        if not cost_tracked:
+            threshold_val = (
+                float(expected)
+                if expected is not None and isinstance(expected, (int, float))
+                else None
+            )
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                threshold=threshold_val,
+                reason="Inference cost was not reported by provider or could not be tracked",
+            )
+        try:
+            max_limit = float(expected if expected is not None else 0.01)
+        except (ValueError, TypeError) as err:
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                reason=f"Malformed numeric value '{expected}' for {atype.value}: {err}",
+                details={"infra_error": True},
+            )
         passed = cost_usd <= max_limit
         status_word = "within" if passed else "exceeded"
         return AssertionResult(

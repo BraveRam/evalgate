@@ -38,6 +38,7 @@ async def evaluate_assertion(
     latency_ms: float = 0.0,
     total_tokens: int = 0,
     cost_usd: float = 0.0,
+    cost_tracked: bool = True,
 ) -> AssertionResult:
     """
     Dispatcher evaluating either a deterministic assertion or a semantic LLM-as-a-judge metric.
@@ -53,6 +54,7 @@ async def evaluate_assertion(
             latency_ms=latency_ms,
             total_tokens=total_tokens,
             cost_usd=cost_usd,
+            cost_tracked=cost_tracked,
         )
 
     # 2. Semantic LLM-as-a-Judge Evaluator

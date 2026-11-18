@@ -1,0 +1,8 @@
+Suite: mock-verification-suite
+Target Model: mock/simulator
+Status: PASSED QUALITY GATE
+Pass Rate: 100.0% (1/1 attempts)
+Latency: Avg: 10ms | P50: 10ms | P95: 10ms
+Tokens: 15 total | Estimated Cost: $0.000000
+Run ID: run_a395128c2849
+Exit Code: 0

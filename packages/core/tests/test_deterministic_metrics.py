@@ -11,6 +11,7 @@ from evalgate.metrics.deterministic import (
     calculate_levenshtein_similarity,
     evaluate_deterministic_assertion,
 )
+from evalgate.metrics.registry import evaluate_assertion
 
 
 def test_levenshtein_similarity():
@@ -61,7 +62,6 @@ def test_json_schema_assertion():
         ({"type": "unknown-type"}, "{}", False),
         ([], "{}", False),
         ({}, "{}", True),
-        (None, "{}", True),
     ],
 )
 def test_json_schema_strings_and_invalid_schemas(schema, completion, expected_passed):
@@ -204,3 +204,70 @@ def test_explicit_zero_budget_limits():
         assert passed.passed is True
         assert passed.threshold == 0
     assert failed.score == 0.0
+
+
+@pytest.mark.parametrize(
+    "assertion_type",
+    [
+        AssertionType.CONTAINS,
+        AssertionType.NOT_CONTAINS,
+        AssertionType.STARTS_WITH,
+        AssertionType.ENDS_WITH,
+        AssertionType.REGEX,
+    ],
+)
+def test_matchers_fail_closed_when_value_is_missing(assertion_type):
+    assertion = AssertionConfig.model_construct(
+        type=assertion_type,
+        value=None,
+        strict=True,
+    )
+    result = evaluate_deterministic_assertion(assertion, "anything at all", TestCase(id="t"))
+    assert result.passed is False
+    assert "requires a non-empty" in (result.reason or "")
+
+
+def test_exact_without_value_or_ground_truth_fails_on_empty_completion():
+    assertion = AssertionConfig(type=AssertionType.EXACT)
+    result = evaluate_deterministic_assertion(assertion, "", TestCase(id="t"))
+    assert result.passed is False
+
+
+@pytest.mark.asyncio
+async def test_malformed_numeric_value_becomes_failed_assertion():
+    assertion = AssertionConfig(type=AssertionType.MAX_LATENCY_MS, value="oops")
+    result = await evaluate_assertion(
+        assertion=assertion,
+        completion="anything",
+        test_case=TestCase(id="t"),
+        latency_ms=1.0,
+    )
+    assert result.passed is False
+    assert result.details.get("infra_error") is True
+    assert "oops" in (result.reason or "")
+
+
+@pytest.mark.asyncio
+async def test_malformed_token_budget_becomes_failed_assertion():
+    assertion = AssertionConfig(type=AssertionType.MAX_TOKENS, value="many")
+    result = await evaluate_assertion(
+        assertion=assertion,
+        completion="anything",
+        test_case=TestCase(id="t"),
+        total_tokens=5,
+    )
+    assert result.passed is False
+    assert result.details.get("infra_error") is True
+
+
+def test_max_cost_usd_fails_closed_when_cost_is_untracked():
+    assertion = AssertionConfig(type=AssertionType.MAX_COST_USD, value=0.01)
+    result = evaluate_deterministic_assertion(
+        assertion,
+        "anything",
+        TestCase(id="t"),
+        cost_usd=0.0,
+        cost_tracked=False,
+    )
+    assert result.passed is False
+    assert "not reported" in (result.reason or "")
