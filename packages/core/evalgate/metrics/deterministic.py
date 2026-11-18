@@ -61,7 +61,14 @@ def evaluate_deterministic_assertion(
 
     # 1. JSON Schema Validation
     if atype == AssertionType.JSON_SCHEMA:
-        schema = expected if expected is not None else {}
+        if expected is None or (isinstance(expected, str) and not expected.strip()):
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                reason="Assertion 'json_schema' requires a non-empty schema object or string",
+            )
+        schema = expected
         if isinstance(schema, str):
             try:
                 schema = json.loads(schema)
@@ -195,7 +202,7 @@ def evaluate_deterministic_assertion(
             )
 
     if atype == AssertionType.CONTAINS:
-        target_str = str(expected or "")
+        target_str = str(expected if expected is not None else "")
         passed = target_str in completion
         return AssertionResult(
             assertion_type=atype,
@@ -222,7 +229,7 @@ def evaluate_deterministic_assertion(
         )
 
     if atype == AssertionType.NOT_CONTAINS:
-        target_str = str(expected or "")
+        target_str = str(expected if expected is not None else "")
         passed = target_str not in completion
         prefix = "Correctly omitted" if passed else "Contained forbidden"
         return AssertionResult(
@@ -233,7 +240,7 @@ def evaluate_deterministic_assertion(
         )
 
     if atype == AssertionType.STARTS_WITH:
-        target_str = str(expected or "")
+        target_str = str(expected if expected is not None else "")
         passed = completion.strip().startswith(target_str)
         return AssertionResult(
             assertion_type=atype,
@@ -243,7 +250,7 @@ def evaluate_deterministic_assertion(
         )
 
     if atype == AssertionType.ENDS_WITH:
-        target_str = str(expected or "")
+        target_str = str(expected if expected is not None else "")
         passed = completion.strip().endswith(target_str)
         return AssertionResult(
             assertion_type=atype,
@@ -253,7 +260,7 @@ def evaluate_deterministic_assertion(
         )
 
     if atype == AssertionType.REGEX:
-        pattern = str(expected or "")
+        pattern = str(expected if expected is not None else "")
         try:
             match = bool(re.search(pattern, completion, re.MULTILINE))
             return AssertionResult(
@@ -272,7 +279,17 @@ def evaluate_deterministic_assertion(
 
     # 5. Levenshtein String Similarity
     if atype == AssertionType.LEVENSHTEIN:
-        ref = str(expected or test_case.ground_truth or "")
+        if expected is None and test_case.ground_truth is None:
+            return AssertionResult(
+                assertion_type=atype,
+                passed=False,
+                score=0.0,
+                threshold=assertion.threshold if assertion.threshold is not None else 0.85,
+                reason=(
+                    "Levenshtein similarity requires an expected value or test case ground_truth"
+                ),
+            )
+        ref = str(expected if expected is not None else test_case.ground_truth)
         similarity = calculate_levenshtein_similarity(completion.strip(), ref.strip())
         threshold = assertion.threshold if assertion.threshold is not None else 0.85
         passed = similarity >= threshold

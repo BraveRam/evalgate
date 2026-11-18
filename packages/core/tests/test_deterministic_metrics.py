@@ -271,3 +271,28 @@ def test_max_cost_usd_fails_closed_when_cost_is_untracked():
     )
     assert result.passed is False
     assert "not reported" in (result.reason or "")
+
+
+def test_string_matchers_with_zero_value_do_not_falsely_match_arbitrary_string():
+    contains_zero = AssertionConfig(type=AssertionType.CONTAINS, value=0)
+    result = evaluate_deterministic_assertion(
+        contains_zero, "completely different", TestCase(id="t")
+    )
+    assert result.passed is False
+
+    match_zero = evaluate_deterministic_assertion(contains_zero, "exit code: 0", TestCase(id="t"))
+    assert match_zero.passed is True
+
+
+def test_levenshtein_without_value_or_ground_truth_fails_on_empty_completion():
+    assertion = AssertionConfig(type=AssertionType.LEVENSHTEIN)
+    result = evaluate_deterministic_assertion(assertion, "", TestCase(id="t"))
+    assert result.passed is False
+    assert result.score == 0.0
+
+
+def test_json_schema_fails_closed_when_schema_is_missing():
+    assertion = AssertionConfig.model_construct(type=AssertionType.JSON_SCHEMA, value=None)
+    result = evaluate_deterministic_assertion(assertion, "{}", TestCase(id="t"))
+    assert result.passed is False
+    assert "requires a non-empty" in (result.reason or "")

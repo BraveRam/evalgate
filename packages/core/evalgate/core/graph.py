@@ -89,6 +89,7 @@ async def evaluate_assertions_node(state: EvalState) -> dict[str, Any]:
             latency_ms=output.latency_ms,
             total_tokens=output.total_tokens,
             cost_usd=output.cost_usd,
+            cost_tracked=output.cost_tracked,
         )
         for assertion in all_assertions
     ]
